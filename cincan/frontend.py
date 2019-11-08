@@ -1,18 +1,14 @@
 import argparse
 import datetime
-import hashlib
-import io
 import json
 import logging
 import pathlib
 import sys
-import tarfile
-import tempfile
-import timeit
 from typing import List, Set, Dict, Optional
 
 import docker
 import docker.errors
+
 from cincan import registry
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
@@ -53,14 +49,11 @@ class ToolImage:
             self.context = '.'  # not really correct, but will do
         else:
             raise Exception("No file nor image specified")
-        self.upload_files = {}  # files to upload, key = name in host, value = name in image
         self.input_files: Optional[List[str]] = None  # Explicit tool input files
-        self.upload_stats: Dict[str, List] = {}
-        self.input_tar = None  # optional input tar name, directory name, or '-' for stdin
+        self.upload_files = {}  # files to upload, key = name in host, value = name in image
+        self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_files: Optional[List[str]] = None  # Explicit tool input files
-        self.upload_tar = None  # tar file pathlib.Path to upload
         self.download_files = {}  # files to download, key = name in host, value = name in image
-        self.dump_upload_tar = False
 
     def get_tags(self) -> List[str]:
         """List image tags"""
@@ -174,10 +167,6 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-    sub_parser.add_argument('--unpack', action='store_true',
-                            help="Unpack output file(s) from tar")
-    sub_parser.add_argument('--dump-upload-files', action='store_true',
-                            help="Dump the uploaded tar file into 'upload_files.tar'")
 
 
 def main():
@@ -226,8 +215,6 @@ def main():
             lambda s: s, args.input_files.split(","))) if args.input_files is not None else None
         tool.output_files = list(filter(
             lambda s: s, args.output_files.split(","))) if args.output_files is not None else None
-        tool.unpack_download_files = args.unpack
-        tool.dump_upload_tar = args.dump_upload_files
         all_args = args.tool[1:]
 
         ret = tool.run(all_args)
