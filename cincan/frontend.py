@@ -107,7 +107,7 @@ class ToolImage:
         resolver = FileResolver(args, pathlib.Path(), input_files=self.input_files)
         for up_file in resolver.detect_upload_files():
             arc_name = resolver.archive_name_for(up_file)
-            self.upload_files[arc_name] = up_file.as_posix()
+            self.upload_files[up_file.as_posix()] = arc_name
             self.logger.debug(f"{up_file.as_posix()} -> {arc_name}")
         cmd_args = resolver.command_args
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
