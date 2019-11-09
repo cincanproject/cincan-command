@@ -107,7 +107,7 @@ class ToolImage:
         # inspect = self.client.api.exec_inspect(exec['Id'])
         # exit_code = inspect.get('ExitCode', 0)
 
-        log = CommandLog(full_cmd)
+        log = CommandLog([self.name] + full_cmd)
         log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
         log.stdout = cmd_output[0] if cmd_output[0] else b''
         log.stderr = cmd_output[1] if cmd_output[1] else b''

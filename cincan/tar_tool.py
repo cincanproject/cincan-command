@@ -99,7 +99,7 @@ class TarTool:
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with host_file.open("wb") as f:
-                    md5 = self.read_with_hash(tf_data, f.write)
+                    md5 = self.read_with_hash(tf_data.read, f.write)
             elif tf.isfile() and host_file.is_dir():
                 raise Exception(f"copy out {host_file.as_posix()} failed, a directory with that name exists")
             elif tf.isfile() and host_file.exists():
