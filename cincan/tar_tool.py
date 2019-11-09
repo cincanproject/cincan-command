@@ -91,7 +91,7 @@ class TarTool:
                 # trim away leading directories
                 continue
             md5 = ''
-            timestamp = None
+            timestamp = datetime.now()
             if tf.isfile() and (force_download or not host_file.exists()):
                 # no local file or explicit output asked, this is too easy
                 self.logger.info(f"copy out {host_file.as_posix()}")
@@ -126,7 +126,6 @@ class TarTool:
                     self.logger.info(f"copy out and replace {host_file.as_posix()}")
                     host_file.unlink()
                     temp_file.rename(host_file)
-                    timestamp = datetime.fromtimestamp(host_file.stat().st_mtime)
             elif tf.isdir() and host_file.is_file():
                 raise Exception(f"mkdir {host_file.as_posix()} failed, a file with that name exists")
             elif tf.isdir() and host_file.is_dir():
