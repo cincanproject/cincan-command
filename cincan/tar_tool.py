@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import hashlib
 import io
 import pathlib
@@ -9,6 +9,8 @@ from logging import Logger
 from typing import Dict, Optional, List, Iterable
 
 from docker.models.containers import Container
+
+from cincan.command_log import FileLog
 
 
 class TarTool:
@@ -40,7 +42,7 @@ class TarTool:
         self.container.put_archive(path='.', data=file_out.getvalue())
         self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
 
-    def download_files(self, explicit_output: Optional[Dict[str, str]]):
+    def download_files(self, explicit_output: Optional[Dict[str, str]]) -> List[FileLog]:
         # resolve files to download
         if explicit_output is not None:
             candidates = explicit_output  # explicitly given
@@ -52,10 +54,13 @@ class TarTool:
                 if i < len(candidates) -1 and candidates[i+1].startswith(c):
                     candidates[i] = None
             candidates = list(filter(lambda s: s, candidates))
+        out_files = []
         for f in candidates:
-            self.__download_file_maybe(f, force_download=explicit_output is not None)
+            log = self.__download_file_maybe(f, force_download=explicit_output is not None)
+            out_files.extend(log)
+        return out_files
 
-    def __download_file_maybe(self, file_name: str, force_download: bool):
+    def __download_file_maybe(self, file_name: str, force_download: bool) -> List[FileLog]:
         # self.logger.debug(f"container file changed {file_name}")
         down_file = pathlib.Path(file_name)
         # all files come with leading '/' whether they are in home or in root :O
@@ -68,7 +73,7 @@ class TarTool:
         check = self.__check_for_download(host_file, stat)
 
         if not check:
-            return  # do not attempt download
+            return []  # do not attempt download
 
         # read the tarball into temp file
         tmp_tar = tempfile.TemporaryFile()
@@ -79,11 +84,14 @@ class TarTool:
 
         tmp_tar.seek(0)
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
+        out_files = []
         for tf in down_tar:
             cont_file = pathlib.Path(down_file).parent / tf.name
             if cont_file.as_posix() != file_name:
                 # trim away leading directories
                 continue
+            md5 = ''
+            timestamp = None
             if tf.isfile() and (force_download or not host_file.exists()):
                 # no local file or explicit output asked, this is too easy
                 self.logger.info(f"copy out {host_file.as_posix()}")
@@ -91,10 +99,7 @@ class TarTool:
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with host_file.open("wb") as f:
-                    f_chunk = tf_data.read(2048)
-                    while f_chunk:
-                        f.write(f_chunk)
-                        f_chunk = tf_data.read(2048)
+                    md5 = self.read_with_hash(tf_data, f.write)
             elif tf.isfile() and host_file.is_dir():
                 raise Exception(f"copy out {host_file.as_posix()} failed, a directory with that name exists")
             elif tf.isfile() and host_file.exists():
@@ -107,21 +112,21 @@ class TarTool:
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with temp_file.open("wb") as f:
-                    tf_digest = self.__read_with_hash(tf_data.read, f.write)
+                    md5 = self.read_with_hash(tf_data.read, f.write)
 
                 # calculate hash for existing file
                 with host_file.open("rb") as f:
-                    host_digest = self.__read_with_hash(f.read)
+                    host_digest = self.read_with_hash(f.read)
 
-                if tf_digest == host_digest:
-                    self.logger.debug(f"identical file {host_file.as_posix()} md5 {tf_digest}, no action")
+                if md5 == host_digest:
+                    self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
                     temp_file.unlink()
-                    continue
-
-                self.logger.debug(f"file {host_file.as_posix()} md5 in container {tf_digest}, in host {host_digest}")
-                self.logger.info(f"copy out and replace {host_file.as_posix()}")
-                host_file.unlink()
-                temp_file.rename(host_file)
+                else:
+                    self.logger.debug(f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
+                    self.logger.info(f"copy out and replace {host_file.as_posix()}")
+                    host_file.unlink()
+                    temp_file.rename(host_file)
+                    timestamp = datetime.fromtimestamp(host_file.stat().st_mtime)
             elif tf.isdir() and host_file.is_file():
                 raise Exception(f"mkdir {host_file.as_posix()} failed, a file with that name exists")
             elif tf.isdir() and host_file.is_dir():
@@ -129,7 +134,10 @@ class TarTool:
             elif tf.isdir():
                 self.logger.info(f"mkdir {host_file.as_posix()}")
                 host_file.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.fromtimestamp(host_file.stat().st_mtime)
+            out_files.append(FileLog(host_file.resolve(), md5, timestamp))
         tmp_tar.close()
+        return out_files
 
     def __check_for_download(self, host_file: pathlib.Path, stat: Dict) -> bool:
         up_stat = self.upload_stats.get(host_file.as_posix())
@@ -145,9 +153,9 @@ class TarTool:
 
         if (not up_down_size_mismatch) and up_stat and 'mtime' in stat:
             down_time_s = stat['mtime']  # seconds + timezone
-            up_time = datetime.datetime.fromtimestamp(int(up_stat[1]))
+            up_time = datetime.fromtimestamp(int(up_stat[1]))
             up_time_s = up_time.strftime(self.time_format_seconds)  # seconds
-            time_now_s = datetime.datetime.now().strftime(self.time_format_seconds)
+            time_now_s = datetime.now().strftime(self.time_format_seconds)
             if down_time_s.startswith(up_time_s) and up_time_s != time_now_s:
                 # down_time is seconds, up_time has more precision
                 self.logger.debug(f"timestamp {host_file.as_posix()} not updated {down_time_s}")
@@ -156,7 +164,8 @@ class TarTool:
 
         return True
 
-    def __read_with_hash(self, read_more, write_to: Optional = None) -> str:
+    @classmethod
+    def read_with_hash(cls, read_more, write_to: Optional = None) -> str:
         md5sum = hashlib.md5()
         chunk = read_more(2048)
         while chunk:

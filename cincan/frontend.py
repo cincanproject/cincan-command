@@ -1,5 +1,5 @@
 import argparse
-import datetime
+from datetime import datetime
 import json
 import logging
 import pathlib
@@ -10,7 +10,7 @@ import docker
 import docker.errors
 
 from cincan import registry
-from cincan.command_log import CommandLog
+from cincan.command_log import CommandLog, FileLog
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
@@ -63,7 +63,7 @@ class ToolImage:
     def get_id(self) -> str:
         return self.image.id
 
-    def get_creation_time(self) -> datetime.datetime:
+    def get_creation_time(self) -> datetime:
         """Get image creation time"""
         return registry.parse_json_time(self.image.attrs['Created'])
 
@@ -118,8 +118,12 @@ class ToolImage:
 
         # resolve files to upload
         resolver = FileResolver(args, pathlib.Path(), input_files=self.input_files)
+        in_files = []
         for up_file in resolver.detect_upload_files():
             arc_name = resolver.archive_name_for(up_file)
+            with up_file.open("rb") as f:
+                file_md5 = TarTool.read_with_hash(f.read)
+            in_files.append(FileLog(up_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
             self.upload_files[up_file.as_posix()] = arc_name
             self.logger.debug(f"{up_file.as_posix()} -> {arc_name}")
         cmd_args = resolver.command_args
@@ -128,10 +132,11 @@ class ToolImage:
         container = self.__create_container()
         try:
             log = self.__container_exec(container, cmd_args)
+            log.in_files = in_files
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats)
-                tar_tool.download_files(self.output_files)
+                log.out_files = tar_tool.download_files(self.output_files)
         finally:
             self.logger.debug("killing the container")
             container.kill()
