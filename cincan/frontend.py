@@ -95,6 +95,17 @@ class ToolImage:
         if not cmd:
             cmd = []  # 'None' value observed
         full_cmd = entry_point + (cmd_args if cmd_args else cmd)
+
+        # FIXME: Move to this to provide stdin..
+        # exec = self.client.api.exec_create(container.id, cmd=full_cmd)
+        # socket = self.client.api.exec_start(exec['Id'], detach=False, socket=True)
+        # std_in = sys.stdin.read()
+        # # socket.write(sys.stdin.read())
+        # stdout = socket.read()
+        # stderr = None
+        # inspect = self.client.api.exec_inspect(exec['Id'])
+        # exit_code = inspect.get('ExitCode', 0)
+
         exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
         stdout = cmd_output[0] if cmd_output[0] else b''
         stderr = cmd_output[1] if cmd_output[1] else b''
