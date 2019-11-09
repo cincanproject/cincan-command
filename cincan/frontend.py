@@ -10,6 +10,7 @@ import docker
 import docker.errors
 
 from cincan import registry
+from cincan.command_log import CommandLog
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
@@ -85,7 +86,7 @@ class ToolImage:
 
         return container
 
-    def __container_exec(self, container, cmd_args: List[str]) -> (str, str, int):
+    def __container_exec(self, container, cmd_args: List[str]) -> CommandLog:
         """Execute a command in the container"""
         # create the full command line and run with exec
         entry_point = self.image.attrs['Config'].get('Entrypoint')
@@ -106,12 +107,13 @@ class ToolImage:
         # inspect = self.client.api.exec_inspect(exec['Id'])
         # exit_code = inspect.get('ExitCode', 0)
 
-        exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
-        stdout = cmd_output[0] if cmd_output[0] else b''
-        stderr = cmd_output[1] if cmd_output[1] else b''
-        return stdout, stderr, exit_code
+        log = CommandLog(full_cmd)
+        log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
+        log.stdout = cmd_output[0] if cmd_output[0] else b''
+        log.stderr = cmd_output[1] if cmd_output[1] else b''
+        return log
 
-    def __run(self, args: List[str]) -> (bytes, bytes, int):
+    def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
 
         # resolve files to upload
@@ -125,8 +127,8 @@ class ToolImage:
 
         container = self.__create_container()
         try:
-            stdout, stderr, exit_code = self.__container_exec(container, cmd_args)
-            if exit_code == 0:
+            log = self.__container_exec(container, cmd_args)
+            if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats)
                 tar_tool.download_files(self.output_files)
@@ -134,21 +136,21 @@ class ToolImage:
             self.logger.debug("killing the container")
             container.kill()
 
-        return stdout, stderr, exit_code
+        return log
 
-    def run(self, args: List[str]) -> (bytes, bytes, int):
+    def run(self, args: List[str]) -> CommandLog:
         """Run native tool in container, return output"""
         return self.__run(args)
 
     def run_get_string(self, args: List[str], preserve_image: Optional[bool] = False) -> str:
         """Run native tool in container, return output as a string"""
-        r = self.__run(args)
+        log = self.__run(args)
         if not preserve_image:
             try:
                 self.remove_image()
             except docker.errors.APIError as e:
                 self.logger.warning(e)
-        return r[0].decode('utf8') + r[1].decode('utf8')
+        return log.stdout.decode('utf8') + log.stderr.decode('utf8')
 
     def __log_dict_values(self, log: Set[Dict[str, str]]) -> None:
         """Log values from a dict as debug"""
@@ -228,10 +230,10 @@ def main():
             lambda s: s, args.output_files.split(","))) if args.output_files is not None else None
         all_args = args.tool[1:]
 
-        ret = tool.run(all_args)
-        sys.stdout.buffer.write(ret[0])
-        sys.stderr.buffer.write(ret[1])
-        sys.exit(ret[2])  # exit code
+        log = tool.run(all_args)
+        sys.stdout.buffer.write(log.stdout)
+        sys.stderr.buffer.write(log.stderr)
+        sys.exit(log.exit_code)  # exit code
     elif args.sub_command == 'manifest':
         # sub command 'manifest'
         if len(args.tool) == 0:
