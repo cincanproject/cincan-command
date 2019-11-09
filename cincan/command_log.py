@@ -52,3 +52,20 @@ class CommandLog:
 
     def __repr__(self) -> str:
         return json.dumps(self.to_json(), indent=4)
+
+
+class CommandLogWriter:
+    def __init__(self, log_directory: pathlib.Path = pathlib.Path.home() / '.cincan' / 'logs'):
+        self.log_directory = log_directory
+        self.log_directory.mkdir(parents=True, exist_ok=True)
+        self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
+
+    def write(self, log: CommandLog):
+        log_file = self.__log_file()
+        while log_file.exists():
+            log_file = self.__log_file()
+        with log_file.open("w") as f:
+            json.dump(log.to_json(), f)
+
+    def __log_file(self) -> pathlib.Path:
+        return self.log_directory / datetime.now().strftime(self.file_name_format)

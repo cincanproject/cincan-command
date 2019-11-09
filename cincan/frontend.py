@@ -10,7 +10,7 @@ import docker
 import docker.errors
 
 from cincan import registry
-from cincan.command_log import CommandLog, FileLog
+from cincan.command_log import CommandLog, FileLog, CommandLogWriter
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
@@ -236,6 +236,10 @@ def main():
         all_args = args.tool[1:]
 
         log = tool.run(all_args)
+        if log.exit_code == 0:
+            log_writer = CommandLogWriter()
+            log_writer.write(log)
+
         sys.stdout.buffer.write(log.stdout)
         sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
