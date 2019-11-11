@@ -44,14 +44,17 @@ class CommandInspector:
                 res.append(cmd)
         return res
 
-    def fanout(self, file: pathlib.Path, hashes: Set[str] = None, digest: Optional[str] = None) -> FileDependency:
+    def fanout(self, file: pathlib.Path, already_covered: Set[str] = None, digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(file, file_digest)
-        hashes = hashes.copy() if hashes else set([])
-        hashes.add(file_digest)
+        already_covered = already_covered.copy() if already_covered else set([])
+        already_covered.add(file_digest)
 
         covered: Set[str] = set()
         for cmd in self.log.list_entries(reverse=True):
+            cmd_string = cmd.command_string()
+            if cmd_string in already_covered:
+                continue
             input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
             if input_here:
                 new_output = any(filter(lambda f: f.md5 not in covered, cmd.out_files))
@@ -60,9 +63,11 @@ class CommandInspector:
                 cmd_dep = CommandDependency(cmd)
                 for file in cmd.out_files:
                     covered.add(file.md5)
-                    if file.md5 in hashes:
+                    if file.md5 in already_covered:
                         continue
-                    cmd_dep.next.append(self.fanout(file.path, hashes, file.md5))
+                    cmd_covered = already_covered.copy()
+                    cmd_covered.add(cmd_string)
+                    cmd_dep.next.append(self.fanout(file.path, cmd_covered, file.md5))
                 file_dep.next.append(cmd_dep)
         return file_dep
 

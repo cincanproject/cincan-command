@@ -45,6 +45,9 @@ class CommandLog:
         self.in_files: List[FileLog] = []
         self.out_files: List[FileLog] = []
 
+    def command_string(self) -> str:
+        return " ".join(quote_args(self.command))
+
     def to_json(self) -> Dict[str, Any]:
         js = {
             'command': self.command,
