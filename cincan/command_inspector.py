@@ -3,7 +3,7 @@ import pathlib
 from io import TextIOBase
 from typing import Dict, Optional, List, Tuple, Set
 
-from cincan.command_log import CommandLogIndex, CommandLog
+from cincan.command_log import CommandLogIndex, CommandLog, JSON_TIME_FORMAT
 from cincan.commands import quote_args
 
 
@@ -14,7 +14,7 @@ class FileDependency:
         self.next: List['CommandDependency'] = []
 
     def __str__(self):
-        file_string = self.file.as_posix()
+        file_string = self.file.as_posix() + ' ' + self.digest[:16]
         next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
         return file_string + ('\n|-' + '\n|-'.join(next_strings) if next_strings else '')
 
@@ -25,7 +25,8 @@ class CommandDependency:
         self.next: List[FileDependency] = []
 
     def __str__(self):
-        cmd_string = " ".join(quote_args(self.command.command))
+        cmd_string = " ".join(quote_args(self.command.command)) + \
+                     ' # ' + self.command.timestamp.strftime(JSON_TIME_FORMAT)
         next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
         return cmd_string + ('\n|->' + '\n|->'.join(next_strings) if next_strings else '')
 
@@ -46,16 +47,16 @@ class CommandInspector:
     def fanout(self, file: pathlib.Path, hashes: Set[str] = None, digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(file, file_digest)
-        if hashes and (file_digest in hashes):
-            return file_dep
-        next_hashes = hashes.copy() if hashes else set([])
-        next_hashes.add(file_digest)
+        hashes = hashes.copy() if hashes else set([])
+        hashes.add(file_digest)
         for cmd in self.log.array:
             input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
             if input_here:
                 cmd_dep = CommandDependency(cmd)
                 for file in cmd.out_files:
-                    cmd_dep.next.append(self.fanout(file.path, next_hashes, file.md5))
+                    if file.md5 in hashes:
+                        continue
+                    cmd_dep.next.append(self.fanout(file.path, hashes, file.md5))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
