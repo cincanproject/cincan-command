@@ -254,7 +254,7 @@ def main():
         inspector = CommandInspector(CommandLogIndex())
         if args.sub_command == 'fanout':
             res = inspector.fanout(pathlib.Path(args.file))
-            inspector.print_fanout(sys.stdout, res)
+            print(res)
         else:
             res = inspector.fanin(pathlib.Path(args.file))
             print("\n".join([json.dumps(r.to_json(), indent=4) for r in res]))

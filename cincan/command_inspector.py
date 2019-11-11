@@ -7,6 +7,29 @@ from cincan.command_log import CommandLogIndex, CommandLog
 from cincan.commands import quote_args
 
 
+class FileDependency:
+    def __init__(self, file: pathlib.Path, digest: str):
+        self.file = file
+        self.digest = digest
+        self.next: List['CommandDependency'] = []
+
+    def __str__(self):
+        file_string = self.file.as_posix()
+        next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
+        return file_string + ('\n|-' + '\n|-'.join(next_strings) if next_strings else '')
+
+
+class CommandDependency:
+    def __init__(self, command: CommandLog):
+        self.command = command
+        self.next: List[FileDependency] = []
+
+    def __str__(self):
+        cmd_string = " ".join(quote_args(self.command.command))
+        next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
+        return cmd_string + ('\n|->' + '\n|->'.join(next_strings) if next_strings else '')
+
+
 class CommandInspector:
     def __init__(self, log: CommandLogIndex):
         self.log = log
@@ -20,23 +43,21 @@ class CommandInspector:
                 res.append(cmd)
         return res
 
-    def fanout(self, file: pathlib.Path, hashes: Set[str] = None, digest: Optional[str] = None) \
-            -> List[Tuple[CommandLog, List]]:
-
+    def fanout(self, file: pathlib.Path, hashes: Set[str] = None, digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
+        file_dep = FileDependency(file, file_digest)
         if hashes and (file_digest in hashes):
-            return []
+            return file_dep
         next_hashes = hashes.copy() if hashes else set([])
         next_hashes.add(file_digest)
-        res = []
         for cmd in self.log.array:
             input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
             if input_here:
-                next_lvl = []
+                cmd_dep = CommandDependency(cmd)
                 for file in cmd.out_files:
-                    next_lvl.extend(self.fanout(file.path, next_hashes, file.md5))
-                res.append((cmd, next_lvl))
-        return res
+                    cmd_dep.next.append(self.fanout(file.path, next_hashes, file.md5))
+                file_dep.next.append(cmd_dep)
+        return file_dep
 
     def print_fanout(self, writer: TextIOBase, fanout: List[Tuple[CommandLog, List]]):
         self.__print_fans(writer, fanout, fanout=True, indent='')
