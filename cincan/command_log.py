@@ -23,6 +23,13 @@ class FileLog:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
         return js
 
+    @classmethod
+    def from_json(cls, js: Dict[str, Any]) -> 'FileLog':
+        log = FileLog(pathlib.Path(js['path']), js['md5'])
+        if 'timestamp' in js:
+            log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
+        return log
+
     def __repr__(self) -> str:
         return json.dumps(self.to_json(), indent=4)
 
@@ -52,8 +59,12 @@ class CommandLog:
 
     @classmethod
     def from_json(cls, js: Dict[str, Any]) -> 'CommandLog':
-        l = CommandLog(js['command'], datetime.strptime(js['timestamp'], JSON_TIME_FORMAT))
-        return l
+        log = CommandLog(js['command'], datetime.strptime(js['timestamp'], JSON_TIME_FORMAT))
+        if 'in_files' in js:
+            log.in_files = [FileLog.from_json(fs) for fs in js['in_files']]
+        if 'out_files' in js:
+            log.out_files = [FileLog.from_json(fs) for fs in js['out_files']]
+        return log
 
     def __repr__(self) -> str:
         return json.dumps(self.to_json(), indent=4)
@@ -84,7 +95,7 @@ class CommandLogWriter(CommandLogBase):
 class CommandLogIndex(CommandLogBase):
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         super().__init__(log_directory)
-        self.log = self.__read_log()
+        self.array = self.__read_log()
 
     def __read_log(self) -> List[CommandLog]:
         log_l = []

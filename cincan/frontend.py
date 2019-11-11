@@ -10,6 +10,7 @@ import docker
 import docker.errors
 
 from cincan import registry
+from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
@@ -247,8 +248,9 @@ def main():
         sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
     elif args.sub_command == 'fanout':
-        index = CommandLogIndex()
-        index
+        inspector = CommandInspector(CommandLogIndex())
+        res = inspector.fanout(pathlib.Path(args.file))
+        print("\n".join([json.dumps(r.to_json(), indent=4) for r in res]))
     elif args.sub_command == 'manifest':
         # sub command 'manifest'
         if len(args.tool) == 0:
