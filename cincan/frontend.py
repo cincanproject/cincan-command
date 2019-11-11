@@ -10,7 +10,7 @@ import docker
 import docker.errors
 
 from cincan import registry
-from cincan.command_log import CommandLog, FileLog, CommandLogWriter
+from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
@@ -207,6 +207,9 @@ def main():
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
 
+    fanout_parser = subparsers.add_parser('fanout')
+    fanout_parser.add_argument('file', help="File to analyze")
+
     help_parser = subparsers.add_parser('help')
 
     if len(sys.argv) > 1:
@@ -243,6 +246,9 @@ def main():
         sys.stdout.buffer.write(log.stdout)
         sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
+    elif args.sub_command == 'fanout':
+        index = CommandLogIndex()
+        index
     elif args.sub_command == 'manifest':
         # sub command 'manifest'
         if len(args.tool) == 0:

@@ -50,15 +50,25 @@ class CommandLog:
             js['out_files'] = [f.to_json() for f in self.out_files]
         return js
 
+    @classmethod
+    def from_json(cls, js: Dict[str, Any]) -> 'CommandLog':
+        l = CommandLog(js['command'], datetime.strptime(js['timestamp'], JSON_TIME_FORMAT))
+        return l
+
     def __repr__(self) -> str:
         return json.dumps(self.to_json(), indent=4)
 
 
-class CommandLogWriter:
-    def __init__(self, log_directory: pathlib.Path = pathlib.Path.home() / '.cincan' / 'logs'):
-        self.log_directory = log_directory
+class CommandLogBase:
+    def __init__(self, log_directory: Optional[pathlib.Path] = None):
+        self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'logs'
         self.log_directory.mkdir(parents=True, exist_ok=True)
         self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
+
+
+class CommandLogWriter(CommandLogBase):
+    def __init__(self, log_directory: Optional[pathlib.Path] = None):
+        super().__init__(log_directory)
 
     def write(self, log: CommandLog):
         log_file = self.__log_file()
@@ -69,3 +79,17 @@ class CommandLogWriter:
 
     def __log_file(self) -> pathlib.Path:
         return self.log_directory / datetime.now().strftime(self.file_name_format)
+
+
+class CommandLogIndex(CommandLogBase):
+    def __init__(self, log_directory: Optional[pathlib.Path] = None):
+        super().__init__(log_directory)
+        self.log = self.__read_log()
+
+    def __read_log(self) -> List[CommandLog]:
+        log_l = []
+        for file in self.log_directory.iterdir():
+            with file.open('r') as f:
+                js = json.load(f)
+                log_l.append(CommandLog.from_json(js))
+        return log_l
