@@ -1,4 +1,5 @@
 import argparse
+import struct
 from datetime import datetime
 import json
 import logging
@@ -56,6 +57,7 @@ class ToolImage:
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_files: Optional[List[str]] = None  # Explicit tool input files
         self.download_files = {}  # files to download, key = name in host, value = name in image
+        self.buffer_output = False
 
     def get_tags(self) -> List[str]:
         """List image tags"""
@@ -101,20 +103,31 @@ class ToolImage:
 
         log = CommandLog([self.name] + user_cmd)
 
-        # NOTE: Moving to use socket connection to provide stdin... losing ability to separate stdout and stderr :/
+        # execute the command, collect stdin and stderr
         exec = self.client.api.exec_create(container.id, cmd=full_cmd)
         exec_id = exec['Id']
         socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
-        # std_in = sys.stdin.read()
-        # socket.write(sys.stdin.read())
-        log.stdout = socket.read()
+        s_type = socket.read(1)
+        while s_type:
+            s_len, = struct.unpack('>Q', socket.read(8))
+            s_data = socket.read(s_len)
+            if s_type == b'\1':
+                # stdout
+                if self.buffer_output:
+                    log.stdout.join(s_data)
+                else:
+                    sys.stdout.buffer.write(s_data)
+            if s_type == b'\2':
+                # stderr
+                if self.buffer_output:
+                    log.stderr.join(s_data)
+                else:
+                    sys.stderr.buffer.write(s_data)
+            s_type = socket.read(1)
+
+        # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
         log.exit_code = inspect.get('ExitCode', 0)
-
-        # ...the old way
-        # log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
-        # log.stdout = cmd_output[0] if cmd_output[0] else b''
-        # log.stderr = cmd_output[1] if cmd_output[1] else b''
         return log
 
     def __run(self, args: List[str]) -> CommandLog:
@@ -150,10 +163,12 @@ class ToolImage:
 
     def run(self, args: List[str]) -> CommandLog:
         """Run native tool in container, return output"""
+        self.buffer_output = False  # we stream it
         return self.__run(args)
 
     def run_get_string(self, args: List[str], preserve_image: Optional[bool] = False) -> str:
         """Run native tool in container, return output as a string"""
+        self.buffer_output = True  # we return it
         log = self.__run(args)
         if not preserve_image:
             try:
