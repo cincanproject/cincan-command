@@ -8,27 +8,30 @@ from cincan.commands import quote_args
 
 
 class FileDependency:
-    def __init__(self, file: pathlib.Path, digest: str):
+    def __init__(self, file: pathlib.Path, digest: str, out:bool):
         self.file = file
         self.digest = digest
+        self.out = out
         self.next: List['CommandDependency'] = []
 
     def __str__(self):
         file_string = self.file.as_posix() + ' ' + self.digest[:16]
-        next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
-        return file_string + ('\n|-->' + '\n|-->'.join(next_strings) if next_strings else '')
+        next_strings = [str(s).replace('\n', '\n   ') for s in self.next]
+        p = '\n|-->' if self.out else '\n^--'
+        return file_string + (p + p.join(next_strings) if next_strings else '')
 
 
 class CommandDependency:
-    def __init__(self, command: CommandLog):
+    def __init__(self, command: CommandLog, out:bool):
         self.command = command
+        self.out = out
         self.next: List[FileDependency] = []
 
     def __str__(self):
-        cmd_string = " ".join(quote_args(self.command.command)) + \
-                     ' # ' + self.command.timestamp.strftime(JSON_TIME_FORMAT)
-        next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
-        return cmd_string + ('\n|-->' + '\n|-->'.join(next_strings) if next_strings else '')
+        cmd_string = " ".join(quote_args(self.command.command))
+        next_strings = [str(s).replace('\n', '\n   ') for s in self.next]
+        p = '\n|-->' if self.out else '\n^--'
+        return cmd_string + (p + p.join(next_strings) if next_strings else '')
 
 
 class CommandInspector:
@@ -38,7 +41,7 @@ class CommandInspector:
     def fanin(self, file: pathlib.Path, already_covered: Set[str] = None,
               digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
-        file_dep = FileDependency(file, file_digest)
+        file_dep = FileDependency(file, file_digest, out=False)
         already_covered = already_covered.copy() if already_covered else set([])
         already_covered.add(file_digest)
 
@@ -49,7 +52,7 @@ class CommandInspector:
                 continue
             output_here = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
             if output_here:
-                cmd_dep = CommandDependency(cmd)
+                cmd_dep = CommandDependency(cmd, out=False)
                 for file in cmd.in_files:
                     covered.add(file.md5)
                     if file.md5 in already_covered:
@@ -63,7 +66,7 @@ class CommandInspector:
     def fanout(self, file: pathlib.Path, already_covered: Set[str] = None,
                digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
-        file_dep = FileDependency(file, file_digest)
+        file_dep = FileDependency(file, file_digest, out=True)
         already_covered = already_covered.copy() if already_covered else set([])
         already_covered.add(file_digest)
 
@@ -77,7 +80,7 @@ class CommandInspector:
                 new_output = any(filter(lambda f: f.md5 not in covered, cmd.out_files))
                 if not new_output:
                     continue  # does not add new files to
-                cmd_dep = CommandDependency(cmd)
+                cmd_dep = CommandDependency(cmd, out=True)
                 for file in cmd.out_files:
                     covered.add(file.md5)
                     if file.md5 in already_covered:
