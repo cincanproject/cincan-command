@@ -35,16 +35,33 @@ class CommandInspector:
     def __init__(self, log: CommandLogIndex):
         self.log = log
 
-    def fanin(self, file: pathlib.Path, digest: Optional[str] = None) -> List[CommandLog]:
+    def fanin(self, file: pathlib.Path, already_covered: Set[str] = None,
+              digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
-        res = []
-        for cmd in self.log.array:
-            found = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
-            if found:
-                res.append(cmd)
-        return res
+        file_dep = FileDependency(file, file_digest)
+        already_covered = already_covered.copy() if already_covered else set([])
+        already_covered.add(file_digest)
 
-    def fanout(self, file: pathlib.Path, already_covered: Set[str] = None, digest: Optional[str] = None) -> FileDependency:
+        covered: Set[str] = set()
+        for cmd in self.log.list_entries(reverse=True):
+            cmd_string = cmd.command_string()
+            if cmd_string in already_covered:
+                continue
+            output_here = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
+            if output_here:
+                cmd_dep = CommandDependency(cmd)
+                for file in cmd.in_files:
+                    covered.add(file.md5)
+                    if file.md5 in already_covered:
+                        continue
+                    cmd_covered = already_covered.copy()
+                    cmd_covered.add(cmd_string)
+                    cmd_dep.next.append(self.fanin(file.path, cmd_covered, file.md5))
+                file_dep.next.append(cmd_dep)
+        return file_dep
+
+    def fanout(self, file: pathlib.Path, already_covered: Set[str] = None,
+               digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(file, file_digest)
         already_covered = already_covered.copy() if already_covered else set([])
