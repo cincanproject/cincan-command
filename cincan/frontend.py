@@ -99,20 +99,22 @@ class ToolImage:
         user_cmd = (cmd_args if cmd_args else cmd)
         full_cmd = entry_point + user_cmd
 
-        # FIXME: Move to this to provide stdin..
-        # exec = self.client.api.exec_create(container.id, cmd=full_cmd)
-        # socket = self.client.api.exec_start(exec['Id'], detach=False, socket=True)
-        # std_in = sys.stdin.read()
-        # # socket.write(sys.stdin.read())
-        # stdout = socket.read()
-        # stderr = None
-        # inspect = self.client.api.exec_inspect(exec['Id'])
-        # exit_code = inspect.get('ExitCode', 0)
-
         log = CommandLog([self.name] + user_cmd)
-        log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
-        log.stdout = cmd_output[0] if cmd_output[0] else b''
-        log.stderr = cmd_output[1] if cmd_output[1] else b''
+
+        # NOTE: Moving to use socket connection to provide stdin... losing ability to separate stdout and stderr :/
+        exec = self.client.api.exec_create(container.id, cmd=full_cmd)
+        exec_id = exec['Id']
+        socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
+        # std_in = sys.stdin.read()
+        # socket.write(sys.stdin.read())
+        log.stdout = socket.read()
+        inspect = self.client.api.exec_inspect(exec_id)
+        log.exit_code = inspect.get('ExitCode', 0)
+
+        # ...the old way
+        # log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
+        # log.stdout = cmd_output[0] if cmd_output[0] else b''
+        # log.stderr = cmd_output[1] if cmd_output[1] else b''
         return log
 
     def __run(self, args: List[str]) -> CommandLog:
@@ -247,9 +249,10 @@ def main():
         if log.exit_code == 0:
             log_writer = CommandLogWriter()
             log_writer.write(log)
-
-        sys.stdout.buffer.write(log.stdout)
-        sys.stderr.buffer.write(log.stderr)
+        if log.stdout:
+            sys.stdout.buffer.write(log.stdout)
+        if log.stderr:
+            sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
     elif args.sub_command in {'fanin', 'fanout'}:
         inspector = CommandInspector(CommandLogIndex(), pathlib.Path().resolve())
