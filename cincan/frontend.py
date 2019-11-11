@@ -208,7 +208,9 @@ def main():
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
 
-    fanout_parser = subparsers.add_parser('fanout')
+    fanin_parser = subparsers.add_parser('fanin', help='Show fan-in to the given file')
+    fanin_parser.add_argument('file', help="File to analyze")
+    fanout_parser = subparsers.add_parser('fanout', help='Show fan-out from the given file')
     fanout_parser.add_argument('file', help="File to analyze")
 
     help_parser = subparsers.add_parser('help')
@@ -247,9 +249,12 @@ def main():
         sys.stdout.buffer.write(log.stdout)
         sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
-    elif args.sub_command == 'fanout':
+    elif args.sub_command in {'fanin', 'fanout'}:
         inspector = CommandInspector(CommandLogIndex())
-        res = inspector.fanout(pathlib.Path(args.file))
+        if args.sub_command == 'fanout':
+            res = inspector.fanout(pathlib.Path(args.file))
+        else:
+            res = inspector.fanin(pathlib.Path(args.file))
         print("\n".join([json.dumps(r.to_json(), indent=4) for r in res]))
     elif args.sub_command == 'manifest':
         # sub command 'manifest'

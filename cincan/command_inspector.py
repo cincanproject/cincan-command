@@ -9,6 +9,15 @@ class CommandInspector:
     def __init__(self, log: CommandLogIndex):
         self.log = log
 
+    def fanin(self, file: pathlib.Path, digest: Optional[str] = None) -> List[CommandLog]:
+        file_digest = digest or self.hash_of(file)
+        res = []
+        for cmd in self.log.array:
+            found = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
+            if found:
+                res.append(cmd)
+        return res
+
     def fanout(self, file: pathlib.Path, digest: Optional[str] = None) -> List[CommandLog]:
         file_digest = digest or self.hash_of(file)
         res = []
