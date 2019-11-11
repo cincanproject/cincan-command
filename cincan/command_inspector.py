@@ -49,11 +49,17 @@ class CommandInspector:
         file_dep = FileDependency(file, file_digest)
         hashes = hashes.copy() if hashes else set([])
         hashes.add(file_digest)
-        for cmd in self.log.array:
+
+        covered: Set[str] = set()
+        for cmd in self.log.list_entries(reverse=True):
             input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
             if input_here:
+                new_output = any(filter(lambda f: f.md5 not in covered, cmd.out_files))
+                if not new_output:
+                    continue  # does not add new files to
                 cmd_dep = CommandDependency(cmd)
                 for file in cmd.out_files:
+                    covered.add(file.md5)
                     if file.md5 in hashes:
                         continue
                     cmd_dep.next.append(self.fanout(file.path, hashes, file.md5))

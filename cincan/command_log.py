@@ -1,7 +1,7 @@
 import json
 import pathlib
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Iterable
 
 from cincan.commands import quote_args
 
@@ -96,6 +96,9 @@ class CommandLogIndex(CommandLogBase):
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         super().__init__(log_directory)
         self.array = self.__read_log()
+
+    def list_entries(self, reverse: bool = False) -> Iterable[CommandLog]:
+        return sorted(self.array, key=lambda e: e.timestamp, reverse=reverse)
 
     def __read_log(self) -> List[CommandLog]:
         log_l = []
