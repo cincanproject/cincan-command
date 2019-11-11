@@ -35,13 +35,20 @@ class CommandDependency:
 
 
 class CommandInspector:
-    def __init__(self, log: CommandLogIndex):
+    def __init__(self, log: CommandLogIndex, work_dir: pathlib.Path):
         self.log = log
+        self.work_dir = work_dir
+
+    def __work_path(self, path: pathlib.Path) -> pathlib.Path:
+        try:
+            return path.relative_to(self.work_dir)
+        except ValueError:
+            return path.resolve()
 
     def fanin(self, file: pathlib.Path, already_covered: Set[str] = None,
               digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
-        file_dep = FileDependency(file, file_digest, out=False)
+        file_dep = FileDependency(self.__work_path(file), file_digest, out=False)
         already_covered = already_covered.copy() if already_covered else set([])
         already_covered.add(file_digest)
 
@@ -66,7 +73,7 @@ class CommandInspector:
     def fanout(self, file: pathlib.Path, already_covered: Set[str] = None,
                digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
-        file_dep = FileDependency(file, file_digest, out=True)
+        file_dep = FileDependency(self.__work_path(file), file_digest, out=True)
         already_covered = already_covered.copy() if already_covered else set([])
         already_covered.add(file_digest)
 

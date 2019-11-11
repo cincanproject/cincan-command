@@ -251,11 +251,11 @@ def main():
         sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
     elif args.sub_command in {'fanin', 'fanout'}:
-        inspector = CommandInspector(CommandLogIndex())
+        inspector = CommandInspector(CommandLogIndex(), pathlib.Path().resolve())
         if args.sub_command == 'fanout':
-            res = inspector.fanout(pathlib.Path(args.file))
+            res = inspector.fanout(pathlib.Path(args.file).resolve())
         else:
-            res = inspector.fanin(pathlib.Path(args.file))
+            res = inspector.fanin(pathlib.Path(args.file).resolve())
         print(res)
     elif args.sub_command == 'manifest':
         # sub command 'manifest'
