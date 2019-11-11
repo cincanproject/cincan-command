@@ -96,7 +96,8 @@ class ToolImage:
         cmd = self.image.attrs['Config'].get('Cmd')
         if not cmd:
             cmd = []  # 'None' value observed
-        full_cmd = entry_point + (cmd_args if cmd_args else cmd)
+        user_cmd = (cmd_args if cmd_args else cmd)
+        full_cmd = entry_point + user_cmd
 
         # FIXME: Move to this to provide stdin..
         # exec = self.client.api.exec_create(container.id, cmd=full_cmd)
@@ -108,7 +109,7 @@ class ToolImage:
         # inspect = self.client.api.exec_inspect(exec['Id'])
         # exit_code = inspect.get('ExitCode', 0)
 
-        log = CommandLog([self.name] + full_cmd)
+        log = CommandLog([self.name] + user_cmd)
         log.exit_code, cmd_output = container.exec_run(full_cmd, demux=True)
         log.stdout = cmd_output[0] if cmd_output[0] else b''
         log.stderr = cmd_output[1] if cmd_output[1] else b''
