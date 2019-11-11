@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import struct
 from datetime import datetime
 import json
@@ -103,6 +104,11 @@ class ToolImage:
 
         log = CommandLog([self.name] + user_cmd)
 
+        stdout_md5 = hashlib.md5()
+        stdout_got = False
+        stderr_md5 = hashlib.md5()
+        stderr_got = False
+
         # execute the command, collect stdin and stderr
         exec = self.client.api.exec_create(container.id, cmd=full_cmd)
         exec_id = exec['Id']
@@ -112,22 +118,32 @@ class ToolImage:
             s_len, = struct.unpack('>Q', socket.read(8))
             s_data = socket.read(s_len)
             if s_type == b'\1':
-                # stdout
+                stdout_got = True
                 if self.buffer_output:
                     log.stdout.join(s_data)
                 else:
                     sys.stdout.buffer.write(s_data)
+                stdout_md5.update(s_data)
             if s_type == b'\2':
-                # stderr
+                stderr_got = True
                 if self.buffer_output:
                     log.stderr.join(s_data)
                 else:
                     sys.stderr.buffer.write(s_data)
+                stderr_md5.update(s_data)
             s_type = socket.read(1)
 
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
         log.exit_code = inspect.get('ExitCode', 0)
+
+        if log.exit_code == 0:
+            # collect stdout / stderr hash codes
+            if stdout_got:
+                log.out_files.append(FileLog(pathlib.Path('/stdout'), stdout_md5.hexdigest()))
+            if stderr_got:
+                log.out_files.append(FileLog(pathlib.Path('/stderr'), stderr_md5.hexdigest()))
+
         return log
 
     def __run(self, args: List[str]) -> CommandLog:
@@ -154,7 +170,7 @@ class ToolImage:
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats)
-                log.out_files = tar_tool.download_files(self.output_files)
+                log.out_files.extend(tar_tool.download_files(self.output_files))
         finally:
             self.logger.debug("killing the container")
             container.kill()
