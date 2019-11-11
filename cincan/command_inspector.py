@@ -110,6 +110,8 @@ class CommandInspector:
 
     @classmethod
     def hash_of(cls, file: pathlib.Path) -> str:
+        if not file.is_file():
+            return ''
         md5sum = hashlib.md5()
         with file.open("rb") as f:
             chunk = f.read(2048)

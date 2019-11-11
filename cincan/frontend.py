@@ -123,9 +123,10 @@ class ToolImage:
         in_files = []
         for up_file in resolver.detect_upload_files():
             arc_name = resolver.archive_name_for(up_file)
-            with up_file.open("rb") as f:
-                file_md5 = TarTool.read_with_hash(f.read)
-            in_files.append(FileLog(up_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
+            if up_file.is_file():
+                with up_file.open("rb") as f:
+                    file_md5 = TarTool.read_with_hash(f.read)
+                in_files.append(FileLog(up_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
             self.upload_files[up_file.as_posix()] = arc_name
             self.logger.debug(f"{up_file.as_posix()} -> {arc_name}")
         cmd_args = resolver.command_args
