@@ -16,7 +16,7 @@ class FileDependency:
     def __str__(self):
         file_string = self.file.as_posix() + ' ' + self.digest[:16]
         next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
-        return file_string + ('\n|-' + '\n|-'.join(next_strings) if next_strings else '')
+        return file_string + ('\n|-->' + '\n|-->'.join(next_strings) if next_strings else '')
 
 
 class CommandDependency:
@@ -28,7 +28,7 @@ class CommandDependency:
         cmd_string = " ".join(quote_args(self.command.command)) + \
                      ' # ' + self.command.timestamp.strftime(JSON_TIME_FORMAT)
         next_strings = [str(s).replace('\n', '\n  ') for s in self.next]
-        return cmd_string + ('\n|->' + '\n|->'.join(next_strings) if next_strings else '')
+        return cmd_string + ('\n|-->' + '\n|-->'.join(next_strings) if next_strings else '')
 
 
 class CommandInspector:
