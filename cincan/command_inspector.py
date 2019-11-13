@@ -40,6 +40,8 @@ class CommandInspector:
         self.work_dir = work_dir
 
     def __work_path(self, path: pathlib.Path) -> pathlib.Path:
+        if path.as_posix().startswith('/dev/'):
+            return path
         try:
             return path.relative_to(self.work_dir)
         except ValueError:
