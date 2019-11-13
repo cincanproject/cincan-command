@@ -1,11 +1,14 @@
 import argparse
 import hashlib
 import struct
+import threading
+import time
 from datetime import datetime
 import json
 import logging
 import pathlib
 import sys
+import socket
 from typing import List, Set, Dict, Optional
 
 import docker
@@ -110,28 +113,35 @@ class ToolImage:
         stderr_got = False
 
         # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd)
+        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=True)
         exec_id = exec['Id']
-        socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
-        s_type = socket.read(1)
-        while s_type:
-            s_len, = struct.unpack('>Q', socket.read(8))
-            s_data = socket.read(s_len)
-            if s_type == b'\1':
+        c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
+
+        # FIXME
+        c_socket._sock.sendall(b'THIS')
+        c_socket._sock.shutdown(socket.SHUT_WR)
+
+        s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
+        while s_pre:
+            s_len = struct.unpack('>Q', s_pre)[0]
+            s_type = s_len >> 56
+            s_len = s_len & 0xffffffffffffff
+            s_data = c_socket.read(s_len)
+            if s_type == 1:
                 stdout_got = True
                 if self.buffer_output:
                     log.stdout.join(s_data)
                 else:
                     sys.stdout.buffer.write(s_data)
                 stdout_md5.update(s_data)
-            if s_type == b'\2':
+            if s_type == 2:
                 stderr_got = True
                 if self.buffer_output:
                     log.stderr.join(s_data)
                 else:
                     sys.stderr.buffer.write(s_data)
                 stderr_md5.update(s_data)
-            s_type = socket.read(1)
+            s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
 
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
@@ -206,7 +216,6 @@ class ToolImage:
     def remove_image(self):
         """Remove this image"""
         self.client.images.remove(self.get_id())
-
 
 def tool_with_file(file: str, use_tag: Optional[bool] = True) -> ToolImage:
     path = pathlib.Path(file).parent.name
