@@ -137,7 +137,7 @@ class ToolImage:
 
         stdin_s = ToolStream(sys.stdin)
         stdout_s = ToolStream(sys.stdout.buffer)
-        stderr_s = ToolStream(sys.stdout.buffer)
+        stderr_s = ToolStream(sys.stderr.buffer)
 
         # execute the command, collect stdin and stderr
         exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=True)
