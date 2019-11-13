@@ -16,16 +16,17 @@ class FileLog:
 
     def to_json(self) -> Dict[str, Any]:
         js = {
-            'path': self.path.as_posix(),
-            'md5': self.md5
+            'path': self.path.as_posix()
         }
+        if self.md5:
+            js['md5'] = self.md5
         if self.timestamp:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
         return js
 
     @classmethod
     def from_json(cls, js: Dict[str, Any]) -> 'FileLog':
-        log = FileLog(pathlib.Path(js['path']), js['md5'])
+        log = FileLog(pathlib.Path(js['path']), js.get('md5', ''))
         if 'timestamp' in js:
             log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
         return log
