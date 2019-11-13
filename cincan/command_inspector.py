@@ -15,7 +15,7 @@ class FileDependency:
         self.next: List['CommandDependency'] = []
 
     def __str__(self):
-        file_string = self.file.as_posix() + (' ' + self.digest[:16] if self.file.is_file() else '/')
+        file_string = self.file.as_posix() + ('/' if self.file.is_dir() else (' ' + self.digest[:16]))
         next_strings = [str(s).replace('\n', '\n    ') for s in self.next]
         p = '\n|-- ' if self.out else '\n^-- '
         return file_string + (p + p.join(next_strings) if next_strings else '')
