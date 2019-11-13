@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import select
 import struct
 import threading
 import time
@@ -117,32 +118,50 @@ class ToolImage:
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
 
-        # FIXME
-        c_socket._sock.sendall(b'THIS')
-        c_socket._sock.shutdown(socket.SHUT_WR)
-
-        s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
-        while s_pre:
-            s_len = struct.unpack('>Q', s_pre)[0]
-            s_type = s_len >> 56
-            s_len = s_len & 0xffffffffffffff
-            s_data = c_socket.read(s_len)
-            if s_type == 1:
-                stdout_got = True
-                if self.buffer_output:
-                    log.stdout.join(s_data)
-                else:
-                    sys.stdout.buffer.write(s_data)
-                stdout_md5.update(s_data)
-            if s_type == 2:
-                stderr_got = True
-                if self.buffer_output:
-                    log.stderr.join(s_data)
-                else:
-                    sys.stderr.buffer.write(s_data)
-                stderr_md5.update(s_data)
-            s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
-
+        self.logger.debug("enter stdin/container io loop...")
+        active_streams = [sys.stdin, c_socket._sock]
+        c_socket_open = True
+        while c_socket_open:
+            # FIXME: Using select, which is known not to work with Windows!
+            select_in, _, _ = select.select(active_streams, [], [])
+            for sel in select_in:
+                if sel == sys.stdin:
+                    s_data = sys.stdin.buffer.read()
+                    if not s_data:
+                        self.logger.debug(f"received eof from stdin")
+                        active_streams.remove(sel)
+                    else:
+                        self.logger.debug(f"received {len(s_data)} bytes from stdin")
+                        c_socket._sock.sendall(s_data)
+                elif sel == c_socket._sock:
+                    s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
+                    if not s_pre:
+                        self.logger.debug(f"received eof from container")
+                        c_socket_open = False
+                        active_streams.remove(sel)
+                        continue
+                    s_len = struct.unpack('>Q', s_pre)[0]
+                    s_type = s_len >> 56
+                    s_len = s_len & 0xffffffffffffff
+                    s_data = c_socket.read(s_len)
+                    if s_type == 1:
+                        self.logger.debug(f"received {len(s_data)} bytes from stdout")
+                        stdout_got = True
+                        if self.buffer_output:
+                            log.stdout.join(s_data)
+                        else:
+                            sys.stdout.buffer.write(s_data)
+                        stdout_md5.update(s_data)
+                    elif s_type == 2:
+                        self.logger.debug(f"received {len(s_data)} bytes from stderr")
+                        stderr_got = True
+                        if self.buffer_output:
+                            log.stderr.join(s_data)
+                        else:
+                            sys.stderr.buffer.write(s_data)
+                        stderr_md5.update(s_data)
+                    else:
+                        self.logger.warning(f"received {len(s_data)} bytes from ???, discarding")
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
         log.exit_code = inspect.get('ExitCode', 0)
