@@ -10,7 +10,7 @@ import logging
 import pathlib
 import sys
 import socket
-from typing import List, Set, Dict, Optional
+from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
@@ -94,6 +94,20 @@ class ToolImage:
 
         return container
 
+    @classmethod
+    def __unpack_container_stream(cls, c_socket) -> Tuple[int, bytes]:
+        buf = bytearray()
+        while len(buf) < 8:
+            r = c_socket.read(8 - len(buf))
+            if not r:
+                return 0, bytes([])  # EOF
+            buf.extend(r)
+        s_len = struct.unpack('>Q', buf)[0]
+        s_type = s_len >> 56
+        s_len = s_len & 0xffffffffffffff
+        s_data = c_socket.read(s_len)
+        return s_type, s_data
+
     def __container_exec(self, container, cmd_args: List[str]) -> CommandLog:
         """Execute a command in the container"""
         # create the full command line and run with exec
@@ -136,16 +150,11 @@ class ToolImage:
                         self.logger.debug(f"received {len(s_data)} bytes from stdin")
                         c_socket_sock.sendall(s_data)
                 elif sel == c_socket_sock:
-                    s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
-                    if not s_pre:
+                    s_type, s_data = self.__unpack_container_stream(c_socket)
+                    if not s_data:
                         self.logger.debug(f"received eof from container")
                         c_socket_open = False
-                        active_streams.remove(sel)
                         continue
-                    s_len = struct.unpack('>Q', s_pre)[0]
-                    s_type = s_len >> 56
-                    s_len = s_len & 0xffffffffffffff
-                    s_data = c_socket.read(s_len)
                     if s_type == 1:
                         self.logger.debug(f"received {len(s_data)} bytes from stdout")
                         stdout_got = True
