@@ -10,6 +10,7 @@ import logging
 import pathlib
 import sys
 import socket
+from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
 import docker
@@ -21,6 +22,18 @@ from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLog
 from cincan.commands import quote_args
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
+
+
+class ToolStream:
+    def __init__(self, stream: IOBase):
+        self.data_length = 0
+        self.md5 = hashlib.md5()
+        self.raw = bytearray()  # when collected
+        self.stream = stream
+
+    def update(self, data: bytes):
+        self.data_length += len(data)
+        self.md5.update(data)
 
 
 class ToolImage:
@@ -122,10 +135,8 @@ class ToolImage:
 
         log = CommandLog([self.name] + user_cmd)
 
-        stdout_md5 = hashlib.md5()
-        stdout_got = False
-        stderr_md5 = hashlib.md5()
-        stderr_got = False
+        stdout_s = ToolStream(sys.stdout.buffer)
+        stderr_s = ToolStream(sys.stdout.buffer)
 
         # execute the command, collect stdin and stderr
         exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=True)
@@ -157,33 +168,34 @@ class ToolImage:
                         continue
                     if s_type == 1:
                         self.logger.debug(f"received {len(s_data)} bytes from stdout")
-                        stdout_got = True
-                        if self.buffer_output:
-                            log.stdout.join(s_data)
-                        else:
-                            sys.stdout.buffer.write(s_data)
-                        stdout_md5.update(s_data)
+                        std_s = stdout_s
                     elif s_type == 2:
                         self.logger.debug(f"received {len(s_data)} bytes from stderr")
-                        stderr_got = True
-                        if self.buffer_output:
-                            log.stderr.join(s_data)
-                        else:
-                            sys.stderr.buffer.write(s_data)
-                        stderr_md5.update(s_data)
+                        std_s = stderr_s
                     else:
                         self.logger.warning(f"received {len(s_data)} bytes from ???, discarding")
+                        continue
+                    std_s.update(s_data)
+                    if self.buffer_output:
+                        std_s.raw.join(s_data)
+                    else:
+                        std_s.stream.write(s_data)
 
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
         log.exit_code = inspect.get('ExitCode', 0)
 
+        # collect raw data
+        if self.buffer_output:
+            log.stdout = bytes(stdout_s.raw)
+            log.stderr = bytes(stderr_s.raw)
+
         if log.exit_code == 0:
             # collect stdout / stderr hash codes
-            if stdout_got:
-                log.out_files.append(FileLog(pathlib.Path('/stdout'), stdout_md5.hexdigest()))
-            if stderr_got:
-                log.out_files.append(FileLog(pathlib.Path('/stderr'), stderr_md5.hexdigest()))
+            if stdout_s.data_length:
+                log.out_files.append(FileLog(pathlib.Path('/stdout'), stdout_s.md5.hexdigest()))
+            if stderr_s.data_length:
+                log.out_files.append(FileLog(pathlib.Path('/stderr'), stderr_s.md5.hexdigest()))
 
         return log
 
