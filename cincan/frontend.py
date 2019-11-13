@@ -196,7 +196,7 @@ class ToolImage:
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
             if stdin_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
+                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
             if stdout_s.data_length:
                 log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
             if stderr_s.data_length:
@@ -224,7 +224,7 @@ class ToolImage:
         container = self.__create_container()
         try:
             log = self.__container_exec(container, cmd_args)
-            log.in_files = in_files
+            log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats)
