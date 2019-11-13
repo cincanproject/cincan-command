@@ -51,24 +51,18 @@ class CommandInspector:
               digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(self.__work_path(file), file_digest, out=False)
-        already_covered = already_covered.copy() if already_covered else set([])
-        already_covered.add(file_digest)
+        file_check = file.as_posix() + ':' + file_digest
+        already_covered = already_covered or set([])
+        if file_check in already_covered:
+            return file_dep
+        already_covered.add(file_check)
 
-        covered: Set[str] = set()
         for cmd in self.log.list_entries(reverse=True):
-            cmd_string = cmd.command_string()
-            if cmd_string in already_covered:
-                continue
             output_here = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
             if output_here:
                 cmd_dep = CommandDependency(cmd, out=False)
                 for file in cmd.in_files:
-                    covered.add(file.md5)
-                    if file.md5 in already_covered:
-                        continue
-                    cmd_covered = already_covered.copy()
-                    cmd_covered.add(cmd_string)
-                    cmd_dep.next.append(self.fanin(file.path, cmd_covered, file.md5))
+                    cmd_dep.next.append(self.fanin(file.path, already_covered, file.md5))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
@@ -76,27 +70,18 @@ class CommandInspector:
                digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(self.__work_path(file), file_digest, out=True)
-        already_covered = already_covered.copy() if already_covered else set([])
-        already_covered.add(file_digest)
+        file_check = file.as_posix() + ':' + file_digest
+        already_covered = already_covered or set([])
+        if file_check in already_covered:
+            return file_dep
+        already_covered.add(file_check)
 
-        covered: Set[str] = set()
         for cmd in self.log.list_entries(reverse=True):
-            cmd_string = cmd.command_string()
-            if cmd_string in already_covered:
-                continue
             input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
             if input_here:
-                new_output = any(filter(lambda f: f.md5 not in covered, cmd.out_files))
-                if not new_output:
-                    continue  # does not add new files to
                 cmd_dep = CommandDependency(cmd, out=True)
                 for file in cmd.out_files:
-                    covered.add(file.md5)
-                    if file.md5 in already_covered:
-                        continue
-                    cmd_covered = already_covered.copy()
-                    cmd_covered.add(cmd_string)
-                    cmd_dep.next.append(self.fanout(file.path, cmd_covered, file.md5))
+                    cmd_dep.next.append(self.fanout(file.path, already_covered, file.md5))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
