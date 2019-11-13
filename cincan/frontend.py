@@ -130,6 +130,7 @@ class ToolImage:
                     if not s_data:
                         self.logger.debug(f"received eof from stdin")
                         active_streams.remove(sel)
+                        c_socket._sock.shutdown(socket.SHUT_WR)
                     else:
                         self.logger.debug(f"received {len(s_data)} bytes from stdin")
                         c_socket._sock.sendall(s_data)
@@ -162,6 +163,7 @@ class ToolImage:
                         stderr_md5.update(s_data)
                     else:
                         self.logger.warning(f"received {len(s_data)} bytes from ???, discarding")
+
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
         log.exit_code = inspect.get('ExitCode', 0)
