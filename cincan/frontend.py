@@ -117,6 +117,7 @@ class ToolImage:
         exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=True)
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
+        c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [sys.stdin, c_socket._sock]
@@ -130,11 +131,11 @@ class ToolImage:
                     if not s_data:
                         self.logger.debug(f"received eof from stdin")
                         active_streams.remove(sel)
-                        c_socket._sock.shutdown(socket.SHUT_WR)
+                        c_socket_sock.shutdown(socket.SHUT_WR)
                     else:
                         self.logger.debug(f"received {len(s_data)} bytes from stdin")
-                        c_socket._sock.sendall(s_data)
-                elif sel == c_socket._sock:
+                        c_socket_sock.sendall(s_data)
+                elif sel == c_socket_sock:
                     s_pre = c_socket.read(8)  # FIXME: Not necessarily 8 bytes!
                     if not s_pre:
                         self.logger.debug(f"received eof from container")
