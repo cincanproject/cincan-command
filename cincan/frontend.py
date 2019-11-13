@@ -135,6 +135,7 @@ class ToolImage:
 
         log = CommandLog([self.name] + user_cmd)
 
+        stdin_s = ToolStream(sys.stdin)
         stdout_s = ToolStream(sys.stdout.buffer)
         stderr_s = ToolStream(sys.stdout.buffer)
 
@@ -159,6 +160,7 @@ class ToolImage:
                         c_socket_sock.shutdown(socket.SHUT_WR)
                     else:
                         self.logger.debug(f"received {len(s_data)} bytes from stdin")
+                        stdin_s.update(s_data)
                         c_socket_sock.sendall(s_data)
                 elif sel == c_socket_sock:
                     s_type, s_data = self.__unpack_container_stream(c_socket)
@@ -187,15 +189,18 @@ class ToolImage:
 
         # collect raw data
         if self.buffer_output:
+            log.stdin = bytes(stdin_s.raw)
             log.stdout = bytes(stdout_s.raw)
             log.stderr = bytes(stderr_s.raw)
 
         if log.exit_code == 0:
-            # collect stdout / stderr hash codes
+            # collect stdin, stdout, stderr hash codes
+            if stdin_s.data_length:
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
             if stdout_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/stdout'), stdout_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
             if stderr_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/stderr'), stderr_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
 
         return log
 
