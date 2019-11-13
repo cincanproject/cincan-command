@@ -107,8 +107,7 @@ class ToolImage:
 
         return container
 
-    @classmethod
-    def __unpack_container_stream(cls, c_socket) -> Tuple[int, bytes]:
+    def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         buf = bytearray()
         while len(buf) < 8:
             r = c_socket.read(8 - len(buf))
@@ -118,8 +117,15 @@ class ToolImage:
         s_len = struct.unpack('>Q', buf)[0]
         s_type = s_len >> 56
         s_len = s_len & 0xffffffffffffff
-        s_data = c_socket.read(s_len)
-        return s_type, s_data
+
+        self.logger.debug(f"container input type={s_type} length={s_len}")
+        buf.clear()
+        while len(buf) < s_len:
+            r = c_socket.read(s_len - len(buf))
+            if not r:
+                raise Exception('Failed to read all data from the container')
+            buf.extend(r)
+        return s_type, buf
 
     def __container_exec(self, container, cmd_args: List[str]) -> CommandLog:
         """Execute a command in the container"""
@@ -145,15 +151,17 @@ class ToolImage:
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
         c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
 
+        buffer_size = 1024 * 1024
+
         self.logger.debug("enter stdin/container io loop...")
-        active_streams = [sys.stdin, c_socket_sock]
+        active_streams = [c_socket_sock, sys.stdin]  # prefer socket to limit the amount of data in the container (?)
         c_socket_open = True
         while c_socket_open:
             # FIXME: Using select, which is known not to work with Windows!
             select_in, _, _ = select.select(active_streams, [], [])
             for sel in select_in:
                 if sel == sys.stdin:
-                    s_data = sys.stdin.buffer.read()
+                    s_data = sys.stdin.buffer.read(buffer_size)
                     if not s_data:
                         self.logger.debug(f"received eof from stdin")
                         active_streams.remove(sel)
@@ -161,7 +169,12 @@ class ToolImage:
                     else:
                         self.logger.debug(f"received {len(s_data)} bytes from stdin")
                         stdin_s.update(s_data)
-                        c_socket_sock.sendall(s_data)
+
+                        out_off = 0
+                        while out_off < len(s_data):
+                            out_off += c_socket_sock.send(s_data[out_off:])
+                            self.logger.debug(f"wrote ...{out_off} bytes to container stdin")
+
                 elif sel == c_socket_sock:
                     s_type, s_data = self.__unpack_container_stream(c_socket)
                     if not s_data:
