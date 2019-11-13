@@ -120,7 +120,7 @@ class ToolImage:
         c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
 
         self.logger.debug("enter stdin/container io loop...")
-        active_streams = [sys.stdin, c_socket._sock]
+        active_streams = [sys.stdin,c_socket_sock]
         c_socket_open = True
         while c_socket_open:
             # FIXME: Using select, which is known not to work with Windows!
