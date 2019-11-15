@@ -6,7 +6,7 @@ import tarfile
 import tempfile
 import timeit
 from logging import Logger
-from typing import Dict, Optional, List, Iterable
+from typing import Dict, Optional, List
 
 from docker.models.containers import Container
 
@@ -70,9 +70,8 @@ class TarTool:
         # get the tar ball for the file
         get_arc_start = timeit.default_timer()
         chunks, stat = self.container.get_archive(file_name)
-        check = self.__check_for_download(host_file, stat)
-
-        if not check:
+        file_modified = self.__check_for_download(host_file, stat)
+        if not file_modified:
             return []  # do not attempt download
 
         # read the tarball into temp file
@@ -120,6 +119,8 @@ class TarTool:
 
                 if md5 == host_digest:
                     self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
+                    # The file is identical as uploaded, but timestamps tell different story.
+                    # Assuming it was created identical, adding the log entry
                     temp_file.unlink()
                 else:
                     self.logger.debug(f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
@@ -142,26 +143,30 @@ class TarTool:
         up_stat = self.upload_stats.get(host_file.as_posix())
 
         # NOTE: for directories (?) size from container is 4096 -> mismatch for directories!!!
-        up_down_size_mismatch = False
         if up_stat and 'size' in stat:
             down_size = int(stat['size'])
             up_size = up_stat[0]
             up_down_size_mismatch = up_size != down_size
             if up_down_size_mismatch:
                 self.logger.debug(f"size {host_file.as_posix()} change {up_size} -> {down_size}")
+                return True
 
-        if (not up_down_size_mismatch) and up_stat and 'mtime' in stat:
+        if up_stat and 'mtime' in stat:
             down_time_s = stat['mtime']  # seconds + timezone
             up_time = datetime.fromtimestamp(int(up_stat[1]))
             up_time_s = up_time.strftime(self.time_format_seconds)  # seconds
             time_now_s = datetime.now().strftime(self.time_format_seconds)
-            if down_time_s.startswith(up_time_s) and up_time_s != time_now_s:
-                # down_time is seconds, up_time has more precision
+            if down_time_s.startswith(up_time_s):
+                # looks like timestamp not updated, but down_time is seconds and up_time has more precision
+                if up_time_s == time_now_s:
+                    self.logger.debug(f"timestamps {host_file.as_posix()} now {down_time_s}, may or may not be updated")
+                    return True # edited, but actually we do not know
                 self.logger.debug(f"timestamp {host_file.as_posix()} not updated {down_time_s}")
-                return False
+                return False  # not edited, we are sure
             self.logger.debug(f"timestamp {host_file.as_posix()} updated {up_time_s} -> {down_time_s}")
+            return True  # edited, we are sure
 
-        return True
+        return True  # tell edited, but we have no idea
 
     @classmethod
     def read_with_hash(cls, read_more, write_to: Optional = None) -> str:
