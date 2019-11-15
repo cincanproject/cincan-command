@@ -1,5 +1,6 @@
 import pathlib
 import shutil
+import time
 from typing import List
 
 from cincan.frontend import ToolImage
@@ -13,6 +14,7 @@ def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
     for f_name in with_files:
         f = pathlib.Path(f_name)
         shutil.copy(f, root / f.name)
+        shutil.copystat(f, root / f.name)
     return root
 
 
@@ -38,3 +40,13 @@ def test_magic_file_io():
     assert out == 'Source B\n'
     assert tool.upload_files == ['_test/source-b.txt']
     assert tool.download_files == []
+
+    work_dir = prepare_work_dir('_test', ['samples/source-a.txt'])
+    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
+    assert tool.upload_files == ['_test/source-a.txt']
+    assert tool.download_files == ['_test/test_a.txt']
+
+    time.sleep(1.5)  # make sure file timestamp gets old
+    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
+    assert tool.upload_files == ['_test/source-a.txt', '_test/test_a.txt']
+    assert tool.download_files == ['_test/test_a.txt']

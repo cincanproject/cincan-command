@@ -269,9 +269,10 @@ class ToolImage:
                     self.logger.warning(e)
 
         work_dir = pathlib.Path().cwd()
-        self.upload_files = list(upload_files.keys())
-        self.download_files = [f.path.relative_to(work_dir).as_posix() for f in
-                               filter(lambda f: not f.path.as_posix().startswith('/dev/'), log.out_files)]
+        self.upload_files = sorted(list(upload_files.keys()))
+        self.download_files = sorted(
+            [f.path.relative_to(work_dir).as_posix() for f in
+             filter(lambda f: not f.path.as_posix().startswith('/dev/'), log.out_files)])
         return log
 
     def run(self, args: List[str]) -> CommandLog:
