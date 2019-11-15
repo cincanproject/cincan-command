@@ -15,7 +15,9 @@ def test_magic_file_io():
     out = tool.run_get_string(['cat', 'samples/source-a.txt'])
     assert out == 'Source A\n'
     assert tool.upload_files == {'samples/source-a.txt': 'samples/source-a.txt'}
+    assert tool.download_files == {}
 
     out = tool.run_get_string(['cat', 'samples/source-b.txt'])
     assert out == 'Source B\n'
     assert tool.upload_files == {'samples/source-b.txt': 'samples/source-b.txt'}
+    assert tool.download_files == {}
