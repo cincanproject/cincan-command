@@ -30,11 +30,11 @@ def test_magic_file_io():
     work_dir = prepare_work_dir('_test', ['samples/source-a.txt'])
     out = tool.run_get_string(['cat', '_test/source-a.txt'])
     assert out == 'Source A\n'
-    assert tool.upload_files == {'_test/source-a.txt': '_test/source-a.txt'}
-    assert tool.download_files == {}
+    assert tool.upload_files == ['_test/source-a.txt']
+    assert tool.download_files == []
 
     work_dir = prepare_work_dir('_test', ['samples/source-b.txt'])
     out = tool.run_get_string(['cat', '_test/source-b.txt'])
     assert out == 'Source B\n'
-    assert tool.upload_files == {'_test/source-b.txt': '_test/source-b.txt'}
-    assert tool.download_files == {}
+    assert tool.upload_files == ['_test/source-b.txt']
+    assert tool.download_files == []

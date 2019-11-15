@@ -75,10 +75,12 @@ class ToolImage:
         else:
             raise Exception("No file nor image specified")
         self.input_files: Optional[List[str]] = None  # Explicit tool input files
-        self.upload_files = {}  # files to upload, key = name in host, value = name in image
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_files: Optional[List[str]] = None  # Explicit tool input files
-        self.download_files = {}  # files to download, key = name in host, value = name in image
+
+        # more test-oriented attributes...
+        self.upload_files: List[str] = []
+        self.download_files: List[str] = []
         self.buffer_output = False
 
     def get_tags(self) -> List[str]:
@@ -98,7 +100,7 @@ class ToolImage:
             self.client.images.pull(image)
         self.image = self.client.images.get(image)
 
-    def __create_container(self):
+    def __create_container(self, upload_files: Dict[str, str]):
         """Create a container from the image here"""
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
@@ -107,7 +109,7 @@ class ToolImage:
 
         # upload files to container
         tar_tool = TarTool(self.logger, container, self.upload_stats)
-        tar_tool.upload(self.upload_files)
+        tar_tool.upload(upload_files)
 
         return container
 
@@ -231,24 +233,22 @@ class ToolImage:
 
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
-        self.upload_files = {}
-        self.download_files = {}
-
         # resolve files to upload
         resolver = FileResolver(args, pathlib.Path(), input_files=self.input_files)
         in_files = []
+        upload_files = {}
         for up_file in resolver.detect_upload_files():
             arc_name = resolver.archive_name_for(up_file)
             if up_file.is_file():
                 with up_file.open("rb") as f:
                     file_md5 = TarTool.read_with_hash(f.read)
                 in_files.append(FileLog(up_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
-            self.upload_files[up_file.as_posix()] = arc_name
+            upload_files[up_file.as_posix()] = arc_name
             self.logger.debug(f"{up_file.as_posix()} -> {arc_name}")
         cmd_args = resolver.command_args
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
-        container = self.__create_container()
+        container = self.__create_container(upload_files)
         log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args)
@@ -268,6 +268,10 @@ class ToolImage:
                 except docker.errors.APIError as e:
                     self.logger.warning(e)
 
+        work_dir = pathlib.Path().cwd()
+        self.upload_files = list(upload_files.keys())
+        self.download_files = [f.path.relative_to(work_dir).as_posix() for f in
+                               filter(lambda f: not f.path.as_posix().startswith('/dev/'), log.out_files)]
         return log
 
     def run(self, args: List[str]) -> CommandLog:
