@@ -1,4 +1,19 @@
+import pathlib
+import shutil
+from typing import List
+
 from cincan.frontend import ToolImage
+
+
+def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
+    root = pathlib.Path(name)
+    if root.is_dir():
+        shutil.rmtree(root, ignore_errors=True)
+    root.mkdir()
+    for f_name in with_files:
+        f = pathlib.Path(f_name)
+        shutil.copy(f, root / f.name)
+    return root
 
 
 def test_run_get_string():
@@ -12,12 +27,14 @@ def test_run_get_string():
 
 def test_magic_file_io():
     tool = ToolImage(image='cincan/env', rm=False)
-    out = tool.run_get_string(['cat', 'samples/source-a.txt'])
+    work_dir = prepare_work_dir('_test', ['samples/source-a.txt'])
+    out = tool.run_get_string(['cat', '_test/source-a.txt'])
     assert out == 'Source A\n'
-    assert tool.upload_files == {'samples/source-a.txt': 'samples/source-a.txt'}
+    assert tool.upload_files == {'_test/source-a.txt': '_test/source-a.txt'}
     assert tool.download_files == {}
 
-    out = tool.run_get_string(['cat', 'samples/source-b.txt'])
+    work_dir = prepare_work_dir('_test', ['samples/source-b.txt'])
+    out = tool.run_get_string(['cat', '_test/source-b.txt'])
     assert out == 'Source B\n'
-    assert tool.upload_files == {'samples/source-b.txt': 'samples/source-b.txt'}
+    assert tool.upload_files == {'_test/source-b.txt': '_test/source-b.txt'}
     assert tool.download_files == {}
