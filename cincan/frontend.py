@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import io
 import select
 import struct
 import threading
@@ -39,15 +40,15 @@ class ToolStream:
 class ToolImage:
     """A tool wrapped to docker image"""
 
-    def __init__(self, name: str, path: Optional[str] = None,
+    def __init__(self, name: str = None, path: Optional[str] = None,
                  image: Optional[str] = None,
                  pull: bool = False,
                  tag: Optional[str] = None,
                  rm: bool = True):
         self.logger = logging.getLogger(name)
         self.client = docker.from_env()
-        self.name = name
         if path is not None:
+            self.name = name or path
             if tag is not None:
                 self.image, log = self.client.images.build(path=path, tag=tag, rm=rm)
             else:
@@ -55,6 +56,7 @@ class ToolImage:
             self.context = path
             self.__log_dict_values(log)
         elif image is not None:
+            self.name = name or image
             if pull:
                 # pull first
                 self.logger.info(f"pulling image...")
@@ -157,8 +159,16 @@ class ToolImage:
         active_streams = [c_socket_sock, sys.stdin]  # prefer socket to limit the amount of data in the container (?)
         c_socket_open = True
         while c_socket_open:
-            # FIXME: Using select, which is known not to work with Windows!
-            select_in, _, _ = select.select(active_streams, [], [])
+            try:
+                # FIXME: Using select, which is known not to work with Windows!
+                select_in, _, _ = select.select(active_streams, [], [])
+            except io.UnsupportedOperation as e:
+                if sys.stdin in active_streams:
+                    # pytest stdin is somehow fundamentally dysfunctional
+                    active_streams.remove(sys.stdin)
+                    continue
+                raise e
+
             for sel in select_in:
                 if sel == sys.stdin:
                     s_data = sys.stdin.buffer.read(buffer_size)
@@ -192,7 +202,7 @@ class ToolImage:
                         continue
                     std_s.update(s_data)
                     if self.buffer_output:
-                        std_s.raw.join(s_data)
+                        std_s.raw.extend(s_data)
                     else:
                         std_s.stream.write(s_data)
 
