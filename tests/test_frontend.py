@@ -50,3 +50,11 @@ def test_magic_file_io():
     tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
     assert tool.upload_files == ['_test/source-a.txt', '_test/test_a.txt']
     assert tool.download_files == ['_test/test_a.txt']
+
+
+def test_many_output_files():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['samples/ab.zip'])
+    out = tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
+    assert tool.upload_files == ['_test/ab.zip']
+    assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
