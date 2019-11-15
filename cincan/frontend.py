@@ -47,6 +47,7 @@ class ToolImage:
                  rm: bool = True):
         self.logger = logging.getLogger(name)
         self.client = docker.from_env()
+        self.loaded_image = False  # did we load the image?
         if path is not None:
             self.name = name or path
             if tag is not None:
@@ -57,6 +58,7 @@ class ToolImage:
             self.__log_dict_values(log)
         elif image is not None:
             self.name = name or image
+            self.loaded_image = True
             if pull:
                 # pull first
                 self.logger.info(f"pulling image...")
@@ -245,6 +247,7 @@ class ToolImage:
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         container = self.__create_container()
+        log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args)
             log.in_files.extend(in_files)
@@ -255,6 +258,13 @@ class ToolImage:
         finally:
             self.logger.debug("killing the container")
             container.kill()
+            # if we created the image, lets also remove it (intended for testing)
+            if not self.loaded_image:
+                self.logger.info(f"removing the docker image {self.get_id()}")
+                try:
+                    self.remove_image()
+                except docker.errors.APIError as e:
+                    self.logger.warning(e)
 
         return log
 
@@ -263,15 +273,10 @@ class ToolImage:
         self.buffer_output = False  # we stream it
         return self.__run(args)
 
-    def run_get_string(self, args: List[str], preserve_image: Optional[bool] = False) -> str:
+    def run_get_string(self, args: List[str]) -> str:
         """Run native tool in container, return output as a string"""
         self.buffer_output = True  # we return it
         log = self.__run(args)
-        if not preserve_image:
-            try:
-                self.remove_image()
-            except docker.errors.APIError as e:
-                self.logger.warning(e)
         return log.stdout.decode('utf8') + log.stderr.decode('utf8')
 
     def __log_dict_values(self, log: Set[Dict[str, str]]) -> None:
