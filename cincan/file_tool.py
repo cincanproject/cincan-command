@@ -31,8 +31,8 @@ class FileResolver:
                 self.arg_parts.append(part)
                 o_file = pathlib.Path(part)
 
-                if not o_file.is_absolute():
-                    o_file = self.directory / o_file
+                #if not o_file.is_absolute():
+                #    o_file = self.directory / o_file
 
                 if o_file.exists():
                     self.host_files.append(o_file)

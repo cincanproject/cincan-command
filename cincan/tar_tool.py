@@ -20,6 +20,10 @@ class TarTool:
         self.upload_stats = upload_stats
         self.time_format_seconds = "%Y-%m-%dT%H:%M:%S"
 
+        self.work_dir: str = container.image.attrs['Config'].get('WorkingDir', '.')
+        if self.work_dir.endswith('/'):
+            self.work_dir = self.work_dir[:-1]
+
     def upload(self, upload_files: Dict[str, str]):
         if not upload_files:
             return
@@ -39,7 +43,7 @@ class TarTool:
         tar.close()
 
         put_arc_start = timeit.default_timer()
-        self.container.put_archive(path='.', data=file_out.getvalue())
+        self.container.put_archive(path=self.work_dir, data=file_out.getvalue())
         self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
 
     def download_files(self, explicit_output: Optional[Dict[str, str]]) -> List[FileLog]:
@@ -54,6 +58,10 @@ class TarTool:
                 if i < len(candidates) -1 and candidates[i+1].startswith(c):
                     candidates[i] = None
             candidates = list(filter(lambda s: s, candidates))
+            # remove candidates which are not in working directory
+            home_prefix = self.work_dir + '/'
+            candidates = list(filter(lambda s: s.startswith(home_prefix), candidates))
+
         out_files = []
         for f in candidates:
             log = self.__download_file_maybe(f, force_download=explicit_output is not None)
@@ -63,11 +71,11 @@ class TarTool:
     def __download_file_maybe(self, file_name: str, force_download: bool) -> List[FileLog]:
         # self.logger.debug(f"container file changed {file_name}")
         down_file = pathlib.Path(file_name)
-        # all files come with leading '/' whether they are in home or in root :O
-        # ... just strip it and put all to work dir
-        host_file = pathlib.Path((file_name[1:] if file_name.startswith('/') else file_name).replace(':', '_'))
+        home_prefix = self.work_dir + '/'
+        host_file = pathlib.Path(
+            (file_name[len(home_prefix):] if file_name.startswith(home_prefix) else file_name).replace(':', '_'))
 
-        # get the tar ball for the file
+        # get the tar ball for the files
         get_arc_start = timeit.default_timer()
         chunks, stat = self.container.get_archive(file_name)
         file_modified = self.__check_for_download(host_file, stat)
