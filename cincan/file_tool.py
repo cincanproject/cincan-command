@@ -42,7 +42,13 @@ class FileResolver:
             self.command_args.append(''.join(c_args))
 
     def detect_upload_files(self) -> List[pathlib.Path]:
-        return self.host_files
+        sf = sorted(self.host_files)
+        res = []
+        # remove files which are just prefix directories
+        for i, file in enumerate(sf):
+            if file.is_file() or i == len(sf) - 1 or not sf[i + 1].as_posix().startswith(file.as_posix()):
+                res.append(file)
+        return res
 
     def archive_name_for(self, file: pathlib.Path) -> str:
         # - use absolute paths, if /../ used (ok, quite weak)

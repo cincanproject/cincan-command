@@ -31,3 +31,8 @@ def test_upload_file_detection():
     resolver = FileResolver(['file=README.md,die'], pathlib.Path())
     assert resolver.command_args == ['file=README.md,die']
     assert resolver.detect_upload_files() == [pathlib.Path('README.md')]
+
+
+def test_upload_many_nimes():
+    resolver = FileResolver(['samples/source-a.txt', 'samples', 'samples/ab.zip'], pathlib.Path())
+    assert resolver.detect_upload_files() == [pathlib.Path('samples/ab.zip'), pathlib.Path('samples/source-a.txt')]
