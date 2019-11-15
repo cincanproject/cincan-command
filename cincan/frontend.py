@@ -231,6 +231,8 @@ class ToolImage:
 
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
+        self.upload_files = {}
+        self.download_files = {}
 
         # resolve files to upload
         resolver = FileResolver(args, pathlib.Path(), input_files=self.input_files)
