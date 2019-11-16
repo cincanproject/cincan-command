@@ -20,9 +20,9 @@ class TarTool:
         self.upload_stats = upload_stats
         self.time_format_seconds = "%Y-%m-%dT%H:%M:%S"
 
-        self.work_dir: str = container.image.attrs['Config'].get('WorkingDir', '.')
-        if self.work_dir.endswith('/'):
-            self.work_dir = self.work_dir[:-1]
+        self.work_dir: str = container.image.attrs['Config'].get('WorkingDir', '.') or '/'
+        if not self.work_dir.endswith('/'):
+            self.work_dir += '/'
 
     def upload(self, upload_files: Dict[str, str]):
         if not upload_files:
@@ -71,8 +71,7 @@ class TarTool:
                     candidates[i] = None
             candidates = list(filter(lambda s: s, candidates))
             # remove candidates which are not in working directory
-            home_prefix = self.work_dir + '/'
-            candidates = list(filter(lambda s: s.startswith(home_prefix), candidates))
+            candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
 
         out_files = []
         for f in candidates:
@@ -83,9 +82,8 @@ class TarTool:
     def __download_file_maybe(self, file_name: str, force_download: bool) -> List[FileLog]:
         # self.logger.debug(f"container file changed {file_name}")
         down_file = pathlib.Path(file_name)
-        home_prefix = self.work_dir + '/'
         host_file = pathlib.Path(
-            (file_name[len(home_prefix):] if file_name.startswith(home_prefix) else file_name).replace(':', '_'))
+            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
 
         # get the tar ball for the files
         get_arc_start = timeit.default_timer()
