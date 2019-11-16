@@ -58,16 +58,20 @@ class TarTool:
         self.container.put_archive(path=self.work_dir, data=file_out.getvalue())
         self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
 
-    def download_files(self, explicit_output: Optional[Dict[str, str]]) -> List[FileLog]:
+    def download_files(self, explicit_output: Optional[List[str]]) -> List[FileLog]:
         # resolve files to download
         if explicit_output is not None:
             candidates = explicit_output  # explicitly given
+            for i, c in enumerate(candidates):
+                if not pathlib.Path(c).is_absolute():
+                    # make all absolute
+                    candidates[i] = (pathlib.Path(self.work_dir) / c).as_posix()
         else:
             # check all modified (includes the ones we uploaded)
             candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])])
             # remove files which are paths to files
             for i, c in enumerate(candidates):
-                if i < len(candidates) -1 and candidates[i+1].startswith(c):
+                if i < len(candidates) - 1 and candidates[i + 1].startswith(c):
                     candidates[i] = None
             candidates = list(filter(lambda s: s, candidates))
             # remove candidates which are not in working directory

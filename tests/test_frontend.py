@@ -55,6 +55,17 @@ def test_magic_file_io():
 def test_many_output_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['samples/ab.zip'])
-    out = tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
+    tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
     assert tool.upload_files == ['_test/ab.zip']
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
+
+
+def test_explicit_in_out_files():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['samples/ab.zip', 'samples/empty.file'])
+    tool.input_files = ['_test/ab.zip', '_test/empty.file']
+    tool.output_files = ['_test/source-b.txt']
+
+    tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
+    assert tool.upload_files == ['_test/ab.zip', '_test/empty.file']
+    assert tool.download_files == ['_test/source-b.txt']
