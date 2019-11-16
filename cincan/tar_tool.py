@@ -29,9 +29,21 @@ class TarTool:
             return
         file_out = io.BytesIO()
         tar = tarfile.open(mode="w", fileobj=file_out)
+
+        # need to have all directories explicitly, otherwise seen them to be created with root
+        # permissions without write possibility for the user
+        dirs = set()
+
         for name, arc_name in upload_files.items():
             self.logger.info("copy %s in", name)
             host_file = pathlib.Path(name)
+
+            parent = host_file.parent
+            while parent and parent.as_posix() != '.':
+                if parent not in dirs:
+                    dirs.add(parent)
+                    tar.add(parent.as_posix() + '/')
+                parent = parent.parent
 
             tar_file = tar.gettarinfo(name=name, arcname=arc_name)
             self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
