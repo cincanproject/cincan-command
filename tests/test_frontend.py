@@ -14,8 +14,10 @@ def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
     root.mkdir()
     for f_name in with_files:
         src = src_root / f_name
-        shutil.copy(src, root / src.name)
-        shutil.copystat(src, root / src.name)
+        dst = root / f_name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src, dst)
+        shutil.copystat(src, dst)
     return root
 
 
@@ -70,3 +72,19 @@ def test_explicit_in_out_files():
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
     assert tool.upload_files == ['_test/ab.zip', '_test/empty.file']
     assert tool.download_files == ['_test/source-b.txt']
+
+
+def test_upload_file_from_dir():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['sub/source-c.txt'])
+    tool.run_get_string(['echo', '_test/sub/source-c.txt'])
+    assert tool.upload_files == ['_test/sub/source-c.txt']
+    assert tool.download_files == []
+
+
+def test_download_file_from_dir():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['sub/source-c.txt'])
+    tool.run_get_string(['cp', '_test/sub/source-c.txt', '_test/sub.txt'])
+    assert tool.upload_files == ['_test/sub/source-c.txt']
+    assert tool.download_files == ['_test/sub.txt']
