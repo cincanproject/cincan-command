@@ -76,7 +76,8 @@ def test_explicit_in_out_files():
 
 def test_upload_file_from_dir():
     tool = ToolImage(image='cincan/env', rm=False)
-    work_dir = prepare_work_dir('_test', ['sub/source-c.txt'])
+    # put in extra file, it should *not* get uploaded
+    work_dir = prepare_work_dir('_test', ['source-a.txt', 'sub/source-c.txt'])
     tool.run_get_string(['echo', '_test/sub/source-c.txt'])
     assert tool.upload_files == ['_test/sub/source-c.txt']
     assert tool.download_files == []

@@ -42,7 +42,8 @@ class TarTool:
             while parent and parent.as_posix() != '.':
                 if parent not in dirs:
                     dirs.add(parent)
-                    tar.add(parent.as_posix() + '/')
+                    tar_file = tar.gettarinfo(parent.as_posix())
+                    tar.addfile(tar_file)
                 parent = parent.parent
 
             tar_file = tar.gettarinfo(name=name, arcname=arc_name)
@@ -50,8 +51,11 @@ class TarTool:
             if host_file.is_file():
                 with host_file.open("rb") as f:
                     tar.addfile(tar_file, fileobj=f)
-            else:
+            elif host_file.is_dir():
+                tar_file.type = tarfile.DIRTYPE
                 tar.addfile(tar_file)
+            else:
+                raise Exception(f"Cannot upload file of unknown type {arc_name}")
         tar.close()
 
         put_arc_start = timeit.default_timer()
