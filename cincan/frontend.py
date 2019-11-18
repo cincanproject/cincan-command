@@ -19,8 +19,7 @@ import docker.errors
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
-from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner
-from cincan.commands import quote_args
+from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool

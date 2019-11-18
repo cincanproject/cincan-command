@@ -1,11 +1,21 @@
 import json
 import pathlib
+import string
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Iterable
 
-from cincan.commands import quote_args
-
 JSON_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
+
+
+def quote_args(args: Iterable[str]) -> List[str]:
+    """Quote the arguments which contain whitespaces (only for printing)"""
+    r = []
+    for arg in args:
+        if any(map(lambda c: c in string.whitespace, arg)):
+            r.append(f'"{arg}"')
+        else:
+            r.append(arg)
+    return r
 
 
 class FileLog:
