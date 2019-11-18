@@ -24,7 +24,7 @@ class TarTool:
         if not self.work_dir.endswith('/'):
             self.work_dir += '/'
 
-    def upload(self, upload_files: Dict[str, str]):
+    def upload(self, upload_files: Dict[pathlib.Path, str]):
         if not upload_files:
             return
         file_out = io.BytesIO()
@@ -34,19 +34,20 @@ class TarTool:
         # permissions without write possibility for the user
         dirs = set()
 
-        for name, arc_name in upload_files.items():
-            self.logger.info("copy %s in", name)
-            host_file = pathlib.Path(name)
+        for host_file, arc_name in upload_files.items():
+            self.logger.info("copy %s in", host_file.as_posix())
+            tar_file = tar.gettarinfo(host_file, arcname=arc_name)
 
-            parent = host_file.parent
-            while parent and parent.as_posix() != '.':
-                if parent not in dirs:
-                    dirs.add(parent)
-                    tar_file = tar.gettarinfo(parent.as_posix())
-                    tar.addfile(tar_file)
-                parent = parent.parent
+            h_parent = host_file.parent
+            a_parent = pathlib.Path(arc_name).parent
+            while a_parent and a_parent.as_posix() != '.':
+                if a_parent not in dirs:
+                    dirs.add(a_parent)
+                    p_file = tar.gettarinfo(h_parent, arcname=a_parent.as_posix())  # copy permissions
+                    tar.addfile(p_file)
+                h_parent = h_parent.parent
+                a_parent = a_parent.parent
 
-            tar_file = tar.gettarinfo(name=name, arcname=arc_name)
             self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
             if host_file.is_file():
                 with host_file.open("rb") as f:

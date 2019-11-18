@@ -100,7 +100,7 @@ class ToolImage:
             self.client.images.pull(image)
         self.image = self.client.images.get(image)
 
-    def __create_container(self, upload_files: Dict[str, str]):
+    def __create_container(self, upload_files: Dict[pathlib.Path, str]):
         """Create a container from the image here"""
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
@@ -237,15 +237,9 @@ class ToolImage:
         resolver = FileResolver(args, pathlib.Path.cwd(), input_files=self.input_files)
         in_files = []
         upload_files = {}
-        for up_file in resolver.detect_upload_files():
-            arc_name = resolver.archive_name_for(up_file)
-            if up_file.is_file():
-                with up_file.open("rb") as f:
-                    file_md5 = TarTool.read_with_hash(f.read)
-                in_files.append(FileLog(up_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
-            upload_files[up_file.as_posix()] = arc_name
-            self.logger.debug(f"{up_file.as_posix()} -> {arc_name}")
-        cmd_args = resolver.command_args
+        cmd_args = resolver.resolve_upload_files(in_files, upload_files)
+        for h_file, a_name in upload_files.items():
+            self.logger.debug(f"{h_file.as_posix()} -> {a_name}")
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         container = self.__create_container(upload_files)
@@ -269,7 +263,7 @@ class ToolImage:
                     self.logger.warning(e)
 
         work_dir = pathlib.Path().cwd()
-        self.upload_files = sorted(list(upload_files.keys()))
+        self.upload_files = sorted([f.as_posix() for f in list(upload_files.keys())])
         self.download_files = sorted(
             [f.path.relative_to(work_dir).as_posix() for f in
              filter(lambda f: not f.path.as_posix().startswith('/dev/'), log.out_files)])
