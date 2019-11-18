@@ -19,8 +19,9 @@ import docker.errors
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
-from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex
+from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner
 from cincan.commands import quote_args
+from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver
 from cincan.tar_tool import TarTool
 
@@ -37,7 +38,7 @@ class ToolStream:
         self.md5.update(data)
 
 
-class ToolImage:
+class ToolImage(CommandRunner):
     """A tool wrapped to docker image"""
 
     def __init__(self, name: str = None, path: Optional[str] = None,
@@ -79,6 +80,7 @@ class ToolImage:
         self.output_files: Optional[List[str]] = None  # Explicit tool input files
 
         # more test-oriented attributes...
+        self.entrypoint: Optional[str] = None
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
         self.buffer_output = False
@@ -136,7 +138,7 @@ class ToolImage:
     def __container_exec(self, container, cmd_args: List[str]) -> CommandLog:
         """Execute a command in the container"""
         # create the full command line and run with exec
-        entry_point = self.image.attrs['Config'].get('Entrypoint')
+        entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
         if not entry_point:
             entry_point = []
         cmd = self.image.attrs['Config'].get('Cmd')
@@ -308,6 +310,9 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
+    sub_parser.add_argument('-i', '--in', dest='input_files', default=None, help='Explicitly list tool input files')
+    sub_parser.add_argument('-o', '--out', dest='output_files', default=None, help='Explicitly list tool output files')
+
 
 def main():
     m_parser = argparse.ArgumentParser()
@@ -318,8 +323,9 @@ def main():
 
     run_parser = subparsers.add_parser('run')
     image_default_args(run_parser)
-    run_parser.add_argument('-i', '--in', dest='input_files', default=None, help='Explicitly list tool input files')
-    run_parser.add_argument('-o', '--out', dest='output_files', default=None, help='Explicitly list tool output files')
+
+    test_parser = subparsers.add_parser('test')
+    image_default_args(test_parser)
 
     list_parser = subparsers.add_parser('list')
     list_parser.add_argument('-i', '--in', dest='input', action='store_true', help='Show input formats')
@@ -346,7 +352,7 @@ def main():
     if args.sub_command == 'help':
         m_parser.print_help()
         sys.exit(1)
-    elif args.sub_command in {'run'}:
+    elif args.sub_command in {'run', 'test'}:
         if len(args.tool) == 0:
             raise Exception('Missing tool name argument')
         name = args.tool[0]
@@ -362,7 +368,12 @@ def main():
             lambda s: s, args.output_files.split(","))) if args.output_files is not None else None
         all_args = args.tool[1:]
 
-        log = tool.run(all_args)
+        if args.sub_command == 'test':
+            check = ContainerCheck(tool)
+            log = check.run(all_args)
+        else:
+            log = tool.run(all_args)
+
         if log.exit_code == 0:
             log_writer = CommandLogWriter()
             log_writer.write(log)

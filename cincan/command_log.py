@@ -111,3 +111,8 @@ class CommandLogIndex(CommandLogBase):
                 js = json.load(f)
                 log_l.append(CommandLog.from_json(js))
         return log_l
+
+
+class CommandRunner:
+    def run(self, args: List[str]) -> CommandLog:
+        raise NotImplemented()
