@@ -36,3 +36,10 @@ def test_upload_file_detection():
 def test_upload_many_nimes():
     resolver = FileResolver(['samples/source-a.txt', 'samples', 'samples/ab.zip'], pathlib.Path())
     assert resolver.detect_upload_files() == [pathlib.Path('samples/ab.zip'), pathlib.Path('samples/source-a.txt')]
+
+
+def test_fix_arguments():
+    resolver = FileResolver(['-f', 'tests/../README.md'], pathlib.Path())
+    the_path = (pathlib.Path.cwd().resolve() / 'README.md').as_posix()
+    assert resolver.command_args == ['-f', the_path[1:]]
+    assert resolver.detect_upload_files() == [pathlib.Path(the_path)]

@@ -36,15 +36,16 @@ class FileResolver:
                 o_file = pathlib.Path(part)
 
                 if o_file.exists():
-                    self.host_files.append(o_file)
-                    c_args.append(part)
+                    h_file, a_name = self.__archive_name_for(o_file)
+                    self.host_files.append(h_file)
+                    c_args.append(a_name)
                 else:
                     c_args.append(part)
             self.command_args.append(''.join(c_args))
 
     def resolve_upload_files(self, in_files: List[FileLog], upload_files: Dict[pathlib.Path, str]):
         for up_file in self.detect_upload_files():
-            host_file, arc_name = self.archive_name_for(up_file)
+            host_file, arc_name = self.__archive_name_for(up_file)
             if up_file.is_file():
                 with up_file.open("rb") as f:
                     file_md5 = TarTool.read_with_hash(f.read)
@@ -62,11 +63,9 @@ class FileResolver:
                 res.append(file)
         return res
 
-    def archive_name_for(self, file: pathlib.Path) -> Tuple[pathlib.Path, str]:
-        # - use absolute paths, if /../ used (ok, quite weak)
-        b_name = file.as_posix()
-        use_absolute = ".." in b_name or pathlib.Path(b_name).is_absolute()
-        if use_absolute:
+    @classmethod
+    def __archive_name_for(cls, file: pathlib.Path) -> Tuple[pathlib.Path, str]:
+        if cls.__use_absolute_path(file):
             h_file = file.resolve()
             a_file = file.resolve().as_posix().replace(':', '_')  # 'C:/jee' -> 'C_/jee'
             a_file = a_file[1:] if a_file.startswith('/') else a_file
@@ -74,3 +73,8 @@ class FileResolver:
             h_file = file
             a_file = file.as_posix()
         return h_file, a_file
+
+    @classmethod
+    def __use_absolute_path(cls, file: pathlib.Path) -> bool:
+        # - use absolute paths, if /../ used (ok, quite weak)
+        return file.is_absolute() or (".." in file.as_posix())
