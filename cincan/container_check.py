@@ -15,7 +15,7 @@ class ContainerCheck(CommandRunner):
 
         self.tool.entrypoint = '/usr/bin/env'
         if not args:
-            args = ['cp', in_file.as_posix(), out_file.parent.as_posix()]  # the default test command
+            args = ['cp', in_file.as_posix(), out_file.as_posix()]  # the default test command
 
         test_string = 'This is a test'
         try:

@@ -35,7 +35,16 @@ class FileResolver:
                 self.arg_parts.append(part)
                 o_file = pathlib.Path(part)
 
-                if o_file.exists():
+                o_is_file = o_file.exists()
+                if not o_is_file and not o_file.is_absolute() and '..' not in o_file.as_posix():
+                    # the file does not exist, but it is relative path to a file/directory...
+                    o_parent = o_file.parent
+                    while not o_is_file and o_parent and o_parent.as_posix() != '.':
+                        if o_parent.is_dir() and o_parent not in self.host_files:
+                            o_is_file = True  # ...and there is existing parent directory, perhaps for output
+                        o_parent = o_parent.parent
+
+                if o_is_file:
                     h_file, a_name = self.__archive_name_for(o_file)
                     self.host_files.append(h_file)
                     c_args.append(a_name)
@@ -54,14 +63,29 @@ class FileResolver:
         cmd_args = self.command_args
         return cmd_args
 
-    def detect_upload_files(self, sf: Optional[Iterable[pathlib.Path]] = None) -> List[pathlib.Path]:
-        sf = sorted(self.host_files) if sf is None else sf
+    def detect_upload_files(self, files: Optional[Iterable[pathlib.Path]] = None) -> List[pathlib.Path]:
+        it_files = sorted(self.host_files) if files is None else files
         res = []
-        for i, file in enumerate(sf):
-            res.append(file)
+        for file in it_files:
+            if file.exists():
+                res.append(file)
             if file.is_dir():
                 sub_res = self.detect_upload_files(file.iterdir())
                 res.extend(sub_res)
+        if files is None:
+            # make sure also paths leading to output files are uploaded
+            all_dirs = set()
+            for file in res:
+                all_dirs.add(file)
+                for p in file.parents:
+                    all_dirs.add(p)
+            for file in filter(lambda f: not f.exists(), it_files):
+                # file not exists, but marked for upload - must mean some sub directory for output
+                p = file.parent
+                while not p.exists():
+                    p = p.parent
+                if p not in all_dirs:
+                    res.append(p)
         return res
 
     @classmethod

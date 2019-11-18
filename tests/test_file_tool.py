@@ -66,6 +66,8 @@ def test_upload_target_directories():
     assert resolver.command_args == ['--out', 'samples/sub']
     assert resolver.detect_upload_files() == [pathlib.Path('samples/sub'), pathlib.Path('samples/sub/source-c.txt')]
 
+
+def test_create_target_directories():
     resolver = FileResolver(['--out', 'samples/output'], pathlib.Path())
     assert resolver.command_args == ['--out', 'samples/output']
     assert resolver.detect_upload_files() == [pathlib.Path('samples')]
