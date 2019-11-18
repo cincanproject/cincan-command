@@ -78,8 +78,8 @@ def test_many_output_files():
 def test_explicit_in_out_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip', 'empty.file'])
-    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'], include=True)
-    tool.output_filters = FileMatcher.parse(['_test/source-b.txt'], include=True)
+    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'])
+    tool.output_filters = FileMatcher.parse(['_test/source-b.txt'])
 
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
     assert tool.upload_files == ['_test/ab.zip', '_test/empty.file']
