@@ -89,12 +89,31 @@ However, depending on the WORKDIR value of the container, you may get
 unexpected files to current directory, such as `tmp/result.pcap`
 in the sample above.
 
+As default, the 'cincan' tool treat all existing files
+listed in command line arguments as input files, so it may also upload
+*output files* if those already exists when command is invoked. E.g.
+when you run the following command several times you notice that the
+file `result.pcap` gets uploaded to the container only to be
+overwritten.
+
+    % cincan run cincan/tshark -r myfile.pcap -w result.pcap
+    cincan/tshark: <= myfile.pcap in
+    cincan/tshark: <= result.pcap in
+    cincan/tshark: => result.pcap
+
+This may become problem e.g. when you must give the command
+and output directory which contains a lot of data already and
+all that data gets (unnecessarily) copied to the container.
+
+As files are copied around, you may ran out of disk space or
+experience long delays when working with large files. You should
+then consider running the dockerized tools without 'cincan' wrapper.
 
 ### Explicit input/output files
 
 FIXME
 
-## Invoking tool without frontend
+## Invoking tool without 'cincan' wrapper
 
 Sometimes you cannot use the services provided by the 'cincan' frontend.
 For example, you wish to provide the files through mounts for their size
