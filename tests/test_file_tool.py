@@ -39,7 +39,12 @@ def test_upload_many_nimes():
 
 
 def test_fix_arguments():
-    resolver = FileResolver(['-f', 'tests/../README.md'], pathlib.Path())
     the_path = (pathlib.Path.cwd().resolve() / 'README.md').as_posix()
+
+    resolver = FileResolver(['-f', the_path], pathlib.Path())
+    assert resolver.command_args == ['-f', the_path[1:]]
+    assert resolver.detect_upload_files() == [pathlib.Path(the_path)]
+
+    resolver = FileResolver(['-f', 'tests/../README.md'], pathlib.Path())
     assert resolver.command_args == ['-f', the_path[1:]]
     assert resolver.detect_upload_files() == [pathlib.Path(the_path)]
