@@ -35,7 +35,7 @@ class TarTool:
         dirs = set()
 
         for host_file, arc_name in upload_files.items():
-            self.logger.info("copy %s in", host_file.as_posix())
+            self.logger.info("<= %s", host_file.as_posix())
             tar_file = tar.gettarinfo(host_file, arcname=arc_name)
 
             h_parent = host_file.parent
@@ -120,14 +120,14 @@ class TarTool:
             timestamp = datetime.now()
             if tf.isfile() and (force_download or not host_file.exists()):
                 # no local file or explicit output asked, this is too easy
-                self.logger.info(f"copy out {host_file.as_posix()}")
+                self.logger.info(f"=> {host_file.as_posix()}")
                 tf_data = down_tar.extractfile(tf)
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with host_file.open("wb") as f:
                     md5 = self.read_with_hash(tf_data.read, f.write)
             elif tf.isfile() and host_file.is_dir():
-                raise Exception(f"copy out {host_file.as_posix()} failed, a directory with that name exists")
+                raise Exception(f"=> {host_file.as_posix()} failed, a directory with that name exists")
             elif tf.isfile() and host_file.exists():
                 # compare by hash, if should override local file
                 tf_data = down_tar.extractfile(tf)
@@ -151,7 +151,7 @@ class TarTool:
                     temp_file.unlink()
                 else:
                     self.logger.debug(f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
-                    self.logger.info(f"copy out and replace {host_file.as_posix()}")
+                    self.logger.info(f"=> {host_file.as_posix()}")
                     host_file.unlink()
                     temp_file.rename(host_file)
             elif tf.isdir() and host_file.is_file():
@@ -159,7 +159,7 @@ class TarTool:
             elif tf.isdir() and host_file.is_dir():
                 pass  # no action required
             elif tf.isdir():
-                self.logger.info(f"mkdir {host_file.as_posix()}")
+                self.logger.info(f"=> {host_file.as_posix()}/")
                 host_file.mkdir(parents=True, exist_ok=True)
                 timestamp = datetime.fromtimestamp(host_file.stat().st_mtime)
             out_files.append(FileLog(host_file.resolve(), md5, timestamp))
