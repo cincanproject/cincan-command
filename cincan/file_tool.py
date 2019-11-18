@@ -10,6 +10,7 @@ class FileMatcher:
     def __init__(self, match_string: str, include: bool):
         self.match_string = match_string
         self.exact = '*' not in match_string
+        self.absolute_path = match_string.startswith('/')
         self.include = include
 
     @classmethod
@@ -29,10 +30,15 @@ class FileMatcher:
         return list(filter(lambda f: self.match(f.as_posix()) == self.include, files))
 
     def filter_upload_files(self, files: List[str], work_dir: str) -> List[str]:
-        if self.match_string.startswith('/'):
-            # picking absolute files
-            raise NotImplemented()  # FIXME
+        if self.absolute_path:
+            # matching absolute files
+            res = []
+            for file in files:
+                if self.match(file) == self.include:
+                    res.append(file)
+            return res
         else:
+            # matching files relative to working directory
             res = []
             for file in files:
                 try:

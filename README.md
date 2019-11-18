@@ -109,9 +109,52 @@ As files are copied around, you may ran out of disk space or
 experience long delays when working with large files. You should
 then consider running the dockerized tools without 'cincan' wrapper.
 
-### Explicit input/output files
+### Input and output file filtering
 
-FIXME
+You can explicitly filter input files, which are copied to the container,
+and output files, which are copied from the container. This allows e.g.
+to avoid uploading files from output directory. The filtering is done
+by giving a glob-style pattern by run command arguments
+`--in` (or `-i`) for input file filtering
+and  `--out` (or `-o`) for output file filtering.
+Negative filters for filtering-out files are prefixed with ^.
+
+| Argument          | Description |
+|-------------------|-------------|
+| --in pattern      | Match files to upload by the pattern |
+| --in ^pattern     | Filter out files to upload which match the pattern |
+| --out pattern     | Match files to download by the pattern |
+| --out ^pattern    | Filter out files to download which match the pattern |
+
+FIXME: Still very weak description!
+
+For example, consider the tool 'volatility' which expects you to
+give an output dump directory when extracting process data, e.g.
+the following extracts the memory dump of process 123 to directory `dump/`
+
+    % cincan2 run cincan/volatility -f image.raw --dump-dir dump memdump -p 123
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: => dump/123.dmp
+
+However, if you extract again you notice that the already extracted file
+gets copied into the container as potential input file:
+
+    % cincan2 run cincan/volatility -f image.raw --dump-dir dump memdump -p 456
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: <= dump/123.dmp
+    cincan/volatility: => dump/456.dmp
+
+This can easily slow down your analysis a lot when many process
+files are copied around unnecessarily. You can address this by
+filtering out copying of files under `dump/` like this:
+
+    % cincan2 run --in "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: => dump/789.dmp
+
 
 ## Invoking tool without 'cincan' wrapper
 
