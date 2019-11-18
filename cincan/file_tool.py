@@ -35,9 +35,6 @@ class FileResolver:
                 self.arg_parts.append(part)
                 o_file = pathlib.Path(part)
 
-                #if not o_file.is_absolute():
-                #    o_file = self.directory / o_file
-
                 if o_file.exists():
                     self.host_files.append(o_file)
                     c_args.append(part)
@@ -55,7 +52,6 @@ class FileResolver:
             upload_files[host_file] = arc_name
         cmd_args = self.command_args
         return cmd_args
-
 
     def detect_upload_files(self) -> List[pathlib.Path]:
         sf = sorted(self.host_files)
