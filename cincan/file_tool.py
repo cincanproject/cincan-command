@@ -1,7 +1,7 @@
 import pathlib
 import re
 from datetime import datetime
-from typing import List, Optional, Dict, Set, Tuple
+from typing import List, Optional, Dict, Set, Tuple, Iterable
 
 from cincan.command_log import FileLog
 from cincan.tar_tool import TarTool
@@ -54,13 +54,14 @@ class FileResolver:
         cmd_args = self.command_args
         return cmd_args
 
-    def detect_upload_files(self) -> List[pathlib.Path]:
-        sf = sorted(self.host_files)
+    def detect_upload_files(self, sf: Optional[Iterable[pathlib.Path]] = None) -> List[pathlib.Path]:
+        sf = sorted(self.host_files) if sf is None else sf
         res = []
-        # remove files which are just prefix directories
         for i, file in enumerate(sf):
-            if file.is_file() or i == len(sf) - 1 or not sf[i + 1].as_posix().startswith(file.as_posix()):
-                res.append(file)
+            res.append(file)
+            if file.is_dir():
+                sub_res = self.detect_upload_files(file.iterdir())
+                res.extend(sub_res)
         return res
 
     @classmethod

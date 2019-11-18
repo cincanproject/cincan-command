@@ -3,6 +3,8 @@ import shutil
 import time
 from typing import List
 
+import pytest
+
 from cincan.frontend import ToolImage
 
 
@@ -55,11 +57,20 @@ def test_magic_file_io():
     assert tool.download_files == ['_test/test_a.txt']
 
 
+def test_input_directory():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['source-b.txt', 'source-a.txt'])
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'source-a.txt\nsource-b.txt\n'
+    assert tool.upload_files == ['_test', '_test/source-a.txt', '_test/source-b.txt']
+    assert tool.download_files == []
+
+
 def test_many_output_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
-    assert tool.upload_files == ['_test/ab.zip']
+    assert tool.upload_files == ['_test', '_test/ab.zip']
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
