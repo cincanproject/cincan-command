@@ -363,8 +363,8 @@ def main():
             tool = ToolImage(name, path=args.path)
         else:
             tool = ToolImage(name)  # should raise exception
-        tool.input_filters = FileMatcher.parse(args.in_filter, True) if args.in_filter is not None else None
-        tool.output_filters = FileMatcher.parse(args.out_filter, True) if args.out_filter is not None else None
+        tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
+        tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
         all_args = args.tool[1:]
 
         if args.sub_command == 'test':

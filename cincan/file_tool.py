@@ -13,20 +13,20 @@ class FileMatcher:
         self.include = include
 
     @classmethod
-    def parse(cls, match_strings: List[str], include: bool) -> List['FileMatcher']:
+    def parse(cls, match_strings: List[str]) -> List['FileMatcher']:
         res = []
         for m in match_strings:
             if m.startswith('^'):
-                res.append(FileMatcher(m[1:], include))
+                res.append(FileMatcher(m[1:], include=False))
             else:
-                res.append(FileMatcher(m, include))
+                res.append(FileMatcher(m, include=True))
         return res
 
     def list_upload_files(self) -> List[pathlib.Path]:
         return list(pathlib.Path().glob(self.match_string))
 
     def filter_download_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
-        return list(filter(lambda f: self.match(f.as_posix()), files))
+        return list(filter(lambda f: self.match(f.as_posix()) == self.include, files))
 
     def filter_upload_files(self, files: List[str], work_dir: str) -> List[str]:
         if self.match_string.startswith('/'):
@@ -38,8 +38,10 @@ class FileMatcher:
                 try:
                     rel_file = pathlib.Path(file).relative_to(work_dir).as_posix()
                 except ValueError:
+                    if not self.include:
+                        res.append(file)
                     continue
-                if self.match(rel_file):
+                if self.match(rel_file) == self.include:
                     res.append(file)
             return res
 
