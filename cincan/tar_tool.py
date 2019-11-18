@@ -144,6 +144,7 @@ class TarTool:
                 with host_file.open("rb") as f:
                     host_digest = self.read_with_hash(f.read)
 
+                self.logger.info(f"=> {host_file.as_posix()}")
                 if md5 == host_digest:
                     self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
                     # The file is identical as uploaded, but timestamps tell different story.
@@ -151,7 +152,6 @@ class TarTool:
                     temp_file.unlink()
                 else:
                     self.logger.debug(f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
-                    self.logger.info(f"=> {host_file.as_posix()}")
                     host_file.unlink()
                     temp_file.rename(host_file)
             elif tf.isdir() and host_file.is_file():
