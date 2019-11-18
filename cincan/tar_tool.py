@@ -125,7 +125,7 @@ class TarTool:
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with host_file.open("wb") as f:
-                    md5 = self.read_with_hash(tf_data.read, f.write)
+                    md5 = read_with_hash(tf_data.read, f.write)
             elif tf.isfile() and host_file.is_dir():
                 raise Exception(f"=> {host_file.as_posix()} failed, a directory with that name exists")
             elif tf.isfile() and host_file.exists():
@@ -138,11 +138,11 @@ class TarTool:
                 if host_file.parent:
                     host_file.parent.mkdir(parents=True, exist_ok=True)
                 with temp_file.open("wb") as f:
-                    md5 = self.read_with_hash(tf_data.read, f.write)
+                    md5 = read_with_hash(tf_data.read, f.write)
 
                 # calculate hash for existing file
                 with host_file.open("rb") as f:
-                    host_digest = self.read_with_hash(f.read)
+                    host_digest = read_with_hash(f.read)
 
                 self.logger.info(f"=> {host_file.as_posix()}")
                 if md5 == host_digest:
@@ -194,14 +194,3 @@ class TarTool:
             return True  # edited, we are sure
 
         return True  # tell edited, but we have no idea
-
-    @classmethod
-    def read_with_hash(cls, read_more, write_to: Optional = None) -> str:
-        md5sum = hashlib.md5()
-        chunk = read_more(2048)
-        while chunk:
-            md5sum.update(chunk)
-            if write_to:
-                write_to(chunk)
-            chunk = read_more(2048)
-        return md5sum.hexdigest()

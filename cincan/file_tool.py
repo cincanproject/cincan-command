@@ -57,7 +57,7 @@ class FileResolver:
             host_file, arc_name = self.__archive_name_for(up_file)
             if up_file.is_file():
                 with up_file.open("rb") as f:
-                    file_md5 = TarTool.read_with_hash(f.read)
+                    file_md5 = read_with_hash(f.read)
                 in_files.append(FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
             upload_files[host_file] = arc_name
         cmd_args = self.command_args

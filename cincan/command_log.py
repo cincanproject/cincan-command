@@ -1,3 +1,4 @@
+import hashlib
 import json
 import pathlib
 import string
@@ -16,6 +17,17 @@ def quote_args(args: Iterable[str]) -> List[str]:
         else:
             r.append(arg)
     return r
+
+
+def read_with_hash(read_more, write_to: Optional = None) -> str:
+    md5sum = hashlib.md5()
+    chunk = read_more(2048)
+    while chunk:
+        md5sum.update(chunk)
+        if write_to:
+            write_to(chunk)
+        chunk = read_more(2048)
+    return md5sum.hexdigest()
 
 
 class FileLog:
