@@ -23,8 +23,16 @@ class FileMatcher:
                 res.append(FileMatcher(m, include=True))
         return res
 
-    def list_upload_files(self) -> List[pathlib.Path]:
-        return list(pathlib.Path().glob(self.match_string))
+    def list_upload_files(self, path: pathlib.Path = pathlib.Path()) -> List[pathlib.Path]:
+        to_list = []
+        for f in path.iterdir():
+            s = f.as_posix()
+            if self.match(s):
+                to_list.append(f)
+            if f.is_dir():
+                f_list = self.list_upload_files(f)
+                to_list.extend(f_list)
+        return to_list
 
     def filter_download_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
         return list(filter(lambda f: self.match(f.as_posix()) == self.include, files))

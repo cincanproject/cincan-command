@@ -101,3 +101,20 @@ def test_download_file_from_dir():
     tool.run_get_string(['cp', '_test/sub/source-c.txt', '_test/sub.txt'])
     assert tool.upload_files == ['_test/sub/source-c.txt']
     assert tool.download_files == ['_test/sub.txt']
+
+
+def test_input_filtering():
+    tool = ToolImage(image='cincan/env', rm=False)
+    tool.input_filters = FileMatcher.parse(["_test*.zip"])
+    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'ab.zip\n'
+    assert tool.upload_files == ['_test/ab.zip']
+    assert tool.download_files == []
+
+    tool.input_filters = FileMatcher.parse(["_test*.txt"])
+    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'source-a.txt\nsource-b.txt\n'
+    assert tool.upload_files == ['_test/source-a.txt', '_test/source-b.txt']
+    assert tool.download_files == []
