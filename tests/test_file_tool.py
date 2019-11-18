@@ -72,3 +72,15 @@ def test_create_target_directories():
     resolver = FileResolver(['--out', 'samples/output'], pathlib.Path())
     assert resolver.command_args == ['--out', 'samples/output']
     assert resolver.detect_upload_files() == [pathlib.Path('samples')]
+
+
+def test_exclude_input():
+    resolver = FileResolver(['--in', 'README.md', '--out', 'samples'], pathlib.Path(),
+                            input_filters=[FileMatcher('samples/*', include=False)])
+    assert resolver.command_args == ['--in', 'README.md', '--out', 'samples']
+    assert resolver.detect_upload_files() == [pathlib.Path('README.md'), pathlib.Path('samples')]
+
+    resolver = FileResolver(['--in', 'README.md', '--out', 'samples'], pathlib.Path(),
+                            input_filters=[FileMatcher('samples/source-b.txt', include=True)])
+    assert resolver.command_args == ['--in', 'README.md', '--out', 'samples']
+    assert resolver.detect_upload_files() == [pathlib.Path('samples/source-b.txt')]

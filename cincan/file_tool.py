@@ -108,22 +108,33 @@ class FileResolver:
             for part in split:
                 o_file = pathlib.Path(part)
 
-                o_is_file = o_file.exists()
-                if not o_is_file and not o_file.is_absolute() and '..' not in o_file.as_posix():
+                o_included = o_file.exists()
+                if not o_included and not o_file.is_absolute() and '..' not in o_file.as_posix():
                     # the file does not exist, but it is relative path to a file/directory...
                     o_parent = o_file.parent
-                    while not o_is_file and o_parent and o_parent.as_posix() != '.':
+                    while not o_included and o_parent and o_parent.as_posix() != '.':
                         if o_parent.is_dir() and o_parent not in self.host_files:
-                            o_is_file = True  # ...and there is existing parent directory, perhaps for output
+                            o_included = True  # ...and there is existing parent directory, perhaps for output
                         o_parent = o_parent.parent
 
-                if o_is_file:
+                if o_included:
                     h_file, a_name = self.__archive_name_for(o_file)
                     self.host_files.append(h_file)
                     c_args.append(a_name)
                 else:
                     c_args.append(part)
+
+                if o_included and o_file.is_dir():
+                    # include files in sub directories
+                    self.__include_sub_dirs(o_file.iterdir())
+
             self.command_args.append(''.join(c_args))
+
+    def __include_sub_dirs(self, files: Iterable[pathlib.Path]):
+        for f in files:
+            self.host_files.append(f)
+            if f.is_dir():
+                self.__include_sub_dirs(f.iterdir())
 
     def resolve_upload_files(self, in_files: List[FileLog], upload_files: Dict[pathlib.Path, str]):
         for up_file in self.detect_upload_files():
@@ -142,9 +153,6 @@ class FileResolver:
         for file in it_files:
             if file.exists():
                 res.append(file)
-            if file.is_dir():
-                sub_res = self.detect_upload_files(file.iterdir())
-                res.extend(sub_res)
         if files is None:
             # make sure also paths leading to output files are uploaded
             all_dirs = set()
