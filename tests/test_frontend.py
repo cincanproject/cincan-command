@@ -5,6 +5,7 @@ from typing import List
 
 import pytest
 
+from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
 
 
@@ -77,8 +78,8 @@ def test_many_output_files():
 def test_explicit_in_out_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip', 'empty.file'])
-    tool.input_files = ['_test/ab.zip', '_test/empty.file']
-    tool.output_files = ['_test/source-b.txt']
+    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'], include=True)
+    tool.output_filters = FileMatcher.parse(['_test/source-b.txt'], include=True)
 
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
     assert tool.upload_files == ['_test/ab.zip', '_test/empty.file']

@@ -21,7 +21,7 @@ from cincan import registry
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
 from cincan.container_check import ContainerCheck
-from cincan.file_tool import FileResolver
+from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 
 
@@ -74,9 +74,9 @@ class ToolImage(CommandRunner):
             self.context = '.'  # not really correct, but will do
         else:
             raise Exception("No file nor image specified")
-        self.input_files: Optional[List[str]] = None  # Explicit tool input files
+        self.input_filters: Optional[List[FileMatcher]] = None
         self.upload_stats: Dict[str, List] = {} # upload file stats
-        self.output_files: Optional[List[str]] = None  # Explicit tool input files
+        self.output_filters: Optional[List[FileMatcher]] = None
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -235,7 +235,7 @@ class ToolImage(CommandRunner):
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
         # resolve files to upload
-        resolver = FileResolver(args, pathlib.Path.cwd(), input_files=self.input_files)
+        resolver = FileResolver(args, pathlib.Path.cwd(), input_filters=self.input_filters)
         in_files = []
         upload_files = {}
         cmd_args = resolver.resolve_upload_files(in_files, upload_files)
@@ -251,7 +251,7 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats)
-                log.out_files.extend(tar_tool.download_files(self.output_files))
+                log.out_files.extend(tar_tool.download_files(self.output_filters))
         finally:
             self.logger.debug("killing the container")
             container.kill()
@@ -309,8 +309,10 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
-    sub_parser.add_argument('-i', '--in', dest='input_files', default=None, help='Explicitly list tool input files')
-    sub_parser.add_argument('-o', '--out', dest='output_files', default=None, help='Explicitly list tool output files')
+    sub_parser.add_argument('-i', '--in', action='append', dest='in_filter', nargs='?',
+                            help='Include input files by glob (exclude with ^-prefix)')
+    sub_parser.add_argument('-o', '--out', action='append', dest='out_filter', nargs='?',
+                            help='Include output files by glob (exclude with ^-prefix)')
 
 
 def main():
@@ -361,10 +363,8 @@ def main():
             tool = ToolImage(name, path=args.path)
         else:
             tool = ToolImage(name)  # should raise exception
-        tool.input_files = list(filter(
-            lambda s: s, args.input_files.split(","))) if args.input_files is not None else None
-        tool.output_files = list(filter(
-            lambda s: s, args.output_files.split(","))) if args.output_files is not None else None
+        tool.input_filters = FileMatcher.parse(args.in_filter, True) if args.in_filter is not None else None
+        tool.output_filters = FileMatcher.parse(args.out_filter, True) if args.out_filter is not None else None
         all_args = args.tool[1:]
 
         if args.sub_command == 'test':

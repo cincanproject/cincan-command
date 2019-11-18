@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from cincan.file_tool import FileResolver
+from cincan.file_tool import FileResolver, FileMatcher
 
 
 def test_upload_file_detection():
@@ -22,7 +22,8 @@ def test_upload_file_detection():
     assert resolver.command_args == ['-fREADME.md']
     assert resolver.detect_upload_files() == []
 
-    resolver = FileResolver(['-fREADME.md'], pathlib.Path(), input_files=['README.md'])
+    resolver = FileResolver(['-fREADME.md'], pathlib.Path(),
+                            input_filters=FileMatcher.parse(['README.md'], include=True))
     assert resolver.command_args == ['-fREADME.md']
     assert resolver.detect_upload_files() == [pathlib.Path('README.md')]
 

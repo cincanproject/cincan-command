@@ -3,12 +3,76 @@ import re
 from datetime import datetime
 from typing import List, Optional, Dict, Set, Tuple, Iterable
 
-from cincan.command_log import FileLog
-from cincan.tar_tool import TarTool
+from cincan.command_log import FileLog, read_with_hash
+
+
+class FileMatcher:
+    def __init__(self, match_string: str, include: bool):
+        self.match_string = match_string
+        self.exact = '*' not in match_string
+        self.include = include
+
+    @classmethod
+    def parse(cls, match_strings: List[str], include: bool) -> List['FileMatcher']:
+        res = []
+        for m in match_strings:
+            if m.startswith('^'):
+                res.append(FileMatcher(m[1:], include))
+            else:
+                res.append(FileMatcher(m, include))
+        return res
+
+    def list_upload_files(self) -> List[pathlib.Path]:
+        return list(pathlib.Path().glob(self.match_string))
+
+    def filter_download_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
+        return list(filter(lambda f: self.match(f.as_posix()), files))
+
+    def filter_upload_files(self, files: List[str], work_dir: str) -> List[str]:
+        if self.match_string.startswith('/'):
+            # picking absolute files
+            raise NotImplemented()  # FIXME
+        else:
+            res = []
+            for file in files:
+                try:
+                    rel_file = pathlib.Path(file).relative_to(work_dir).as_posix()
+                except ValueError:
+                    continue
+                if self.match(rel_file):
+                    res.append(file)
+            return res
+
+    def match(self, value: str) -> bool:
+        if self.exact:
+            return self.match_string == value
+        split = self.match_string.split("*")
+        i = 0
+        off = 0
+        len_v = len(value)
+        s = split[0]
+        len_s = len(s)
+        if len_s > 0:
+            if len_v < i + len_s or value[i:i + len_s] != s:
+                return False
+            off += len_s
+            i += 1
+        while i < len(split):
+            s = split[i]
+            len_s = len(s)
+            if len_s > 0:
+                off = value.find(s, off)
+                if off < 0:
+                    return False
+            i += 1
+            off += len_s
+        if split[-1] != '' and off != len_v:
+            return False
+        return True
 
 
 class FileResolver:
-    def __init__(self, args: List[str], directory: pathlib.Path, input_files: List[str] = None):
+    def __init__(self, args: List[str], directory: pathlib.Path, input_filters: List[FileMatcher] = None):
         self.original_args = args
         self.directory = directory
 
@@ -16,23 +80,30 @@ class FileResolver:
         self.arg_pattern = re.compile("([a-zA-Z_0-9-/.~]+)")
 
         self.host_files: List[pathlib.Path] = []
-        self.command_args = []
-        self.arg_parts: List[str] = []
-        if input_files is not None:
-            # input files specified
-            self.host_files = [pathlib.Path(p) for p in input_files]
-            self.arg_parts = args
-            self.command_args = args
+        self.command_args = args.copy()
+
+        if input_filters:
+            # input filter(s) specified
+            if not input_filters[0].include:
+                # start with filtering out the default files
+                self.__analyze()
+            for filth in input_filters:
+                if filth.include:
+                    # include files from file system
+                    self.host_files.extend(filth.list_upload_files())
+                else:
+                    # exclude files by matcher
+                    self.host_files = filth.filter_download_files(self.host_files)
         else:
             # autodetect input files
             self.__analyze()
 
     def __analyze(self):
+        self.command_args = []
         for o_arg in self.original_args:
             split = list(filter(lambda s: s, self.arg_pattern.split(o_arg)))
             c_args = []
             for part in split:
-                self.arg_parts.append(part)
                 o_file = pathlib.Path(part)
 
                 o_is_file = o_file.exists()

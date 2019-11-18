@@ -10,7 +10,8 @@ from typing import Dict, Optional, List
 
 from docker.models.containers import Container
 
-from cincan.command_log import FileLog
+from cincan.command_log import FileLog, read_with_hash
+from cincan.file_tool import FileMatcher
 
 
 class TarTool:
@@ -63,28 +64,25 @@ class TarTool:
         self.container.put_archive(path=self.work_dir, data=file_out.getvalue())
         self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
 
-    def download_files(self, explicit_output: Optional[List[str]]) -> List[FileLog]:
-        # resolve files to download
-        if explicit_output is not None:
-            candidates = explicit_output  # explicitly given
-            for i, c in enumerate(candidates):
-                if not pathlib.Path(c).is_absolute():
-                    # make all absolute
-                    candidates[i] = (pathlib.Path(self.work_dir) / c).as_posix()
-        else:
-            # check all modified (includes the ones we uploaded)
-            candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])])
-            # remove files which are paths to files
-            for i, c in enumerate(candidates):
-                if i < len(candidates) - 1 and candidates[i + 1].startswith(c):
-                    candidates[i] = None
-            candidates = list(filter(lambda s: s, candidates))
-            # remove candidates which are not in working directory
-            candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
+    def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
+        # check all modified (includes the ones we uploaded)
+        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])])
+        # remove files which are paths to files
+        for i, c in enumerate(candidates):
+            if i < len(candidates) - 1 and candidates[i + 1].startswith(c):
+                candidates[i] = None
+        candidates = list(filter(lambda s: s, candidates))
+        # remove candidates which are not in working directory
+        candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
+
+        # filters?
+        for filth in output_filters or []:
+            # remove non-matching files
+            candidates = filth.filter_upload_files(candidates, self.work_dir)
 
         out_files = []
         for f in candidates:
-            log = self.__download_file_maybe(f, force_download=explicit_output is not None)
+            log = self.__download_file_maybe(f, force_download=False)  # FIXME: We force sometimes?
             out_files.extend(log)
         return out_files
 
