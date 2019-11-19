@@ -78,12 +78,12 @@ def test_many_output_files():
 def test_explicit_in_out_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip', 'empty.file'])
-    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'])
+    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'])  # NOTHING can pass this filter!
     tool.output_filters = FileMatcher.parse(['_test/source-b.txt'])
 
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
-    assert tool.upload_files == ['_test/ab.zip', '_test/empty.file']
-    assert tool.download_files == ['_test/source-b.txt']
+    assert tool.upload_files == []
+    assert tool.download_files == []
 
 
 def test_upload_file_from_dir():
@@ -105,6 +105,12 @@ def test_download_file_from_dir():
 
 def test_input_filtering():
     tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'ab.zip\nsource-a.txt\nsource-b.txt\n'
+    assert tool.upload_files == ['_test', '_test/ab.zip', '_test/source-a.txt', '_test/source-b.txt']
+    assert tool.download_files == []
+
     tool.input_filters = FileMatcher.parse(["_test*.zip"])
     work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
     out = tool.run_get_string(['ls', '-1', '_test'])
@@ -117,4 +123,11 @@ def test_input_filtering():
     out = tool.run_get_string(['ls', '-1', '_test'])
     assert out == 'source-a.txt\nsource-b.txt\n'
     assert tool.upload_files == ['_test/source-a.txt', '_test/source-b.txt']
+    assert tool.download_files == []
+
+    tool.input_filters = FileMatcher.parse(["^*.txt"])
+    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'ab.zip\n'
+    assert tool.upload_files == ['_test', '_test/ab.zip']
     assert tool.download_files == []

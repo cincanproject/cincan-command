@@ -310,9 +310,9 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
     sub_parser.add_argument('-i', '--in', action='append', dest='in_filter', nargs='?',
-                            help='Include input files by glob (exclude with ^-prefix)')
+                            help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-o', '--out', action='append', dest='out_filter', nargs='?',
-                            help='Include output files by glob (exclude with ^-prefix)')
+                            help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
 
 
 def main():

@@ -23,21 +23,10 @@ class FileMatcher:
                 res.append(FileMatcher(m, include=True))
         return res
 
-    def list_upload_files(self, path: pathlib.Path = pathlib.Path()) -> List[pathlib.Path]:
-        to_list = []
-        for f in path.iterdir():
-            s = f.as_posix()
-            if self.match(s):
-                to_list.append(f)
-            if f.is_dir():
-                f_list = self.list_upload_files(f)
-                to_list.extend(f_list)
-        return to_list
-
-    def filter_download_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
+    def filter_upload_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
         return list(filter(lambda f: self.match(f.as_posix()) == self.include, files))
 
-    def filter_upload_files(self, files: List[str], work_dir: str) -> List[str]:
+    def filter_download_files(self, files: List[str], work_dir: str) -> List[str]:
         if self.absolute_path:
             # matching absolute files
             res = []
@@ -98,21 +87,12 @@ class FileResolver:
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
 
-        if input_filters:
-            # input filter(s) specified
-            if not input_filters[0].include:
-                # start with filtering out the default files
-                self.__analyze()
-            for filth in input_filters:
-                if filth.include:
-                    # include files from file system
-                    self.host_files.extend(filth.list_upload_files())
-                else:
-                    # exclude files by matcher
-                    self.host_files = filth.filter_download_files(self.host_files)
-        else:
-            # autodetect input files
-            self.__analyze()
+        # autodetect input files
+        self.__analyze()
+
+        # exclude files by filters, perhaps?
+        for filth in input_filters or []:
+            self.host_files = filth.filter_upload_files(self.host_files)
 
     def __analyze(self):
         self.command_args = []

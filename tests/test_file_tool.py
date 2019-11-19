@@ -22,10 +22,11 @@ def test_upload_file_detection():
     assert resolver.command_args == ['-fREADME.md']
     assert resolver.detect_upload_files() == []
 
-    resolver = FileResolver(['-fREADME.md'], pathlib.Path(),
-                            input_filters=FileMatcher.parse(['README.md']))
-    assert resolver.command_args == ['-fREADME.md']
-    assert resolver.detect_upload_files() == [pathlib.Path('README.md')]
+    # FIXME: Should be done by providing files in tar
+    # resolver = FileResolver(['-fREADME.md'], pathlib.Path(),
+    #                         input_filters=FileMatcher.parse(['README.md']))
+    # assert resolver.command_args == ['-fREADME.md']
+    # assert resolver.detect_upload_files() == [pathlib.Path('README.md')]
 
     resolver = FileResolver(['file=README.md'], pathlib.Path())
     assert resolver.command_args == ['file=README.md']

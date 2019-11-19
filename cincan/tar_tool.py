@@ -78,7 +78,7 @@ class TarTool:
         # filters?
         for filth in output_filters or []:
             # remove non-matching files
-            candidates = filth.filter_upload_files(candidates, self.work_dir)
+            candidates = filth.filter_download_files(candidates, self.work_dir)
 
         out_files = []
         for f in candidates:
