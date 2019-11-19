@@ -116,12 +116,11 @@ class TarTool:
 
         out_files = []
         for f in candidates:
-            log = self.__download_file_maybe(f, force_download=False)  # FIXME: We force sometimes?
+            log = self.__download_file_maybe(f)
             out_files.extend(log)
         return out_files
 
-    def __download_file_maybe(self, file_name: str, force_download: bool) -> List[FileLog]:
-        # self.logger.debug(f"container file changed {file_name}")
+    def __download_file_maybe(self, file_name: str) -> List[FileLog]:
         down_file = pathlib.Path(file_name)
         host_file = pathlib.Path(
             (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
@@ -150,7 +149,7 @@ class TarTool:
                 continue
             md5 = ''
             timestamp = datetime.now()
-            if tf.isfile() and (force_download or not host_file.exists()):
+            if tf.isfile() and not host_file.exists():
                 # no local file or explicit output asked, this is too easy
                 self.logger.info(f"=> {host_file.as_posix()}")
                 tf_data = down_tar.extractfile(tf)
