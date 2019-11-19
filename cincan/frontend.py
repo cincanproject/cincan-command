@@ -101,7 +101,7 @@ class ToolImage(CommandRunner):
             self.client.images.pull(image)
         self.image = self.client.images.get(image)
 
-    def __create_container(self, upload_files: Dict[pathlib.Path, str]):
+    def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
@@ -110,7 +110,7 @@ class ToolImage(CommandRunner):
 
         # upload files to container
         tar_tool = TarTool(self.logger, container, self.upload_stats)
-        tar_tool.upload(upload_files)
+        tar_tool.upload(upload_files, input_files)
 
         return container
 
@@ -236,14 +236,14 @@ class ToolImage(CommandRunner):
         """Run native tool in container with given arguments"""
         # resolve files to upload
         resolver = FileResolver(args, pathlib.Path.cwd(), input_filters=self.input_filters)
-        in_files = []
         upload_files = {}
-        cmd_args = resolver.resolve_upload_files(in_files, upload_files)
+        cmd_args = resolver.resolve_upload_files(upload_files)
         for h_file, a_name in upload_files.items():
             self.logger.debug(f"{h_file.as_posix()} -> {a_name}")
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
-        container = self.__create_container(upload_files)
+        in_files = []
+        container = self.__create_container(upload_files, in_files)
         log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args)

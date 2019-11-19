@@ -25,7 +25,7 @@ class TarTool:
         if not self.work_dir.endswith('/'):
             self.work_dir += '/'
 
-    def upload(self, upload_files: Dict[pathlib.Path, str]):
+    def upload(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]):
         if not upload_files:
             return
         file_out = io.BytesIO()
@@ -51,8 +51,14 @@ class TarTool:
 
             self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
             if host_file.is_file():
+                # put file to tar
                 with host_file.open("rb") as f:
                     tar.addfile(tar_file, fileobj=f)
+                # create log entry
+                with host_file.open("rb") as f:
+                    file_md5 = read_with_hash(f.read)
+                in_files.append(
+                    FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(host_file.stat().st_mtime)))
             elif host_file.is_dir():
                 tar_file.type = tarfile.DIRTYPE
                 tar.addfile(tar_file)

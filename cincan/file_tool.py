@@ -135,13 +135,9 @@ class FileResolver:
             if f.is_dir():
                 self.__include_sub_dirs(f.iterdir(), file_set)
 
-    def resolve_upload_files(self, in_files: List[FileLog], upload_files: Dict[pathlib.Path, str]):
+    def resolve_upload_files(self, upload_files: Dict[pathlib.Path, str]):
         for up_file in self.detect_upload_files():
             host_file, arc_name = self.__archive_name_for(up_file)
-            if up_file.is_file():
-                with up_file.open("rb") as f:
-                    file_md5 = read_with_hash(f.read)
-                in_files.append(FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(up_file.stat().st_mtime)))
             upload_files[host_file] = arc_name
         cmd_args = self.command_args
         return cmd_args
