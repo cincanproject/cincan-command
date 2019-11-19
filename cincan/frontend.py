@@ -109,6 +109,11 @@ class ToolImage(CommandRunner):
                                                   stdin_open=True, tty=True)
         container.start()
 
+        # kludge, lets show work directory in tests
+        work_dir = container.image.attrs['Config'].get('WorkingDir') or '-'
+        if self.entrypoint:
+            self.logger.info(f"Workdir: {work_dir}")
+
         # upload files to container
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
