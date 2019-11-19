@@ -154,7 +154,7 @@ class ToolImage(CommandRunner):
         stderr_s = ToolStream(sys.stderr.buffer)
 
         # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=True)
+        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=read_stdin)
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
         c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
@@ -162,7 +162,9 @@ class ToolImage(CommandRunner):
         buffer_size = 1024 * 1024
 
         self.logger.debug("enter stdin/container io loop...")
-        active_streams = [c_socket_sock, sys.stdin]  # prefer socket to limit the amount of data in the container (?)
+        active_streams = [c_socket_sock]  # prefer socket to limit the amount of data in the container (?)
+        if read_stdin:
+            active_streams.append(sys.stdin)
         c_socket_open = True
         while c_socket_open:
             try:
