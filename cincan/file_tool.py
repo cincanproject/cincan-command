@@ -96,6 +96,7 @@ class FileResolver:
 
     def __analyze(self):
         self.command_args = []
+        file_set = set()
         for o_arg in self.original_args:
             split = list(filter(lambda s: s, self.arg_pattern.split(o_arg)))
             c_args = []
@@ -113,22 +114,26 @@ class FileResolver:
 
                 if o_included:
                     h_file, a_name = self.__archive_name_for(o_file)
-                    self.host_files.append(h_file)
+                    if h_file not in file_set:
+                        self.host_files.append(h_file)
+                        file_set.add(h_file)
                     c_args.append(a_name)
                 else:
                     c_args.append(part)
 
                 if o_included and o_file.is_dir():
                     # include files in sub directories
-                    self.__include_sub_dirs(o_file.iterdir())
+                    self.__include_sub_dirs(o_file.iterdir(), file_set)
 
             self.command_args.append(''.join(c_args))
 
-    def __include_sub_dirs(self, files: Iterable[pathlib.Path]):
+    def __include_sub_dirs(self, files: Iterable[pathlib.Path], file_set: Set[pathlib.Path]):
         for f in files:
-            self.host_files.append(f)
+            if f not in file_set:
+                self.host_files.append(f)
+                file_set.add(f)
             if f.is_dir():
-                self.__include_sub_dirs(f.iterdir())
+                self.__include_sub_dirs(f.iterdir(), file_set)
 
     def resolve_upload_files(self, in_files: List[FileLog], upload_files: Dict[pathlib.Path, str]):
         for up_file in self.detect_upload_files():

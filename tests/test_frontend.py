@@ -75,6 +75,24 @@ def test_many_output_files():
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
+def test_log_entries():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['ab.zip'])
+    log = tool.run(['unzip', '-d', '_test', '_test/ab.zip'])
+
+    assert len(log.in_files) == 1
+    assert log.in_files[0].path == pathlib.Path().cwd() / '_test/ab.zip'
+    assert log.in_files[0].md5 == 'c0e2d802aadc37f6f3ef51aa98b6b885'
+
+    assert len(log.out_files) == 3
+    assert log.out_files[0].path == pathlib.Path('/dev/stdout')
+    assert log.out_files[0].md5 == '211a5763cbd6622cca4d801ab22ea171'
+    assert log.out_files[1].path == pathlib.Path().cwd() / '_test/source-a.txt'
+    assert log.out_files[1].md5 == 'b7e3a4d97941c994007322fd47d5ec03'
+    assert log.out_files[2].path == pathlib.Path().cwd() / '_test/source-b.txt'
+    assert log.out_files[2].md5 == '10ef82451bb3e854b122e68897d3b0a2'
+
+
 def test_explicit_in_out_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip', 'empty.file'])
