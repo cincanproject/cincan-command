@@ -114,13 +114,22 @@ class TarTool:
             # remove non-matching files
             candidates = filth.filter_download_files(candidates, self.work_dir)
 
-        out_files = []
-        for f in candidates:
-            log = self.__download_file_maybe(f)
-            out_files.extend(log)
-        return out_files
+        # write to a tar?
+        explicit_file = None
+        try:
+            if self.explicit_file == '-':
+                explicit_file = tarfile.open(mode="w|", fileobj=sys.stdout.buffer)
+            elif self.explicit_file:
+                explicit_file = tarfile.open(self.explicit_file, "w")
+            out_files = []
+            for f in candidates:
+                log = self.__download_file_maybe(f, write_to=explicit_file)
+                out_files.extend(log)
+            return out_files
+        finally:
+            explicit_file and explicit_file.close()
 
-    def __download_file_maybe(self, file_name: str) -> List[FileLog]:
+    def __download_file_maybe(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
         host_file = pathlib.Path(
             (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
 
@@ -146,7 +155,19 @@ class TarTool:
             local_file = host_file.parent / tar_file.name
             md5 = ''
             timestamp = datetime.now()
-            if local_file == host_file and tar_file.isfile():
+            if write_to:
+                # write file to tar, calculate hash
+                with tempfile.TemporaryFile() as temp_file:
+                    tf_data = down_tar.extractfile(tar_file)
+                    md5 = read_with_hash(tf_data.read, temp_file.write)
+
+                    write_tf = tarfile.TarInfo(local_file.as_posix())
+                    write_tf.mtime = tar_file.mtime
+                    write_tf.mode = tar_file.mode
+                    write_tf.size = temp_file.tell()
+                    temp_file.seek(0)
+                    write_to.addfile(write_tf, fileobj=temp_file)
+            elif local_file == host_file and tar_file.isfile():
                 # this is the file we were looking for
                 if not host_file.exists():
                     # no local file or explicit output asked, this is too easy
@@ -183,13 +204,14 @@ class TarTool:
                             f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
                         host_file.unlink()
                         temp_file.rename(host_file)
-            elif not host_file.exists():
-                # must be a directory we need
-                self.logger.info(f"=> {local_file.as_posix()}/")
-                local_file.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.fromtimestamp(local_file.stat().st_mtime)
             else:
-                pass  # no action required
+                if not host_file.exists():
+                    # must be a directory we need
+                    self.logger.info(f"=> {local_file.as_posix()}/")
+                    local_file.mkdir(parents=True, exist_ok=True)
+                    timestamp = datetime.fromtimestamp(local_file.stat().st_mtime)
+                else:
+                    pass  # no action required
             out_files.append(FileLog(host_file.resolve(), md5, timestamp))
         tmp_tar.close()
         return out_files

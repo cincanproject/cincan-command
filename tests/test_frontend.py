@@ -94,6 +94,21 @@ def test_log_entries():
     assert log.out_files[2].md5 == '10ef82451bb3e854b122e68897d3b0a2'
 
 
+def test_output_to_tar():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['ab.zip'])
+    tool.output_tar = (work_dir / 'output.tar').as_posix()
+    log = tool.run(['unzip', '-d', '_test', '_test/ab.zip'])
+
+    with tarfile.open(work_dir / 'output.tar') as tarball:
+        tarball.extractall(path='_test')
+    assert (work_dir / "_test/source-a.txt").open().read() == 'Source A\n'
+    assert (work_dir / "_test/source-b.txt").open().read() == 'Source B\n'
+
+    assert tool.upload_files == ['_test', '_test/ab.zip']
+    assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
+
+
 def test_tar_input_log():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab_zip.tar'])

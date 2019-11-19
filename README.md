@@ -111,22 +111,29 @@ As files are copied around, you may ran out of disk space or
 experience long delays when working with large files. You should
 then consider running the dockerized tools without 'cincan' wrapper.
 
+### Providing input as tar file
+
+Instead of letting the tool to figure out the input files from command-line, you
+can provide the input files directly as tar-file.
+
+FIXME
+
 ### Input and output file filtering
 
 You can explicitly filter input files, which are copied to the container,
 and output files, which are copied from the container. This allows e.g.
 to avoid uploading files from output directory. The filtering is done
 by giving a glob-style pattern by run command arguments
-`--in` (or `-i`) for input file filtering
-and  `--out` (or `-o`) for output file filtering.
+`--in-filter` (or `-I`) for input file filtering
+and  `--out-filter` (or `-O`) for output file filtering.
 Negative filters for filtering-out files are prefixed with ^.
 
-| Argument          | Description |
-|-------------------|-------------|
-| --in pattern      | Match files to upload by the pattern |
-| --in ^pattern     | Filter out files to upload which match the pattern |
-| --out pattern     | Match files to download by the pattern |
-| --out ^pattern    | Filter out files to download which match the pattern |
+| Argument                 | Description |
+|--------------------------|-------------|
+| --in-filter pattern      | Match files to upload by the pattern |
+| --in-filter ^pattern     | Filter out files to upload which match the pattern |
+| --out-filter pattern     | Match files to download by the pattern |
+| --out-filter ^pattern    | Filter out files to download which match the pattern |
 
 FIXME: Still very weak description!
 
@@ -152,7 +159,7 @@ This can easily slow down your analysis a lot when many process
 files are copied around unnecessarily. You can address this by
 filtering out copying of files under `dump/` like this:
 
-    % cincan2 run --in "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
+    % cincan2 run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
     cincan/volatility: <= image.raw
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
