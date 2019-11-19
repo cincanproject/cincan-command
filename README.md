@@ -76,6 +76,8 @@ out, e.g.
 
     % cincan -q run cincan/tshark -r myfile.pcap -w result.pcap
 
+Please note that `-q` is before the `run` sub command.
+
 ### Limitations for input/output
 
 Output files are only fetched to the current directory and to it's sub directories.
@@ -83,7 +85,7 @@ This is a safety feature to block dockerized tools for overwriting
 arbitrary filesystem files.
 E.g. the following does not produce any output files to `/tmp`.
 
-    % cincan -q run cincan/tshark -r myfile.pcap -w /tmp/result.pcap
+    % cincan run cincan/tshark -r myfile.pcap -w /tmp/result.pcap
 
 However, depending on the WORKDIR value of the container, you may get
 unexpected files to current directory, such as `tmp/result.pcap`
