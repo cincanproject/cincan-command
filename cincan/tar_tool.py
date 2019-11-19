@@ -121,11 +121,10 @@ class TarTool:
         return out_files
 
     def __download_file_maybe(self, file_name: str) -> List[FileLog]:
-        down_file = pathlib.Path(file_name)
         host_file = pathlib.Path(
             (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
 
-        # get the tar ball for the files
+        # fetch the file from container in its own tar ball
         get_arc_start = timeit.default_timer()
         chunks, stat = self.container.get_archive(file_name)
         file_modified = self.__check_for_download(host_file, stat)
@@ -142,57 +141,55 @@ class TarTool:
         tmp_tar.seek(0)
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
         out_files = []
-        for tf in down_tar:
-            cont_file = pathlib.Path(down_file).parent / tf.name
-            if cont_file.as_posix() != file_name:
-                # trim away leading directories
-                continue
+        for tar_file in down_tar:
+            # Note, we trust all intermediate directories to be provided in the tar files
+            local_file = host_file.parent / tar_file.name
             md5 = ''
             timestamp = datetime.now()
-            if tf.isfile() and not host_file.exists():
-                # no local file or explicit output asked, this is too easy
-                self.logger.info(f"=> {host_file.as_posix()}")
-                tf_data = down_tar.extractfile(tf)
-                if host_file.parent:
-                    host_file.parent.mkdir(parents=True, exist_ok=True)
-                with host_file.open("wb") as f:
-                    md5 = read_with_hash(tf_data.read, f.write)
-            elif tf.isfile() and host_file.is_dir():
-                raise Exception(f"=> {host_file.as_posix()} failed, a directory with that name exists")
-            elif tf.isfile() and host_file.exists():
-                # compare by hash, if should override local file
-                tf_data = down_tar.extractfile(tf)
-                temp_file = pathlib.Path(host_file.as_posix() + '_TEMP')
-                self.logger.debug(f"creating temp file {temp_file.as_posix()}")
-
-                # calculate hash for file from tar, copy it to temp file
-                if host_file.parent:
-                    host_file.parent.mkdir(parents=True, exist_ok=True)
-                with temp_file.open("wb") as f:
-                    md5 = read_with_hash(tf_data.read, f.write)
-
-                # calculate hash for existing file
-                with host_file.open("rb") as f:
-                    host_digest = read_with_hash(f.read)
-
-                self.logger.info(f"=> {host_file.as_posix()}")
-                if md5 == host_digest:
-                    self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
-                    # The file is identical as uploaded, but timestamps tell different story.
-                    # Assuming it was created identical, adding the log entry
-                    temp_file.unlink()
+            if local_file == host_file and tar_file.isfile():
+                # this is the file we were looking for
+                if not host_file.exists():
+                    # no local file or explicit output asked, this is too easy
+                    self.logger.info(f"=> {host_file.as_posix()}")
+                    tf_data = down_tar.extractfile(tar_file)
+                    if host_file.parent:
+                        host_file.parent.mkdir(parents=True, exist_ok=True)
+                    with host_file.open("wb") as f:
+                        md5 = read_with_hash(tf_data.read, f.write)
                 else:
-                    self.logger.debug(f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
-                    host_file.unlink()
-                    temp_file.rename(host_file)
-            elif tf.isdir() and host_file.is_file():
-                raise Exception(f"mkdir {host_file.as_posix()} failed, a file with that name exists")
-            elif tf.isdir() and host_file.is_dir():
+                    # compare by hash, if should override local file
+                    tf_data = down_tar.extractfile(tar_file)
+                    temp_file = pathlib.Path(host_file.as_posix() + '_TEMP')
+                    self.logger.debug(f"creating temp file {temp_file.as_posix()}")
+
+                    # calculate hash for file from tar, copy it to temp file
+                    if host_file.parent:
+                        host_file.parent.mkdir(parents=True, exist_ok=True)
+                    with temp_file.open("wb") as f:
+                        md5 = read_with_hash(tf_data.read, f.write)
+
+                    # calculate hash for existing file
+                    with host_file.open("rb") as f:
+                        host_digest = read_with_hash(f.read)
+
+                    self.logger.info(f"=> {host_file.as_posix()}")
+                    if md5 == host_digest:
+                        self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
+                        # The file is identical as uploaded, but timestamps tell different story.
+                        # Assuming it was created identical, adding the log entry
+                        temp_file.unlink()
+                    else:
+                        self.logger.debug(
+                            f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
+                        host_file.unlink()
+                        temp_file.rename(host_file)
+            elif not host_file.exists():
+                # must be a directory we need
+                self.logger.info(f"=> {local_file.as_posix()}/")
+                local_file.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.fromtimestamp(local_file.stat().st_mtime)
+            else:
                 pass  # no action required
-            elif tf.isdir():
-                self.logger.info(f"=> {host_file.as_posix()}/")
-                host_file.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.fromtimestamp(host_file.stat().st_mtime)
             out_files.append(FileLog(host_file.resolve(), md5, timestamp))
         tmp_tar.close()
         return out_files
