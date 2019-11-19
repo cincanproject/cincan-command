@@ -77,7 +77,8 @@ class FileMatcher:
 
 
 class FileResolver:
-    def __init__(self, args: List[str], directory: pathlib.Path, input_filters: List[FileMatcher] = None):
+    def __init__(self, args: List[str], directory: pathlib.Path, do_resolve: bool = True,
+                 input_filters: List[FileMatcher] = None):
         self.original_args = args
         self.directory = directory
 
@@ -87,12 +88,13 @@ class FileResolver:
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
 
-        # autodetect input files
-        self.__analyze()
+        if do_resolve:
+            # autodetect input files
+            self.__analyze()
 
-        # exclude files by filters, perhaps?
-        for filth in input_filters or []:
-            self.host_files = filth.filter_upload_files(self.host_files)
+            # exclude files by filters, perhaps?
+            for filth in input_filters or []:
+                self.host_files = filth.filter_upload_files(self.host_files)
 
     def __analyze(self):
         self.command_args = []

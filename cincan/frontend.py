@@ -74,6 +74,7 @@ class ToolImage(CommandRunner):
             self.context = '.'  # not really correct, but will do
         else:
             raise Exception("No file nor image specified")
+        self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
@@ -109,7 +110,7 @@ class ToolImage(CommandRunner):
         container.start()
 
         # upload files to container
-        tar_tool = TarTool(self.logger, container, self.upload_stats)
+        tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
         return container
@@ -134,7 +135,7 @@ class ToolImage(CommandRunner):
             buf.extend(r)
         return s_type, buf
 
-    def __container_exec(self, container, cmd_args: List[str]) -> CommandLog:
+    def __container_exec(self, container, cmd_args: List[str], read_stdin: bool) -> CommandLog:
         """Execute a command in the container"""
         # create the full command line and run with exec
         entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
@@ -148,7 +149,7 @@ class ToolImage(CommandRunner):
 
         log = CommandLog([self.name] + user_cmd)
 
-        stdin_s = ToolStream(sys.stdin)
+        stdin_s = ToolStream(sys.stdin) if read_stdin else None
         stdout_s = ToolStream(sys.stdout.buffer)
         stderr_s = ToolStream(sys.stderr.buffer)
 
@@ -217,17 +218,17 @@ class ToolImage(CommandRunner):
 
         # collect raw data
         if self.buffer_output:
-            log.stdin = bytes(stdin_s.raw)
-            log.stdout = bytes(stdout_s.raw)
-            log.stderr = bytes(stderr_s.raw)
+            log.stdin = bytes(stdin_s.raw) if stdin_s else b''
+            log.stdout = bytes(stdout_s.raw) if stdout_s else b''
+            log.stderr = bytes(stderr_s.raw) if stderr_s else b''
 
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
-            if stdin_s.data_length:
+            if stdin_s and stdin_s.data_length:
                 log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
-            if stdout_s.data_length:
+            if stdout_s and stdout_s.data_length:
                 log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
-            if stderr_s.data_length:
+            if stderr_s and stderr_s.data_length:
                 log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
 
         return log
@@ -235,7 +236,8 @@ class ToolImage(CommandRunner):
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
         # resolve files to upload
-        resolver = FileResolver(args, pathlib.Path.cwd(), input_filters=self.input_filters)
+        resolver = FileResolver(args, pathlib.Path.cwd(), do_resolve=not self.input_tar,
+                                input_filters=self.input_filters)
         upload_files = {}
         cmd_args = resolver.resolve_upload_files(upload_files)
         for h_file, a_name in upload_files.items():
@@ -246,7 +248,7 @@ class ToolImage(CommandRunner):
         container = self.__create_container(upload_files, in_files)
         log = CommandLog([])
         try:
-            log = self.__container_exec(container, cmd_args)
+            log = self.__container_exec(container, cmd_args, read_stdin=(self.input_tar != '-'))
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
@@ -309,7 +311,10 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
-    sub_parser.add_argument('-i', '--in', action='append', dest='in_filter', nargs='?',
+    sub_parser.add_argument('-i', '--in', dest='input_tar', nargs='?',
+                            help='Provide the input files to load unfiltered into the container working directory')
+
+    sub_parser.add_argument('-I', '--in-filter', action='append', dest='in_filter', nargs='?',
                             help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-o', '--out', action='append', dest='out_filter', nargs='?',
                             help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
@@ -363,8 +368,13 @@ def main():
             tool = ToolImage(name, path=args.path)
         else:
             tool = ToolImage(name)  # should raise exception
+        tool.input_tar = args.input_tar if args.input_tar else None
         tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
         tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
+
+        if tool.input_tar and tool.input_filters:
+            raise Exception("Cannot specify input filters with input tar file")
+
         all_args = args.tool[1:]
 
         if args.sub_command == 'test':

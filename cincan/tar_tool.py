@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 import hashlib
 import io
@@ -15,10 +16,12 @@ from cincan.file_tool import FileMatcher
 
 
 class TarTool:
-    def __init__(self, logger: Logger, container: Container, upload_stats: Dict[str, List]):
+    def __init__(self, logger: Logger, container: Container, upload_stats: Dict[str, List],
+                 explicit_file: Optional[str] = None):
         self.logger = logger
         self.container = container
         self.upload_stats = upload_stats
+        self.explicit_file = explicit_file
         self.time_format_seconds = "%Y-%m-%dT%H:%M:%S"
 
         self.work_dir: str = container.image.attrs['Config'].get('WorkingDir', '.') or '/'
@@ -26,8 +29,36 @@ class TarTool:
             self.work_dir += '/'
 
     def upload(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]):
-        if not upload_files:
-            return
+        if not self.explicit_file and not upload_files:
+            return  # nothing to upload
+
+        if self.explicit_file:
+            # tar file provided, use it as-it-is
+            if self.explicit_file == '-':
+                tar_content = sys.stdin.buffer.read()
+            else:
+                explicit_file = pathlib.Path(self.explicit_file)
+                with explicit_file.open("rb") as f:
+                    tar_content = f.read()
+
+            with tarfile.open(fileobj=io.BytesIO(tar_content), mode="r") as tar:
+                for m in tar.getmembers():
+                    self.logger.debug(f"checking in file {m.name}")
+                    self.upload_stats[m.name] = [m.size, m.mtime]  # [size, mtime]
+                    if not m.isfile():
+                        continue
+                    m_fileobj = tar.extractfile(m)
+                    m_file = pathlib.Path(m.name)
+                    m_md5 = read_with_hash(m_fileobj.read)
+                    in_files.append(
+                        FileLog(m_file.resolve(), m_md5, datetime.fromtimestamp(m.mtime)))
+        else:
+            tar_content = self.__create_tar(upload_files, in_files)
+        put_arc_start = timeit.default_timer()
+        self.container.put_archive(path=self.work_dir, data=tar_content)
+        self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
+
+    def __create_tar(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]) -> bytes:
         file_out = io.BytesIO()
         tar = tarfile.open(mode="w", fileobj=file_out)
 
@@ -65,10 +96,7 @@ class TarTool:
             else:
                 raise Exception(f"Cannot upload file of unknown type {arc_name}")
         tar.close()
-
-        put_arc_start = timeit.default_timer()
-        self.container.put_archive(path=self.work_dir, data=file_out.getvalue())
-        self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
+        return file_out.getvalue()
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
         # check all modified (includes the ones we uploaded)
