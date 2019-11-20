@@ -187,11 +187,17 @@ class ToolRegistry:
 
     def list_tools_registry(self) -> Dict[str, ToolInfo]:
         """List tools from registry with help of local cache"""
+
         # Get fresh list of tools from remote registry
-        fresh_resp = requests.get(self.registry_url + "/repositories/cincan/?page_size=1000")
-        if fresh_resp.status_code != 200:
+        fresh_resp = None
+        try:
+            fresh_resp = requests.get(self.registry_url + "/repositories/cincan/?page_size=1000")
+        except requests.ConnectionError as e:
+            self.logger.warning(e)
+
+        if fresh_resp and fresh_resp.status_code != 200:
             self.logger.error("Error getting list of remote tools, code: {}".format(fresh_resp.status_code))
-        else:
+        elif fresh_resp:
             # get a images JSON, form new tool list
             fresh_json = json.loads(fresh_resp.content)
             tool_list = {}
