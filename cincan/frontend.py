@@ -370,10 +370,11 @@ def main():
         sys.tracebacklimit = 0  # avoid track traces unless debugging
     logging.basicConfig(format='%(name)s: %(message)s', level=getattr(logging, log_level))
 
-    if args.sub_command == 'help':
+    sub_command = args.sub_command
+    if sub_command == 'help':
         m_parser.print_help()
         sys.exit(1)
-    elif args.sub_command in {'run', 'test'}:
+    elif sub_command in {'run', 'test'}:
         if len(args.tool) == 0:
             raise Exception('Missing tool name argument')
         name = args.tool[0]
@@ -392,7 +393,7 @@ def main():
             raise Exception("Cannot specify input filters with input tar file")
 
         all_args = args.tool[1:]
-        if args.sub_command == 'test':
+        if sub_command == 'test':
             check = ContainerCheck(tool)
             tool.logger.info("# {} {}".format(','.join(tool.get_tags()), registry.format_time(tool.get_creation_time())))
             log = check.run(all_args)
@@ -408,14 +409,14 @@ def main():
         if log.stderr:
             sys.stderr.buffer.write(log.stderr)
         sys.exit(log.exit_code)  # exit code
-    elif args.sub_command in {'fanin', 'fanout'}:
+    elif sub_command in {'fanin', 'fanout'}:
         inspector = CommandInspector(CommandLogIndex(), pathlib.Path().resolve())
-        if args.sub_command == 'fanout':
+        if sub_command == 'fanout':
             res = inspector.fanout(pathlib.Path(args.file).resolve())
         else:
             res = inspector.fanin(pathlib.Path(args.file).resolve())
         print(res)
-    elif args.sub_command == 'manifest':
+    elif sub_command == 'manifest':
         # sub command 'manifest'
         if len(args.tool) == 0:
             raise Exception('Missing tool name argument')
@@ -423,7 +424,7 @@ def main():
         reg = registry.ToolRegistry()
         info = reg.fetch_manifest(name)
         print(json.dumps(info, indent=2))
-    else:
+    elif sub_command == 'list':
         format_str = "{0:<25}"
         if args.tags:
             format_str += " {4:<20}"
@@ -434,3 +435,5 @@ def main():
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
+    else:
+        raise Exception(f"Unexpected sub command '{sub_command}")
