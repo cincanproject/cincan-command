@@ -366,7 +366,10 @@ def main():
         args = m_parser.parse_args(args=['help'])
 
     log_level = args.log_level if args.log_level else ('WARNING' if args.quiet else 'INFO')
+    if log_level not in {'DEBUG'}:
+        sys.tracebacklimit = 0  # avoid track traces unless debugging
     logging.basicConfig(format='%(name)s: %(message)s', level=getattr(logging, log_level))
+
     if args.sub_command == 'help':
         m_parser.print_help()
         sys.exit(1)
