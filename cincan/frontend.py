@@ -392,9 +392,9 @@ def main():
             raise Exception("Cannot specify input filters with input tar file")
 
         all_args = args.tool[1:]
-
         if args.sub_command == 'test':
             check = ContainerCheck(tool)
+            tool.logger.info("# {} {}".format(','.join(tool.get_tags()), registry.format_time(tool.get_creation_time())))
             log = check.run(all_args)
         else:
             log = tool.run(all_args)
