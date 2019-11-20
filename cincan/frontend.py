@@ -111,7 +111,7 @@ class ToolImage(CommandRunner):
         container.start()
 
         # kludge, lets show work directory in tests
-        work_dir = container.image.attrs['Config'].get('WorkingDir') or '-'
+        work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
             self.logger.info(f"Workdir: {work_dir}")
 
