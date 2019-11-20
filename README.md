@@ -15,7 +15,7 @@ The command program is then installed using pip for Python 3:
 
     % FIXME
 
-If you invoke the command with `sudo` the command `cincan` should be added to your path.
+If you invoke the pip installation with `sudo` the command `cincan` should be added to your path.
 Otherwise, you may need to do that yourself.
 
 NOTE: You may want to install the tool into `virtualenv` to avoid conflicts with
@@ -111,13 +111,6 @@ As files are copied around, you may ran out of disk space or
 experience long delays when working with large files. You should
 then consider running the dockerized tools without 'cincan' wrapper.
 
-### Providing input as tar file
-
-Instead of letting the tool to figure out the input files from command-line, you
-can provide the input files directly as tar-file.
-
-FIXME
-
 ### Input and output file filtering
 
 You can explicitly filter input files, which are copied to the container,
@@ -164,6 +157,28 @@ filtering out copying of files under `dump/` like this:
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
 
+### Providing tool input as tar file
+
+Instead of letting the tool to figure out the input files from command-line, you
+can provide the input files directly as tar-file. When this is done,
+the tool does not try to apply any logic for down to upload files, so you
+have the full control. You cannot use input file filtering with this approach.
+
+The input tar file is specified with option `--in` (or `-i` ) and
+you can provide a file or use `-` to read from standard input. For example:
+
+    % tar c myfile.pcap | cincan run --in - cincan/tshark -r myfile.pcap
+
+### Getting tool output as tar file
+
+You can also request the tool output files in a tar container. This
+is done with argument `--out` (or `-o`). You can provide for the argument
+either a file name or `-`for standard output. You can also apply output
+file filtering to limit the number of files copied into the output tar archive.
+
+For example, the following should write file `output.tar`
+
+    % cincan run --out output.tar cincan/tshark -r myfile.pcap -w output.pcap
 
 ## Invoking tool without 'cincan' wrapper
 
