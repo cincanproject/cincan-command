@@ -348,8 +348,6 @@ def main():
     image_default_args(test_parser)
 
     list_parser = subparsers.add_parser('list')
-    list_parser.add_argument('-i', '--in', dest='input', action='store_true', help='Show input formats')
-    list_parser.add_argument('-o', '--out', action='store_true', help='Show output formats')
     list_parser.add_argument('-t', '--tags', action='store_true', help='Show tags')
 
     mani_parser = subparsers.add_parser('manifest')
@@ -427,10 +425,6 @@ def main():
         print(json.dumps(info, indent=2))
     else:
         format_str = "{0:<25}"
-        if args.input:
-            format_str += " {2:<30}"
-        if args.out:
-            format_str += " {3:<30}"
         if args.tags:
             format_str += " {4:<20}"
         format_str += " {1}"
