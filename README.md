@@ -187,16 +187,3 @@ For example, you wish to provide the files through mounts for their size
 rather using the copy approach.
 
 Good luck with that! (seriously, no pun intended)
-
-## Tool log
-
-FIXME
-
-## Requirements for the dockerized tools
-
-FIXME
-
-## Testing a tool image
-
-FIXME
-
