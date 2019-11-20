@@ -20,6 +20,7 @@ import docker.errors
 from cincan import registry
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
+from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
@@ -45,6 +46,7 @@ class ToolImage(CommandRunner):
                  pull: bool = False,
                  tag: Optional[str] = None,
                  rm: bool = True):
+        self.config = Configuration()
         self.logger = logging.getLogger(name)
         self.client = docker.from_env()
         self.loaded_image = False  # did we load the image?
@@ -400,8 +402,9 @@ def main():
             log = tool.run(all_args)
 
         if log.exit_code == 0:
-            log_writer = CommandLogWriter()
-            log_writer.write(log)
+            if tool.config.is_command_log():
+                log_writer = CommandLogWriter()
+                log_writer.write(log)
         if log.stdout:
             sys.stdout.buffer.write(log.stdout)
         if log.stderr:
