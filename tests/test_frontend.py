@@ -76,6 +76,18 @@ def test_many_output_files():
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
+def test_log_stdout():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['ab.zip'])
+    log = tool.run(['echo', 'abc'])
+    assert tool.upload_files == []
+    assert tool.download_files == []
+
+    assert len(log.out_files) == 1
+    assert log.out_files[0].path == pathlib.Path('/dev/stdout')
+    assert log.out_files[0].md5 == '0bee89b07a248e27c83fc3d5951213c1'
+
+
 def test_log_entries():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip'])
