@@ -13,7 +13,7 @@ Consult your system documentation how to install them.
 
 The command program is then installed using pip for Python 3:
 
-    % FIXME
+    % sudo pip install git+https://gitlab.com/CinCan/cincan-command
 
 If you invoke the pip installation with `sudo` the command `cincan` should be added to your path.
 Otherwise, you may need to do that yourself.
