@@ -1,2 +1,6 @@
 .idea
 Pipfile.lock
+build
+dist
+*.egg-info
+_test/
