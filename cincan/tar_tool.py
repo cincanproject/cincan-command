@@ -1,11 +1,10 @@
-import sys
-from datetime import datetime
-import hashlib
 import io
 import pathlib
+import sys
 import tarfile
 import tempfile
 import timeit
+from datetime import datetime
 from logging import Logger
 from typing import Dict, Optional, List
 

@@ -1,16 +1,14 @@
 import argparse
 import hashlib
 import io
-import select
-import struct
-import threading
-import time
-from datetime import datetime
 import json
 import logging
 import pathlib
-import sys
+import select
 import socket
+import struct
+import sys
+from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
@@ -27,6 +25,7 @@ from cincan.tar_tool import TarTool
 
 
 class ToolStream:
+    """Handle stream to or from the container"""
     def __init__(self, stream: IOBase):
         self.data_length = 0
         self.md5 = hashlib.md5()
@@ -124,6 +123,7 @@ class ToolImage(CommandRunner):
         return container
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
+        """Unpack bytes coming from container stream"""
         buf = bytearray()
         while len(buf) < 8:
             r = c_socket.read(8 - len(buf))
@@ -309,13 +309,6 @@ class ToolImage(CommandRunner):
         """Remove this image"""
         self.client.images.remove(self.get_id())
 
-def tool_with_file(file: str, use_tag: Optional[bool] = True) -> ToolImage:
-    path = pathlib.Path(file).parent.name
-    tag = None
-    if use_tag:
-        tag = 'test_{}'.format(path)
-    return ToolImage(name=path, path=path, tag=tag)
-
 
 def image_default_args(sub_parser):
     """Default arguments for sub commands which load docker image"""
@@ -335,6 +328,7 @@ def image_default_args(sub_parser):
 
 
 def main():
+    """Parse command line and run the tool"""
     m_parser = argparse.ArgumentParser()
     m_parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                           help="Set the logging level", default=None)

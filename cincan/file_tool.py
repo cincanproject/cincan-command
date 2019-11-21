@@ -1,12 +1,10 @@
 import pathlib
 import re
-from datetime import datetime
 from typing import List, Optional, Dict, Set, Tuple, Iterable
-
-from cincan.command_log import FileLog, read_with_hash
 
 
 class FileMatcher:
+    """Match files based on a pattern"""
     def __init__(self, match_string: str, include: bool):
         self.match_string = match_string
         self.exact = '*' not in match_string
@@ -15,6 +13,7 @@ class FileMatcher:
 
     @classmethod
     def parse(cls, match_strings: List[str]) -> List['FileMatcher']:
+        """Parse pattens from a list"""
         res = []
         for m in match_strings:
             if m.startswith('^'):
@@ -24,14 +23,16 @@ class FileMatcher:
         return res
 
     def filter_upload_files(self, files: List[pathlib.Path]) -> List[pathlib.Path]:
-        return list(filter(lambda f: self.match(f.as_posix()) == self.include, files))
+        """Filter uploaded files by this pattern"""
+        return list(filter(lambda f: self.__match(f.as_posix()) == self.include, files))
 
     def filter_download_files(self, files: List[str], work_dir: str) -> List[str]:
+        """Filter downloaded files by this pattern"""
         if self.absolute_path:
             # matching absolute files
             res = []
             for file in files:
-                if self.match(file) == self.include:
+                if self.__match(file) == self.include:
                     res.append(file)
             return res
         else:
@@ -44,11 +45,12 @@ class FileMatcher:
                     if not self.include:
                         res.append(file)
                     continue
-                if self.match(rel_file) == self.include:
+                if self.__match(rel_file) == self.include:
                     res.append(file)
             return res
 
-    def match(self, value: str) -> bool:
+    def __match(self, value: str) -> bool:
+        """Match value with this pattern"""
         if self.exact:
             return self.match_string == value
         split = self.match_string.split("*")
@@ -77,6 +79,7 @@ class FileMatcher:
 
 
 class FileResolver:
+    """Resolve files from command line arguments"""
     def __init__(self, args: List[str], directory: pathlib.Path, do_resolve: bool = True,
                  input_filters: List[FileMatcher] = None):
         self.original_args = args
@@ -97,6 +100,7 @@ class FileResolver:
                 self.host_files = filth.filter_upload_files(self.host_files)
 
     def __analyze(self):
+        """Analyze the command line"""
         self.command_args = []
         file_set = set()
         for o_arg in self.original_args:
@@ -130,6 +134,7 @@ class FileResolver:
             self.command_args.append(''.join(c_args))
 
     def __include_sub_dirs(self, files: Iterable[pathlib.Path], file_set: Set[pathlib.Path]):
+        """Include files from sub directories"""
         for f in files:
             if f not in file_set:
                 self.host_files.append(f)
@@ -138,6 +143,7 @@ class FileResolver:
                 self.__include_sub_dirs(f.iterdir(), file_set)
 
     def resolve_upload_files(self, upload_files: Dict[pathlib.Path, str]):
+        """Resolve the files to upload"""
         for up_file in self.detect_upload_files():
             host_file, arc_name = self.__archive_name_for(up_file)
             upload_files[host_file] = arc_name
@@ -145,6 +151,7 @@ class FileResolver:
         return cmd_args
 
     def detect_upload_files(self, files: Optional[Iterable[pathlib.Path]] = None) -> List[pathlib.Path]:
+        """Detect files to upload"""
         it_files = sorted(self.host_files) if files is None else files
         res = []
         for file in it_files:
@@ -168,6 +175,7 @@ class FileResolver:
 
     @classmethod
     def __archive_name_for(cls, file: pathlib.Path) -> Tuple[pathlib.Path, str]:
+        """Resolve host file and archive name for uploaded file"""
         if cls.__use_absolute_path(file):
             h_file = file.resolve()
             a_file = file.resolve().as_posix().replace(':', '_')  # 'C:/jee' -> 'C_/jee'
@@ -179,5 +187,6 @@ class FileResolver:
 
     @classmethod
     def __use_absolute_path(cls, file: pathlib.Path) -> bool:
+        """Should use absolute path to refer a file path?"""
         # - use absolute paths, if /../ used (ok, quite weak)
         return file.is_absolute() or (".." in file.as_posix())

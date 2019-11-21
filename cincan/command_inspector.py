@@ -7,6 +7,7 @@ from cincan.command_log import CommandLogIndex, CommandLog, JSON_TIME_FORMAT, qu
 
 
 class FileDependency:
+    """File dependency information for command log"""
     def __init__(self, file: pathlib.Path, digest: str, out:bool):
         self.file = file
         self.digest = digest
@@ -21,6 +22,7 @@ class FileDependency:
 
 
 class CommandDependency:
+    """Command dependency information for command log"""
     def __init__(self, command: CommandLog, out:bool):
         self.command = command
         self.out = out
@@ -34,6 +36,7 @@ class CommandDependency:
 
 
 class CommandInspector:
+    """Inspector for doing analysis based on command log"""
     def __init__(self, log: CommandLogIndex, work_dir: pathlib.Path):
         self.log = log
         self.work_dir = work_dir

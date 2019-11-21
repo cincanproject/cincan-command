@@ -9,7 +9,7 @@ JSON_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
 
 def quote_args(args: Iterable[str]) -> List[str]:
-    """Quote the arguments which contain whitespaces (only for printing)"""
+    """Quote the arguments which contain whitespaces"""
     r = []
     for arg in args:
         if any(map(lambda c: c in string.whitespace, arg)):
@@ -20,6 +20,7 @@ def quote_args(args: Iterable[str]) -> List[str]:
 
 
 def read_with_hash(read_more, write_to: Optional = None) -> str:
+    """Read data from stream, calculate hash, optionally write the data to stream"""
     md5sum = hashlib.md5()
     chunk = read_more(2048)
     while chunk:
@@ -31,6 +32,7 @@ def read_with_hash(read_more, write_to: Optional = None) -> str:
 
 
 class FileLog:
+    """Command log entry for a file"""
     def __init__(self, path: pathlib.Path, md5: str, timestamp: Optional[datetime] = None):
         self.path = path
         self.md5 = md5
@@ -58,6 +60,7 @@ class FileLog:
 
 
 class CommandLog:
+    """Command log entry"""
     def __init__(self, command: List[str], timestamp: datetime = datetime.now()):
         self.command = command
         self.timestamp = timestamp
@@ -97,6 +100,7 @@ class CommandLog:
 
 
 class CommandLogBase:
+    """Command log reader/writer base class"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'logs'
         self.log_directory.mkdir(parents=True, exist_ok=True)
@@ -104,6 +108,7 @@ class CommandLogBase:
 
 
 class CommandLogWriter(CommandLogBase):
+    """Command log writer"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         super().__init__(log_directory)
 
@@ -119,6 +124,7 @@ class CommandLogWriter(CommandLogBase):
 
 
 class CommandLogIndex(CommandLogBase):
+    """Command log index for reading command log"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         super().__init__(log_directory)
         self.array = self.__read_log()

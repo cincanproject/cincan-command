@@ -5,6 +5,7 @@ from cincan.command_log import CommandLog, CommandRunner
 
 
 class ContainerCheck(CommandRunner):
+    """Check container for suitability for use with this tool"""
     def __init__(self, tool: CommandRunner):
         self.tool = tool
 
