@@ -111,11 +111,51 @@ As files are copied around, you may ran out of disk space or
 experience long delays when working with large files. You should
 then consider running the dockerized tools without 'cincan' wrapper.
 
+### Avoid uploading content from output directories
+
+On many cases tools write files into an output directory and you may 
+run the tool several times to produce many files to the output directory.
+However, as 'cincan' does not know which files are output and which are input,
+it repeatedly copies also the output files from the previous runs to container.
+This may process may slow down your work and requires extra disk space.
+
+This is avoided by using run argument `--mkdir` (or `-d`) to explicitly
+create output directory into container without copying over any possible 
+content.
+
+For example, consider the tool 'volatility' which expects you to
+give an output dump directory when extracting process data, e.g.
+the following extracts the memory dump of process 123 to directory `dump/`
+
+    % cincan2 run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 123
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: => dump/123.dmp
+
+However, if you extract again you notice that the already extracted file
+gets copied into the container as potential input file:
+
+    % cincan2 run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 456
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: <= dump/123.dmp
+    cincan/volatility: => dump/456.dmp
+
+This can easily slow down your analysis a lot when many process
+files are copied around unnecessarily. You can address this by
+explicitly creating `dump/` directory to the container this way:
+
+    % cincan2 run -d dump cincan/volatility -f image.raw --dump-dir dump/ memdump -p 789
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: => dump/789.dmp
+
+You can provide many directories to create by separating them by a comma.
+
 ### Input and output file filtering
 
 You can explicitly filter input files, which are copied to the container,
-and output files, which are copied from the container. This allows e.g.
-to avoid uploading files from output directory. The filtering is done
+and output files, which are copied from the container. The filtering is done
 by giving a glob-style pattern by run command arguments
 `--in-filter` (or `-I`) for input file filtering
 and  `--out-filter` (or `-O`) for output file filtering.
@@ -130,27 +170,10 @@ Negative filters for filtering-out files are prefixed with ^.
 
 FIXME: Still very weak description!
 
-For example, consider the tool 'volatility' which expects you to
-give an output dump directory when extracting process data, e.g.
-the following extracts the memory dump of process 123 to directory `dump/`
-
-    % cincan2 run cincan/volatility -f image.raw --dump-dir dump memdump -p 123
-    cincan/volatility: <= image.raw
-    cincan/volatility: <= dump
-    cincan/volatility: => dump/123.dmp
-
-However, if you extract again you notice that the already extracted file
-gets copied into the container as potential input file:
-
-    % cincan2 run cincan/volatility -f image.raw --dump-dir dump memdump -p 456
-    cincan/volatility: <= image.raw
-    cincan/volatility: <= dump
-    cincan/volatility: <= dump/123.dmp
-    cincan/volatility: => dump/456.dmp
-
-This can easily slow down your analysis a lot when many process
-files are copied around unnecessarily. You can address this by
-filtering out copying of files under `dump/` like this:
+For example, consider the previous case with
+tool 'volatility'.
+An alternative approach would be to filter out 
+copying of files under `dump/` like this:
 
     % cincan2 run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
     cincan/volatility: <= image.raw

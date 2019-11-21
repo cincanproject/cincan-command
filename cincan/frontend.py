@@ -78,6 +78,7 @@ class ToolImage(CommandRunner):
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
+        self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
 
@@ -248,7 +249,7 @@ class ToolImage(CommandRunner):
         """Run native tool in container with given arguments"""
         # resolve files to upload
         resolver = FileResolver(args, pathlib.Path.cwd(), do_resolve=not self.input_tar,
-                                input_filters=self.input_filters)
+                                output_dirs=self.output_dirs, input_filters=self.input_filters)
         upload_files = {}
         cmd_args = resolver.resolve_upload_files(upload_files)
         for h_file, a_name in upload_files.items():
@@ -316,6 +317,9 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
+    sub_parser.add_argument('-d', '--mkdir', dest='output_dirs', nargs='?',
+                            help='Empty output directories to create, separate by comma if many required')
+
     sub_parser.add_argument('-i', '--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
     sub_parser.add_argument('-o', '--out', dest='output_tar', nargs='?',
@@ -380,6 +384,7 @@ def main():
             tool = ToolImage(name)  # should raise exception
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None
+        tool.output_dirs = args.output_dirs.split(",") if args.output_dirs else []
         tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
         tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
 

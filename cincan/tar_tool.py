@@ -1,4 +1,5 @@
 import io
+import os
 import pathlib
 import sys
 import tarfile
@@ -67,35 +68,46 @@ class TarTool:
 
         for host_file, arc_name in upload_files.items():
             self.logger.info("<= %s", host_file.as_posix())
-            tar_file = tar.gettarinfo(host_file, arcname=arc_name)
 
-            h_parent = host_file.parent
+            # create all directories leading to the file, unless already added
             a_parent = pathlib.Path(arc_name).parent
             while a_parent and a_parent.as_posix() != '.':
                 if a_parent not in dirs:
                     dirs.add(a_parent)
-                    p_file = tar.gettarinfo(h_parent, arcname=a_parent.as_posix())  # copy permissions
-                    tar.addfile(p_file)
-                h_parent = h_parent.parent
+                    tar.addfile(self.__new_directory(a_parent.as_posix()))
                 a_parent = a_parent.parent
 
-            self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
-            if host_file.is_file():
-                # put file to tar
-                with host_file.open("rb") as f:
-                    tar.addfile(tar_file, fileobj=f)
-                # create log entry
-                with host_file.open("rb") as f:
-                    file_md5 = read_with_hash(f.read)
-                in_files.append(
-                    FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(host_file.stat().st_mtime)))
-            elif host_file.is_dir():
-                tar_file.type = tarfile.DIRTYPE
-                tar.addfile(tar_file)
+            if not host_file.exists():
+                # no host file, must be explicitly added directory for output
+                tar.addfile(self.__new_directory(arc_name))
             else:
-                raise Exception(f"Cannot upload file of unknown type {arc_name}")
+                tar_file = tar.gettarinfo(host_file, arcname=arc_name)
+                self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
+                if host_file.is_file():
+                    # put file to tar
+                    with host_file.open("rb") as f:
+                        tar.addfile(tar_file, fileobj=f)
+                    # create log entry
+                    with host_file.open("rb") as f:
+                        file_md5 = read_with_hash(f.read)
+                    in_files.append(
+                        FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(host_file.stat().st_mtime)))
+                elif host_file.is_dir():
+                    # add directory to tar
+                    tar.addfile(tar_file)
+                else:
+                    raise Exception(f"Cannot upload file of unknown type {arc_name}")
         tar.close()
         return file_out.getvalue()
+
+    @classmethod
+    def __new_directory(cls, name: str) -> tarfile.TarInfo:
+        p_file = tarfile.TarInfo(name)
+        p_file.type = tarfile.DIRTYPE
+        p_file.uid = os.getuid()
+        p_file.gid = os.getgid()
+        p_file.mode = 504  # 770
+        return p_file
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
         # check all modified (includes the ones we uploaded)

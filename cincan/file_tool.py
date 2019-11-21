@@ -80,8 +80,8 @@ class FileMatcher:
 
 class FileResolver:
     """Resolve files from command line arguments"""
-    def __init__(self, args: List[str], directory: pathlib.Path, do_resolve: bool = True,
-                 input_filters: List[FileMatcher] = None):
+    def __init__(self, args: List[str], directory: pathlib.Path, output_dirs: List[str] = None,
+                 do_resolve: bool = True, input_filters: List[FileMatcher] = None):
         self.original_args = args
         self.directory = directory
 
@@ -90,6 +90,11 @@ class FileResolver:
 
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
+
+        # these are output directories, upload them without contents
+        for dir in output_dirs or []:
+            self.host_files.append(pathlib.Path(dir))
+        self.output_dirs = set([pathlib.Path(d) for d in (output_dirs or [])])
 
         if do_resolve:
             # autodetect input files
@@ -102,7 +107,7 @@ class FileResolver:
     def __analyze(self):
         """Analyze the command line"""
         self.command_args = []
-        file_set = set()
+        already_listed: Set[pathlib.Path] = self.output_dirs.copy()
         for o_arg in self.original_args:
             split = list(filter(lambda s: s, self.arg_pattern.split(o_arg)))
             c_args = []
@@ -120,16 +125,16 @@ class FileResolver:
 
                 if o_included:
                     h_file, a_name = self.__archive_name_for(o_file)
-                    if h_file not in file_set:
+                    if h_file not in already_listed:
                         self.host_files.append(h_file)
-                        file_set.add(h_file)
+                        already_listed.add(h_file)
                     c_args.append(a_name)
                 else:
                     c_args.append(part)
 
-                if o_included and o_file.is_dir():
+                if o_included and o_file.is_dir() and o_file not in self.output_dirs:
                     # include files in sub directories
-                    self.__include_sub_dirs(o_file.iterdir(), file_set)
+                    self.__include_sub_dirs(o_file.iterdir(), already_listed)
 
             self.command_args.append(''.join(c_args))
 
@@ -154,9 +159,12 @@ class FileResolver:
         """Detect files to upload"""
         it_files = sorted(self.host_files) if files is None else files
         res = []
+
+        # filter out files which do not exist nor should exists
         for file in it_files:
-            if file.exists():
+            if file.exists() or file in self.output_dirs:
                 res.append(file)
+
         if files is None:
             # make sure also paths leading to output files are uploaded
             all_dirs = set()

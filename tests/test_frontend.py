@@ -68,6 +68,16 @@ def test_input_directory():
     assert tool.download_files == []
 
 
+def test_output_mkdir():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', ['source-b.txt', 'source-a.txt'])
+    tool.output_dirs = ['_test', '_test/a_test']
+    out = tool.run_get_string(['ls', '-1', '_test'])
+    assert out == 'a_test\n'
+    assert tool.upload_files == ['_test', '_test/a_test']
+    assert tool.download_files == ['_test/a_test']
+
+
 def test_many_output_files():
     tool = ToolImage(image='cincan/env', rm=False)
     work_dir = prepare_work_dir('_test', ['ab.zip'])
