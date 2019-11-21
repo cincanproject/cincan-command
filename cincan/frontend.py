@@ -317,8 +317,8 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
 
-    sub_parser.add_argument('-d', '--mkdir', dest='output_dirs', nargs='?',
-                            help='Empty output directories to create, separate by comma if many required')
+    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
+                            help='Force an empty directory to container')
 
     sub_parser.add_argument('-i', '--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
@@ -384,7 +384,7 @@ def main():
             tool = ToolImage(name)  # should raise exception
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None
-        tool.output_dirs = args.output_dirs.split(",") if args.output_dirs else []
+        tool.output_dirs = args.output_dir or []
         tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
         tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
 

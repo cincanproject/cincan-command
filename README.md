@@ -150,7 +150,7 @@ explicitly creating `dump/` directory to the container this way:
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
 
-You can provide many directories to create by separating them by a comma.
+You can provide the argument many times to create multiple directories.
 
 ### Input and output file filtering
 
