@@ -143,4 +143,4 @@ class CommandLogIndex(CommandLogBase):
 
 class CommandRunner:
     def run(self, args: List[str]) -> CommandLog:
-        raise NotImplemented()
+        raise NotImplementedError()
