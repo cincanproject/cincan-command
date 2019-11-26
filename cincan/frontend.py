@@ -83,6 +83,7 @@ class ToolImage(CommandRunner):
         self.output_filters: Optional[List[FileMatcher]] = None
 
         self.network_mode: Optional[str] = None  # docker run --network=<value>
+        self.user: Optional[str] = None  # docker run --user=<value>
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -112,10 +113,13 @@ class ToolImage(CommandRunner):
 
         if self.network_mode:
             self.logger.debug(f"option network={self.network_mode}")
+        if self.user:
+            self.logger.debug(f"option user={self.user}")
 
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
-                                                  stdin_open=True, tty=True, network_mode=self.network_mode)
+                                                  stdin_open=True, tty=True, network_mode=self.network_mode,
+                                                  user=self.user)
         container.start()
 
         # kludge, lets show work directory in tests
@@ -323,6 +327,7 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
     sub_parser.add_argument('--network', nargs='?', help='Container network (same as docker run --network)')
+    sub_parser.add_argument('--user', nargs='?', help='User in container (same as docker run --user)')
 
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
@@ -399,6 +404,7 @@ def main():
             raise Exception("Cannot specify input filters with input tar file")
 
         tool.network_mode = args.network
+        tool.user = args.user
 
         all_args = args.tool[1:]
         if sub_command == 'test':
