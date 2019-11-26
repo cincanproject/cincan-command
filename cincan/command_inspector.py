@@ -1,9 +1,9 @@
 import hashlib
 import pathlib
 from io import TextIOBase
-from typing import Dict, Optional, List, Tuple, Set
+from typing import Optional, List, Tuple, Set
 
-from cincan.command_log import CommandLogIndex, CommandLog, JSON_TIME_FORMAT, quote_args
+from cincan.command_log import CommandLogIndex, CommandLog, quote_args
 
 
 class FileDependency:
