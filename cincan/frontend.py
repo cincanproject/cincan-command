@@ -82,6 +82,8 @@ class ToolImage(CommandRunner):
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
 
+        self.network_mode: Optional[str] = None  # docker run --network=<value>
+
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
         self.upload_files: List[str] = []
@@ -107,9 +109,13 @@ class ToolImage(CommandRunner):
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
+
+        if self.network_mode:
+            self.logger.debug(f"option network={self.network_mode}")
+
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
-                                                  stdin_open=True, tty=True)
+                                                  stdin_open=True, tty=True, network_mode=self.network_mode)
         container.start()
 
         # kludge, lets show work directory in tests
@@ -316,6 +322,7 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
+    sub_parser.add_argument('--network', nargs='?', help='Container network (same as docker run --network)')
 
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
@@ -390,6 +397,8 @@ def main():
 
         if tool.input_tar and tool.input_filters:
             raise Exception("Cannot specify input filters with input tar file")
+
+        tool.network_mode = args.network
 
         all_args = args.tool[1:]
         if sub_command == 'test':
