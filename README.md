@@ -107,13 +107,9 @@ This may become problem e.g. when you must give the command
 and output directory which contains a lot of data already and
 all that data gets (unnecessarily) copied to the container.
 
-As files are copied around, you may ran out of disk space or
-experience long delays when working with large files. You should
-then consider running the dockerized tools without 'cincan' wrapper.
-
 ### Avoid uploading content from output directories
 
-On many cases tools write files into an output directory and you may 
+On many cases a tool writes files into an output directory and you may
 run the tool several times to produce many files to the output directory.
 However, as 'cincan' does not know which files are output and which are input,
 it repeatedly copies also the output files from the previous runs to container.
@@ -168,8 +164,6 @@ Negative filters for filtering-out files are prefixed with ^.
 | --out-filter pattern     | Match files to download by the pattern |
 | --out-filter ^pattern    | Filter out files to download which match the pattern |
 
-FIXME: Still very weak description!
-
 For example, consider the previous case with
 tool 'volatility'.
 An alternative approach would be to filter out 
@@ -184,7 +178,7 @@ copying of files under `dump/` like this:
 
 Instead of letting the tool to figure out the input files from command-line, you
 can provide the input files directly as tar-file. When this is done,
-the tool does not try to apply any logic for down to upload files, so you
+the tool does not try to apply any logic to upload files, so you
 have the full control. You cannot use input file filtering with this approach.
 
 The input tar file is specified with option `--in` (or `-i` ) and
@@ -205,8 +199,11 @@ For example, the following should write file `output.tar`
 
 ## Invoking tool without 'cincan' wrapper
 
-Sometimes you cannot use the services provided by the 'cincan' frontend.
-For example, you wish to provide the files through mounts for their size
-rather using the copy approach.
+Sometimes you cannot use the services provided by the 'cincan' frontend. 
+For example, as files are copied around you may ran out of disk space or
+experience long delays when working with large files. An another reason
+might be use of some 'docker' options which are not available in the
+'cincan' tool.
 
 Good luck with that! (seriously, no pun intended)
+Please consult Docker documentation for details.
