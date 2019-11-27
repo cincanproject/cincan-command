@@ -123,7 +123,7 @@ For example, consider the tool 'volatility' which expects you to
 give an output dump directory when extracting process data, e.g.
 the following extracts the memory dump of process 123 to directory `dump/`
 
-    % cincan2 run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 123
+    % cincan run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 123
     cincan/volatility: <= image.raw
     cincan/volatility: <= dump
     cincan/volatility: => dump/123.dmp
@@ -131,7 +131,7 @@ the following extracts the memory dump of process 123 to directory `dump/`
 However, if you extract again you notice that the already extracted file
 gets copied into the container as potential input file:
 
-    % cincan2 run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 456
+    % cincan run cincan/volatility -f image.raw --dump-dir dump/ memdump -p 456
     cincan/volatility: <= image.raw
     cincan/volatility: <= dump
     cincan/volatility: <= dump/123.dmp
@@ -141,7 +141,7 @@ This can easily slow down your analysis a lot when many process
 files are copied around unnecessarily. You can address this by
 explicitly creating `dump/` directory to the container this way:
 
-    % cincan2 run -d dump cincan/volatility -f image.raw --dump-dir dump/ memdump -p 789
+    % cincan run -d dump cincan/volatility -f image.raw --dump-dir dump/ memdump -p 789
     cincan/volatility: <= image.raw
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
@@ -169,7 +169,7 @@ tool 'volatility'.
 An alternative approach would be to filter out 
 copying of files under `dump/` like this:
 
-    % cincan2 run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
+    % cincan run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
     cincan/volatility: <= image.raw
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
