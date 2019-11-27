@@ -162,8 +162,11 @@ class ToolImage(CommandRunner):
         stdout_s = ToolStream(sys.stdout.buffer) if write_stdout else None
         stderr_s = ToolStream(sys.stderr.buffer)
 
+        is_tty = sys.stdin.isatty()
+        self.logger.debug(f"exec tty={is_tty}")
+
         # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=read_stdin)
+        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=read_stdin, tty=is_tty)
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
         c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
