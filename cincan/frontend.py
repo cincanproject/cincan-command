@@ -82,6 +82,11 @@ class ToolImage(CommandRunner):
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
 
+        self.network_mode: Optional[str] = None  # docker run --network=<value>
+        self.user: Optional[str] = None  # docker run --user=<value>
+        self.cap_add: List[str] = []  # docker run --cap-add=<value>
+        self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
+
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
         self.upload_files: List[str] = []
@@ -107,9 +112,20 @@ class ToolImage(CommandRunner):
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
+
+        if self.network_mode:
+            self.logger.debug(f"option network={self.network_mode}")
+        if self.user:
+            self.logger.debug(f"option user={self.user}")
+        if self.cap_add:
+            self.logger.debug("option cap-add={}".format(",".join(self.cap_add)))
+        if self.cap_drop:
+            self.logger.debug("option cap-drop={}".format(",".join(self.cap_drop)))
+
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
-                                                  stdin_open=True, tty=True)
+                                                  stdin_open=True, tty=True, network_mode=self.network_mode,
+                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop)
         container.start()
 
         # kludge, lets show work directory in tests
@@ -319,6 +335,12 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
+    sub_parser.add_argument('--network', nargs='?', help='Container network (same as docker run --network)')
+    sub_parser.add_argument('--user', nargs='?', help='User in container (same as docker run --user)')
+    sub_parser.add_argument('--cap-add', action='append', dest='cap_add', nargs='?',
+                            help='Add Linux capability, use many times if required')
+    sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
+                            help='Drop Linux capability, use many times if required')
 
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
@@ -393,6 +415,11 @@ def main():
 
         if tool.input_tar and tool.input_filters:
             raise Exception("Cannot specify input filters with input tar file")
+
+        tool.network_mode = args.network
+        tool.user = args.user
+        tool.cap_add = args.cap_add
+        tool.cap_drop = args.cap_drop
 
         all_args = args.tool[1:]
         if sub_command == 'test':
