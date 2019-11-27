@@ -8,6 +8,7 @@ docker = "~=4.1"
 
 [dev-packages]
 pytest = "*"
+twine = "*"
 
 [requires]
 python_version = "3.6"
