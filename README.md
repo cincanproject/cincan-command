@@ -209,15 +209,15 @@ The following table lists all command-line options available for the run -sub co
 
 | Option                  |    | Description |
 |-------------------------|----|-------------|
-| --in <tar-file>         | -i | Upload input to container in a tar |
-| --out <tar-file>        | -o | Download output files from container to a tar|
-| --in-filter  <pattern>  | -I | Filter input files, prefix ^ to negate the filter|
-| --out-filter <pattern>  | -O | Filter output files, prefix ^ to negate the filter
-| --mkdir <directory>     | -d | Mark output directory, not uploaded as input
-| --network <value>       |    | Network to connect (see help of docker run --network)|
-| --user <name>           |    | User to run with (see help of docker run --user)|
-| --cap-add <CAP>         |    | Add kernel capability (see help of docker run --cap-add)|
-| --cap-drop <CAP>        |    | Drop kernel capability (see help of docker run --cap-drop)|
+| --in tar-file           | -i | Upload input to container in a tar |
+| --out tar-file          | -o | Download output files from container to a tar|
+| --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter|
+| --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
+| --mkdir directory       | -d | Mark output directory, not uploaded as input
+| --network value         |    | Network to connect (see help of docker run --network)|
+| --user name             |    | User to run with (see help of docker run --user)|
+| --cap-add CAP           |    | Add kernel capability (see help of docker run --cap-add)|
+| --cap-drop CAP          |    | Drop kernel capability (see help of docker run --cap-drop)|
 
 ## Invoking tool without 'cincan' wrapper
 
