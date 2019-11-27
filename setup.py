@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='cincan',
+    name='cincan-command',
     version='0.2.0',
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@gmail.com",
