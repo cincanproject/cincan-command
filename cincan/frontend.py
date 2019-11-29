@@ -178,7 +178,7 @@ class ToolImage(CommandRunner):
         stdout_s = ToolStream(sys.stdout.buffer) if write_stdout else None
         stderr_s = ToolStream(sys.stderr.buffer)
 
-        is_tty = sys.stdin.isatty()
+        is_tty = sys.stdout.isatty()  # follow stdout, as stdout and stderr are returned the same with TTY
         self.logger.debug(f"exec tty={is_tty}")
 
         # execute the command, collect stdin and stderr
