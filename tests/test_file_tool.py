@@ -85,3 +85,32 @@ def test_exclude_input():
                             input_filters=[FileMatcher('samples/source-b.txt', include=True)])
     assert resolver.command_args == ['--in', 'README.md', '--out', 'samples']
     assert resolver.detect_upload_files() == [pathlib.Path('samples/source-b.txt')]
+
+
+def test_with_existing_directory():
+    assert pathlib.Path('tests/').is_dir()  # pre-requisite for testing
+
+    # Issue #11 - Cincan-command eats uphill '/' from command
+    resolver = FileResolver(['-o', 'tests/%n'], pathlib.Path())
+    assert resolver.command_args == ['-o', 'tests/%n']
+    assert len(resolver.detect_upload_files()) > 2
+
+    resolver = FileResolver(['-o', 'no_tests/%n'], pathlib.Path())
+    assert resolver.command_args == ['-o', 'no_tests/%n']
+    assert len(resolver.detect_upload_files()) == 0
+
+    resolver = FileResolver(['-o', 'tests&%&'], pathlib.Path())
+    assert resolver.command_args == ['-o', 'tests&%&']
+    assert len(resolver.detect_upload_files()) > 2
+
+    resolver = FileResolver(['-o', 'tests///%n'], pathlib.Path())
+    assert resolver.command_args == ['-o', 'tests///%n']
+    assert len(resolver.detect_upload_files()) > 2
+
+    resolver = FileResolver(['-o', '/'], pathlib.Path())
+    assert resolver.command_args == ['-o', '/']
+    assert len(resolver.detect_upload_files()) == 0
+
+    resolver = FileResolver(['-o', '//'], pathlib.Path())
+    assert resolver.command_args == ['-o', '//']
+    assert len(resolver.detect_upload_files()) == 0
