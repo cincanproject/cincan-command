@@ -7,6 +7,7 @@ Added:
 
 Changed
 - Bugfix: Sometimes '/' in command line was stripped away
+- Bugfix: Output files prefixes to other output files not downloaded from container
 
 ## [0.2.1] 
 
