@@ -206,3 +206,13 @@ def test_input_filtering():
     assert out == 'ab.zip\n'
     assert tool.upload_files == ['_test', '_test/ab.zip']
     assert tool.download_files == []
+
+
+def test_download_prefix_files():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', [])
+    tool.output_dirs = ['_test/fuzzed']
+    r = tool.run(['sh', '-c', 'touch _test/fuzzed/a && touch _test/fuzzed/ab'])
+    assert r.exit_code == 0
+    assert tool.upload_files == ['_test/fuzzed']
+    assert tool.download_files == ['_test/fuzzed/a', '_test/fuzzed/ab']
