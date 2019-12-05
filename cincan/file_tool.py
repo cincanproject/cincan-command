@@ -114,7 +114,9 @@ class FileResolver:
             for part in split:
                 o_file = pathlib.Path(part)
 
-                o_included = o_file.exists()
+                # does file/dir exists? No attempt to copy '/', leave it as it is...
+                o_included = o_file.exists() and not all([c == '/' for c in part])
+
                 if not o_included and not o_file.is_absolute() and '..' not in o_file.as_posix():
                     # the file does not exist, but it is relative path to a file/directory...
                     o_parent = o_file.parent

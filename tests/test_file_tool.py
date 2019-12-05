@@ -106,3 +106,11 @@ def test_with_existing_directory():
     resolver = FileResolver(['-o', 'tests///%n'], pathlib.Path())
     assert resolver.command_args == ['-o', 'tests///%n']
     assert len(resolver.detect_upload_files()) > 2
+
+    resolver = FileResolver(['-o', '/'], pathlib.Path())
+    assert resolver.command_args == ['-o', '/']
+    assert len(resolver.detect_upload_files()) == 0
+
+    resolver = FileResolver(['-o', '//'], pathlib.Path())
+    assert resolver.command_args == ['-o', '//']
+    assert len(resolver.detect_upload_files()) == 0
