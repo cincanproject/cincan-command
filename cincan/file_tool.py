@@ -115,17 +115,17 @@ class FileResolver:
                 o_file = pathlib.Path(part)
 
                 # does file/dir exists? No attempt to copy '/', leave it as it is...
-                o_included = o_file.exists() and not all([c == '/' for c in part])
+                file_exists = o_file.exists() and not all([c == '/' for c in part])
 
-                if not o_included and not o_file.is_absolute() and '..' not in o_file.as_posix():
+                if not file_exists and not o_file.is_absolute() and '..' not in o_file.as_posix():
                     # the file does not exist, but it is relative path to a file/directory...
                     o_parent = o_file.parent
-                    while not o_included and o_parent and o_parent.as_posix() != '.':
+                    while not file_exists and o_parent and o_parent.as_posix() != '.':
                         if o_parent.is_dir() and o_parent not in self.host_files:
-                            o_included = True  # ...and there is existing parent directory, perhaps for output
+                            file_exists = True  # ...and there is existing parent directory, perhaps for output
                         o_parent = o_parent.parent
 
-                if o_included:
+                if file_exists:
                     h_file, a_name = self.__archive_name_for(o_file)
                     if h_file not in already_listed:
                         self.host_files.append(h_file)
@@ -141,7 +141,7 @@ class FileResolver:
                 else:
                     c_args.append(part)
 
-                if o_included and o_file.is_dir() and o_file not in self.output_dirs:
+                if file_exists and o_file.is_dir() and o_file not in self.output_dirs:
                     # include files in sub directories
                     self.__include_sub_dirs(o_file.iterdir(), already_listed)
 
