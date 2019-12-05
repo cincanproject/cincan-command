@@ -111,14 +111,23 @@ class TarTool:
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
         # check all modified (includes the ones we uploaded)
-        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])])
+        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
+                            reverse=True)
         # remove files which are paths to files
+        skip_set = set()
         for i, c in enumerate(candidates):
-            if i < len(candidates) - 1 and candidates[i + 1].startswith(c):
+            if c in skip_set:
                 candidates[i] = None
+                continue
+            c_parent = pathlib.Path(c).parent
+            while c_parent and c_parent.name:
+                skip_set.add(c_parent.as_posix())
+                c_parent = c_parent.parent
         candidates = list(filter(lambda s: s, candidates))
         # remove candidates which are not in working directory
         candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
+        # nicely sorted
+        candidates.sort()
 
         # filters?
         for filth in output_filters or []:
