@@ -128,6 +128,13 @@ class FileResolver:
                     if h_file not in already_listed:
                         self.host_files.append(h_file)
                         already_listed.add(h_file)
+
+                    # '/' in the end gets eaten away... fix
+                    for p in range(len(part) - 1, 0, -1):
+                        if part[p] != '/':
+                            break
+                        a_name += '/'
+
                     c_args.append(a_name)
                 else:
                     c_args.append(part)

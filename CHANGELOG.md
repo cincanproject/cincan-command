@@ -5,6 +5,9 @@
 Added:
 - Say something about supported platforms
 
+Changed
+- Bugfix: Sometimes '/' in command line was stripped away
+
 ## [0.2.1] 
 
 Changed
