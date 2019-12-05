@@ -1,5 +1,10 @@
 # Change log
 
+## [0.2.2]
+
+Added:
+- Say something about supported platforms
+
 ## [0.2.1] 
 
 Changed

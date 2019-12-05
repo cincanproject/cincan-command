@@ -5,6 +5,12 @@ use of the native command-line tools provided as docker images.
 
 :warning: Currently the tool is a proof-of-concept under construction.
 
+## Supported platforms
+
+The `cincan` tool should run on fairly modern Linux distributions.
+It is not tested on MacOS, but there should be no blocking issues in principle.
+On Windows `cincan` **noes not work**, unfortunately.
+
 ## Installation
 
 As prerequisite you must have installed `Docker` for running the tools,

@@ -321,10 +321,6 @@ class ToolImage(CommandRunner):
             v = i.values()
             self.logger.debug("{}".format(*v).strip())
 
-    def file_to_copy_from_context(self, file: str) -> str:
-        """Create path for sample file inside docker context (for unit testing) """
-        return str(pathlib.Path(self.context) / file)
-
     def remove_image(self):
         """Remove this image"""
         self.client.images.remove(self.get_id())
