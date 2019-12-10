@@ -216,3 +216,13 @@ def test_download_prefix_files():
     assert r.exit_code == 0
     assert tool.upload_files == ['_test/fuzzed']
     assert tool.download_files == ['_test/fuzzed/a', '_test/fuzzed/ab']
+
+
+def test_colon_in_file_name():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', [])
+    r = tool.run(['sh', '-c', 'echo Hello > "_test/file:0.txt"'])
+    assert r.exit_code == 0
+    assert tool.download_files == ['_test/file:0.txt']
+    with open("_test/file:0.txt") as f:
+        assert f.read() == 'Hello\n'
