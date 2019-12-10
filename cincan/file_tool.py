@@ -195,7 +195,7 @@ class FileResolver:
         """Resolve host file and archive name for uploaded file"""
         if cls.__use_absolute_path(file):
             h_file = file.resolve()
-            a_file = file.resolve().as_posix().replace(':', '_')  # 'C:/jee' -> 'C_/jee'
+            a_file = file.resolve().as_posix()
             a_file = a_file[1:] if a_file.startswith('/') else a_file
         else:
             h_file = file

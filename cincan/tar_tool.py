@@ -151,7 +151,7 @@ class TarTool:
 
     def __download_file_maybe(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
         host_file = pathlib.Path(
-            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
+            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name))
 
         # fetch the file from container in its own tar ball
         get_arc_start = timeit.default_timer()
