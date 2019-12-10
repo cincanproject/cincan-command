@@ -1,5 +1,10 @@
 # Change log
 
+## [0.2.3]
+
+Changed
+- Bugfix: Colons ':' in output files made output download to fail
+
 ## [0.2.2]
 
 Added:
