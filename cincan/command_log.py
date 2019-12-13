@@ -81,18 +81,18 @@ class CommandLog:
             'exit_code': self.exit_code,
         }
         if len(self.in_files) > 0:
-            js['in_files'] = [f.to_json() for f in self.in_files]
+            js['input'] = [f.to_json() for f in self.in_files]
         if len(self.out_files) > 0:
-            js['out_files'] = [f.to_json() for f in self.out_files]
+            js['output'] = [f.to_json() for f in self.out_files]
         return js
 
     @classmethod
     def from_json(cls, js: Dict[str, Any]) -> 'CommandLog':
         log = CommandLog(js['command'], datetime.strptime(js['timestamp'], JSON_TIME_FORMAT))
-        if 'in_files' in js:
-            log.in_files = [FileLog.from_json(fs) for fs in js['in_files']]
-        if 'out_files' in js:
-            log.out_files = [FileLog.from_json(fs) for fs in js['out_files']]
+        if 'input' in js:
+            log.in_files = [FileLog.from_json(fs) for fs in js['input']]
+        if 'output' in js:
+            log.out_files = [FileLog.from_json(fs) for fs in js['output']]
         return log
 
     def __repr__(self) -> str:
