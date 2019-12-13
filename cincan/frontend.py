@@ -28,13 +28,13 @@ class ToolStream:
     """Handle stream to or from the container"""
     def __init__(self, stream: IOBase):
         self.data_length = 0
-        self.md5 = hashlib.md5()
+        self.hash = hashlib.sha256()
         self.raw = bytearray()  # when collected
         self.stream = stream
 
     def update(self, data: bytes):
         self.data_length += len(data)
-        self.md5.update(data)
+        self.hash.update(data)
 
 
 class ToolImage(CommandRunner):
@@ -256,11 +256,11 @@ class ToolImage(CommandRunner):
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
             if stdin_s and stdin_s.data_length:
-                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
+                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.hash.hexdigest()))
             if stdout_s and stdout_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.hash.hexdigest()))
             if stderr_s and stderr_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.hash.hexdigest()))
 
         return log
 

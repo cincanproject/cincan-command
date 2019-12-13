@@ -21,36 +21,36 @@ def quote_args(args: Iterable[str]) -> List[str]:
 
 def read_with_hash(read_more, write_to: Optional = None) -> str:
     """Read data from stream, calculate hash, optionally write the data to stream"""
-    md5sum = hashlib.md5()
+    md = hashlib.sha256()
     chunk = read_more(2048)
     while chunk:
-        md5sum.update(chunk)
+        md.update(chunk)
         if write_to:
             write_to(chunk)
         chunk = read_more(2048)
-    return md5sum.hexdigest()
+    return md.hexdigest()
 
 
 class FileLog:
     """Command log entry for a file"""
-    def __init__(self, path: pathlib.Path, md5: str, timestamp: Optional[datetime] = None):
+    def __init__(self, path: pathlib.Path, digest: str, timestamp: Optional[datetime] = None):
         self.path = path
-        self.md5 = md5
+        self.digest = digest
         self.timestamp = timestamp
 
     def to_json(self) -> Dict[str, Any]:
         js = {
             'path': self.path.as_posix()
         }
-        if self.md5:
-            js['md5'] = self.md5
+        if self.digest:
+            js['digest'] = self.digest
         if self.timestamp:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
         return js
 
     @classmethod
     def from_json(cls, js: Dict[str, Any]) -> 'FileLog':
-        log = FileLog(pathlib.Path(js['path']), js.get('md5', ''))
+        log = FileLog(pathlib.Path(js['path']), js.get('digest', ''))
         if 'timestamp' in js:
             log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
         return log
