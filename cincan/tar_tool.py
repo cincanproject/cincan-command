@@ -49,9 +49,9 @@ class TarTool:
                         continue
                     m_fileobj = tar.extractfile(m)
                     m_file = pathlib.Path(m.name)
-                    m_md5 = read_with_hash(m_fileobj.read)
+                    m_md = read_with_hash(m_fileobj.read)
                     in_files.append(
-                        FileLog(m_file.resolve(), m_md5, datetime.fromtimestamp(m.mtime)))
+                        FileLog(m_file.resolve(), m_md, datetime.fromtimestamp(m.mtime)))
         else:
             tar_content = self.__create_tar(upload_files, in_files)
         put_arc_start = timeit.default_timer()
@@ -89,9 +89,9 @@ class TarTool:
                         tar.addfile(tar_file, fileobj=f)
                     # create log entry
                     with host_file.open("rb") as f:
-                        file_md5 = read_with_hash(f.read)
+                        file_md = read_with_hash(f.read)
                     in_files.append(
-                        FileLog(host_file.resolve(), file_md5, datetime.fromtimestamp(host_file.stat().st_mtime)))
+                        FileLog(host_file.resolve(), file_md, datetime.fromtimestamp(host_file.stat().st_mtime)))
                 elif host_file.is_dir():
                     # add directory to tar
                     tar.addfile(tar_file)
@@ -173,13 +173,13 @@ class TarTool:
         for tar_file in down_tar:
             # Note, we trust all intermediate directories to be provided in the tar files
             local_file = host_file.parent / tar_file.name
-            md5 = ''
+            md = ''
             timestamp = datetime.now()
             if write_to:
                 # write file to tar, calculate hash
                 with tempfile.TemporaryFile() as temp_file:
                     tf_data = down_tar.extractfile(tar_file)
-                    md5 = read_with_hash(tf_data.read, temp_file.write)
+                    md = read_with_hash(tf_data.read, temp_file.write)
 
                     write_tf = tarfile.TarInfo(local_file.as_posix())
                     write_tf.mtime = tar_file.mtime
@@ -196,7 +196,7 @@ class TarTool:
                     if host_file.parent:
                         host_file.parent.mkdir(parents=True, exist_ok=True)
                     with host_file.open("wb") as f:
-                        md5 = read_with_hash(tf_data.read, f.write)
+                        md = read_with_hash(tf_data.read, f.write)
                 else:
                     # compare by hash, if should override local file
                     tf_data = down_tar.extractfile(tar_file)
@@ -207,21 +207,21 @@ class TarTool:
                     if host_file.parent:
                         host_file.parent.mkdir(parents=True, exist_ok=True)
                     with temp_file.open("wb") as f:
-                        md5 = read_with_hash(tf_data.read, f.write)
+                        md = read_with_hash(tf_data.read, f.write)
 
                     # calculate hash for existing file
                     with host_file.open("rb") as f:
                         host_digest = read_with_hash(f.read)
 
                     self.logger.info(f"=> {host_file.as_posix()}")
-                    if md5 == host_digest:
-                        self.logger.debug(f"identical file {host_file.as_posix()} md5 {md5}, no action")
+                    if md == host_digest:
+                        self.logger.debug(f"identical file {host_file.as_posix()} digest {md}, no action")
                         # The file is identical as uploaded, but timestamps tell different story.
                         # Assuming it was created identical, adding the log entry
                         temp_file.unlink()
                     else:
                         self.logger.debug(
-                            f"file {host_file.as_posix()} md5 in container {md5}, in host {host_digest}")
+                            f"file {host_file.as_posix()} digest in container {md}, in host {host_digest}")
                         host_file.unlink()
                         temp_file.rename(host_file)
             else:
@@ -232,7 +232,7 @@ class TarTool:
                     timestamp = datetime.fromtimestamp(local_file.stat().st_mtime)
                 else:
                     pass  # no action required
-            out_files.append(FileLog(host_file.resolve(), md5, timestamp))
+            out_files.append(FileLog(host_file.resolve(), md, timestamp))
         tmp_tar.close()
         return out_files
 
