@@ -43,14 +43,14 @@ class FileLog:
             'path': self.path.as_posix()
         }
         if self.digest:
-            js['digest'] = self.digest
+            js['sha256'] = self.digest
         if self.timestamp:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
         return js
 
     @classmethod
     def from_json(cls, js: Dict[str, Any]) -> 'FileLog':
-        log = FileLog(pathlib.Path(js['path']), js.get('digest', ''))
+        log = FileLog(pathlib.Path(js['path']), js.get('sha256', ''))
         if 'timestamp' in js:
             log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
         return log
