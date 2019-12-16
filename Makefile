@@ -27,6 +27,7 @@ upload: check-version dist
 check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	cat $(VERSION_LOCAL)
 	grep -v `cat $(VERSION_LOCAL)` $(VERSION_IN_PYPI)
+	grep -F "[`cat $(VERSION_LOCAL)`]" CHANGELOG.md
 
 $(VERSION_LOCAL): setup.py
 	mkdir -p $(dir $@)
