@@ -33,7 +33,9 @@ $(VERSION_LOCAL): setup.py
 	grep "version.*=" setup.py |  grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" > $@
 	cat $@
 
-$(VERSION_IN_PYPI):
+always-refresh:
+
+$(VERSION_IN_PYPI): always-refresh
 	mkdir -p $(dir $@)
 	pip3 search "cincan" | grep "cincan-command" |  grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" > $@
 	cat $@
