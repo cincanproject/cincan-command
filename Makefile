@@ -16,18 +16,21 @@ VERSION_LOCAL = build/version-local
 
 VERSION_IN_PYPI = build/version-in-pip
 
-build: check-version dist
+build: check-version unit-tests dist
 
 dist:
 	python3 setup.py sdist bdist_wheel
 
-upload: check-version dist
+upload: check-version unit-tests dist
 	python3 -m twine upload dist/*
 
 check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	cat $(VERSION_LOCAL)
 	grep -v `cat $(VERSION_LOCAL)` $(VERSION_IN_PYPI)
 	grep -F "[`cat $(VERSION_LOCAL)`]" CHANGELOG.md
+
+unit-tests:
+	pytest
 
 $(VERSION_LOCAL): setup.py
 	mkdir -p $(dir $@)
