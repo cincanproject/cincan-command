@@ -107,7 +107,8 @@ class ToolImage(CommandRunner):
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
         if pull:
-            self.client.images.pull(image)
+            name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
+            self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(image)
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
