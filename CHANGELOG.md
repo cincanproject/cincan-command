@@ -1,5 +1,10 @@
 # Change log
 
+## [0.2.4]
+
+Changed
+- Bugfix: Do not load **all** versions of an image, use the 'default' tag if none given
+
 ## [0.2.3]
 
 Changed
