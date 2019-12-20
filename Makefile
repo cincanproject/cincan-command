@@ -18,7 +18,8 @@ VERSION_IN_PYPI = build/version-in-pip
 
 build: check-version unit-tests dist
 
-dist:
+dist: CHANGELOG.md setup.py
+	rm -rf dist/
 	python3 setup.py sdist bdist_wheel
 
 upload: check-version unit-tests dist
