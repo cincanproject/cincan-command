@@ -2,6 +2,7 @@ import hashlib
 import json
 import pathlib
 import string
+import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Iterable
 
@@ -37,6 +38,8 @@ class FileLog:
         self.path = path
         self.digest = digest
         self.timestamp = timestamp
+        self.uid = uuid.uuid1()
+        print(self.uid)
 
     def to_json(self) -> Dict[str, Any]:
         js = {
@@ -46,6 +49,8 @@ class FileLog:
             js['sha256'] = self.digest
         if self.timestamp:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
+        if self.uid:
+            js['uid'] = str(self.uid)
         return js
 
     @classmethod
@@ -53,6 +58,8 @@ class FileLog:
         log = FileLog(pathlib.Path(js['path']), js.get('sha256', ''))
         if 'timestamp' in js:
             log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
+        if 'uid' in js:
+            log.id = js['uid']
         return log
 
     def __repr__(self) -> str:
