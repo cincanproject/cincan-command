@@ -39,7 +39,6 @@ class FileLog:
         self.digest = digest
         self.timestamp = timestamp
         self.uid = uuid.uuid1()
-        print(self.uid)
 
     def to_json(self) -> Dict[str, Any]:
         js = {
