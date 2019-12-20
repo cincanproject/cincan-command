@@ -1,5 +1,11 @@
 # Change log
 
+## [0.2.5]
+
+Changed
+- Bugfix: Give uploaded input files world-writeable permissions (777).
+  Otherwise containers with non-root users work only when host uid and container uid match.
+
 ## [0.2.4]
 
 Changed
