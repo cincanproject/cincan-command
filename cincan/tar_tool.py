@@ -82,6 +82,7 @@ class TarTool:
                 tar.addfile(self.__new_directory(arc_name))
             else:
                 tar_file = tar.gettarinfo(host_file, arcname=arc_name)
+                tar_file.mode = 511  # 777 - allow all to access (uid may be different in container)
                 self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
                 if host_file.is_file():
                     # put file to tar
@@ -106,7 +107,7 @@ class TarTool:
         p_file.type = tarfile.DIRTYPE
         p_file.uid = os.getuid()
         p_file.gid = os.getgid()
-        p_file.mode = 504  # 770
+        p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
