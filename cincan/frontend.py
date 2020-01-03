@@ -86,6 +86,7 @@ class ToolImage(CommandRunner):
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
         self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
+        self.runtime: Optional[str] = None # docker run --runtime=<value>
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -122,11 +123,14 @@ class ToolImage(CommandRunner):
             self.logger.debug("option cap-add={}".format(",".join(self.cap_add)))
         if self.cap_drop:
             self.logger.debug("option cap-drop={}".format(",".join(self.cap_drop)))
+        if self.runtime:
+            self.logger.debug(f"option runtime={self.runtime}")
 
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
                                                   stdin_open=True, tty=True, network_mode=self.network_mode,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop)
+                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                  runtime=self.runtime)
         container.start()
 
         # kludge, lets show work directory in tests
@@ -338,6 +342,7 @@ def image_default_args(sub_parser):
                             help='Add Linux capability, use many times if required')
     sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
                             help='Drop Linux capability, use many times if required')
+    sub_parser.add_argument('--runtime', nargs='?', help="Runtime to use with this container (same as docker run --runtime)")
 
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
@@ -417,6 +422,7 @@ def main():
         tool.user = args.user
         tool.cap_add = args.cap_add
         tool.cap_drop = args.cap_drop
+        tool.runtime = args.runtime
 
         all_args = args.tool[1:]
         if sub_command == 'test':
