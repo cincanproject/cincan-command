@@ -218,6 +218,7 @@ The following table lists all command-line options available for the run -sub co
 | --user name             |    | User to run with (see docker run --user)|
 | --cap-add CAP           |    | Add kernel capability (see docker run --cap-add)|
 | --cap-drop CAP          |    | Drop kernel capability (see docker run --cap-drop)|
+| --runtime               |    | Container runtime (see docker run --runtime)|
 
 ## Invoking tool without 'cincan' wrapper
 
