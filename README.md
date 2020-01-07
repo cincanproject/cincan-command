@@ -214,10 +214,10 @@ The following table lists all command-line options available for the run -sub co
 | --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter|
 | --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
 | --mkdir directory       | -d | Mark output directory, not uploaded as input
-| --network value         |    | Network to connect (see help of docker run --network)|
-| --user name             |    | User to run with (see help of docker run --user)|
-| --cap-add CAP           |    | Add kernel capability (see help of docker run --cap-add)|
-| --cap-drop CAP          |    | Drop kernel capability (see help of docker run --cap-drop)|
+| --network value         |    | Network to connect (see docker run --network)|
+| --user name             |    | User to run with (see docker run --user)|
+| --cap-add CAP           |    | Add kernel capability (see docker run --cap-add)|
+| --cap-drop CAP          |    | Drop kernel capability (see docker run --cap-drop)|
 
 ## Invoking tool without 'cincan' wrapper
 
