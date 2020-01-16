@@ -8,12 +8,20 @@ import select
 import socket
 import struct
 import sys
+import os
+import subprocess
+import shutil
+import uuid
+import getpass
+
+from distutils.dir_util import copy_tree
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
+
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -380,6 +388,9 @@ def main():
 
     help_parser = subparsers.add_parser('help')
 
+    commit_parser = subparsers.add_parser('commit')
+    image_default_args(commit_parser)
+
     if len(sys.argv) > 1:
         args = m_parser.parse_args(args=sys.argv[1:])
     else:
@@ -461,5 +472,30 @@ def main():
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
+    elif sub_command == 'commit':
+        repoPath = str(pathlib.Path.home() / 'projects' / 'cincan' / 'log-sharing' /'shared')
+     #   repoUrl = 'https://gitlab.com/CinCan/log-sharing.git'
+        directoryName = str(uuid.uuid3(uuid.NAMESPACE_DNS, getpass.getuser()))    
+        log_path = str(pathlib.Path.home() / '.cincan/shared')
+
+        #change working dir where logs lie. 
+        os.chdir(log_path)
+           
+        print("check if git exists in current directory")
+
+        if os.path.exists('.git'):
+            print("if git exists, pull repo")
+            subprocess.call(["git", "pull"])
+            print("Add, commit and push logs")
+            subprocess.call(["git", "add", str(directoryName + '/logs/*')])
+            subprocess.call(["git", "status"])
+            subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
+            subprocess.call(["git", "push"])      
+        else:
+            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder, type 'git init' and attach folder to remote repository for sharing logs")
+            print("git remote add origin https://gitlab.com/CinCan/log-sharing.git")
+            print("git branch --set-upstream-to=origin/master master")
+            # subprocess.call(["git", "init"])    
+
     else:
         raise Exception(f"Unexpected sub command '{sub_command}")
