@@ -241,6 +241,5 @@ def test_interactive_mode():
     """
     process = subprocess.Popen(['python', '-m', 'cincan', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = process.communicate(b'echo Hello, World!\n')
-    # assert errs == 1
     assert outs == b"Hello, World!\n"
     assert errs == b""
