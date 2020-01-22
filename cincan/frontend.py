@@ -90,8 +90,8 @@ class ToolImage(CommandRunner):
         self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
         self.runtime: Optional[str] = None # docker run --runtime=<value>
 
-        self.is_tty : bool = None
-        self.read_stdin : bool = None
+        self.is_tty : bool = False
+        self.read_stdin : bool = False
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
