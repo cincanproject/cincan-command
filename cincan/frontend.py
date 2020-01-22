@@ -369,6 +369,8 @@ def image_default_args(sub_parser):
                             help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-O', '--out-filter', action='append', dest='out_filter', nargs='?',
                             help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
+    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
+                            help='Force an empty directory to container')
 
     # Docker look-a-like settings for 'cincan run'
 
@@ -381,8 +383,6 @@ def image_default_args(sub_parser):
                             help='Drop Linux capability, use many times if required')
     sub_parser.add_argument('--runtime', nargs='?',
                             help="Runtime to use with this container (same as docker run --runtime)")
-    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
-                            help='Force an empty directory to container')
     sub_parser.add_argument('-i', '--interactive', action='store_true', help='Keep STDIN open even if not attached')
     sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY')
 
