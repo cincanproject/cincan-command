@@ -189,10 +189,10 @@ class ToolImage(CommandRunner):
 
         self.logger.debug(f"exec tty={self.is_tty}")
 
+        fd = sys.stdin.fileno()
         try:
             # Check for read_stdin to prevent user from getting stuck inside container with raw mode
             if self.is_tty and self.read_stdin:
-                fd = sys.stdin.fileno()
                 # Store old terminal settings e.g. text alignment and ctrl+c functionality
                 old_settings = termios.tcgetattr(fd)
                 # stdin as raw and unblocking, not waiting newline nor EOF, ctrl + c passed into container
