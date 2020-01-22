@@ -3,11 +3,17 @@ import shutil
 import tarfile
 import time
 from typing import List
-
+import io
 import pytest
-
+import subprocess
 from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
+
+@pytest.fixture(autouse=True)
+def disable_tty_interactive(monkeypatch):
+    """Mock stdin to make tty part of tests to complete"""
+    monkeypatch.setattr('sys.stdin', io.StringIO(''))
+    monkeypatch.setattr('sys.stdin.fileno', lambda : 0)
 
 
 def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
@@ -226,3 +232,14 @@ def test_colon_in_file_name():
     assert tool.download_files == ['_test/file:0.txt']
     with open("_test/file:0.txt") as f:
         assert f.read() == 'Hello\n'
+
+
+def test_interactive_mode():
+    """
+    Test interactive support with very simple commands by using subprocess
+    It seems to impossible to test code by just by using functions, should split it more
+    """
+    process = subprocess.Popen(['python', '-m', 'cincan', 'run', 'cincan/env', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    outs, errs = process.communicate(b'echo Hello, World!\n')
+    assert outs == b"Hello, World!\n"
+    assert errs == b""
