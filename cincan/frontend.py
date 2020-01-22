@@ -22,6 +22,7 @@ from typing import List, Set, Dict, Optional, Tuple
 import docker
 import docker.errors
 
+import pickle
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -473,9 +474,8 @@ def main():
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
     elif sub_command == 'commit':
-        repoPath = str(pathlib.Path.home() / 'projects' / 'cincan' / 'log-sharing' /'shared')
-     #   repoUrl = 'https://gitlab.com/CinCan/log-sharing.git'
-        directoryName = str(uuid.uuid3(uuid.NAMESPACE_DNS, getpass.getuser()))    
+        #file_pi2 = open('filename_pi.obj', 'rb') 
+        #directoryName = pickle.load(file_pi2)  
         log_path = str(pathlib.Path.home() / '.cincan/shared')
 
         #change working dir where logs lie. 
@@ -487,15 +487,16 @@ def main():
             print("if git exists, pull repo")
             subprocess.call(["git", "pull"])
             print("Add, commit and push logs")
-            subprocess.call(["git", "add", str(directoryName + '/logs/*')])
+            subprocess.call(["git", "add", "."])
             subprocess.call(["git", "status"])
             subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
             subprocess.call(["git", "push"])      
         else:
-            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder, type 'git init' and attach folder to remote repository for sharing logs")
+            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
+            print("type 'git init' and attach folder to remote repository for sharing logs")
             print("git remote add origin https://gitlab.com/CinCan/log-sharing.git")
+            print("git pull origin master")
             print("git branch --set-upstream-to=origin/master master")
-            # subprocess.call(["git", "init"])    
 
     else:
         raise Exception(f"Unexpected sub command '{sub_command}")

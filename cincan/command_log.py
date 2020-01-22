@@ -3,6 +3,7 @@ import json
 import pathlib
 import string
 import uuid
+import pickle
 import getpass
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Iterable
@@ -78,9 +79,6 @@ class CommandLog:
         self.in_files: List[FileLog] = []
         self.out_files: List[FileLog] = []
         self.uuid = str(uuid.uuid4())
-        print("WHEN INITING?!??!")
-        print(str(uuid.uuid3(uuid.NAMESPACE_DNS, getpass.getuser())))
-        print(getpass.getuser())
 
     def command_string(self) -> str:
         return " ".join(quote_args(self.command))
@@ -113,7 +111,10 @@ class CommandLog:
 class CommandLogBase:
     """Command log reader/writer base class"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
-        self.directoryName = str(uuid.uuid3(uuid.NAMESPACE_DNS, getpass.getuser()))
+        self.directoryName = str(uuid.uuid1())
+        file_pi = open('uuid.obj', 'wb') 
+        pickle.dump(self.directoryName, file_pi)
+        
         self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
         self.log_directory.mkdir(parents=True, exist_ok=True)
         self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
