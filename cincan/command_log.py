@@ -4,6 +4,7 @@ import pathlib
 import string
 import uuid
 import pickle
+import os
 import getpass
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Iterable
@@ -111,13 +112,22 @@ class CommandLog:
 class CommandLogBase:
     """Command log reader/writer base class"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
-        self.directoryName = str(uuid.uuid1())
-        file_pi = open('uuid.obj', 'wb') 
-        pickle.dump(self.directoryName, file_pi)
-        
+        self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
+
+        #check if .cincan contains uuid.obj, don't create new folder
+        if(os.path.isfile('uuid.obj')):
+            print("use the old folder")
+            file_pi2 = open('uuid.obj', 'rb')
+            self.directoryName = pickle.load(file_pi2)
+           # self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
+        else:
+            #create uuid.object and folder and such
+            self.directoryName = str(uuid.uuid1())
+            file_pi = open('uuid.obj', 'wb') 
+            pickle.dump(self.directoryName, file_pi)
+
         self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
         self.log_directory.mkdir(parents=True, exist_ok=True)
-        self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
 
 
 class CommandLogWriter(CommandLogBase):
