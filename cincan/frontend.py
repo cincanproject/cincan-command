@@ -22,7 +22,10 @@ from typing import List, Set, Dict, Optional, Tuple
 import docker
 import docker.errors
 
+<<<<<<< HEAD
 import pickle
+=======
+>>>>>>> 8906fe362b74a8186f6c342dbc253c6d30b60260
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -474,8 +477,10 @@ def main():
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
     elif sub_command == 'commit':
+
         #file_pi2 = open('filename_pi.obj', 'rb') 
-        #directoryName = pickle.load(file_pi2)  
+        #directoryName = pickle.load(file_pi2)
+#        repoPath = str(pathlib.Path.home() / 'projects' / 'cincan' / 'log-sharing' /'shared')
         log_path = str(pathlib.Path.home() / '.cincan/shared')
 
         #change working dir where logs lie. 
@@ -497,6 +502,5 @@ def main():
             print("git remote add origin https://gitlab.com/CinCan/log-sharing.git")
             print("git pull origin master")
             print("git branch --set-upstream-to=origin/master master")
-
     else:
         raise Exception(f"Unexpected sub command '{sub_command}")

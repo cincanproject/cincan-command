@@ -79,7 +79,6 @@ class CommandLog:
         self.stderr: Optional[bytes] = None
         self.in_files: List[FileLog] = []
         self.out_files: List[FileLog] = []
-        self.uuid = str(uuid.uuid4())
 
     def command_string(self) -> str:
         return " ".join(quote_args(self.command))
@@ -112,6 +111,7 @@ class CommandLog:
 class CommandLogBase:
     """Command log reader/writer base class"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
+        
         self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
 
         #check if .cincan contains uuid.obj, don't create new folder
