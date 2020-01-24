@@ -1,5 +1,12 @@
 # Change log
 
+## [0.2.6]
+
+- Bugfix: Piping input for tools should be working now
+- Added: Support for interactive tools, enabled with  `--interactive` (or `-i`)
+- Changed: Must explicitly enable container TTY with `--tty` (or `-t`)
+- Changed: For docker compatibility dropped the shorthand versions of `--in` and `--out` (`-i` and `-o`).
+
 ## [0.2.5]
 
 Changed
