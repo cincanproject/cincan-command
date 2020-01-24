@@ -3,29 +3,19 @@ import hashlib
 import io
 import json
 import logging
+import os
 import pathlib
 import select
 import socket
 import struct
-import sys
-import os
 import subprocess
-import shutil
-import uuid
-import getpass
-
-from distutils.dir_util import copy_tree
+import sys
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
-
-<<<<<<< HEAD
-import pickle
-=======
->>>>>>> 8906fe362b74a8186f6c342dbc253c6d30b60260
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
