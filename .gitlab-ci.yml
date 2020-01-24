@@ -6,6 +6,6 @@ unit-tests:
   image: "python:3-alpine"
   before_script:
     - pip3 install .
-    - pip3 intall -r test-requirements.txt
+    - pip3 install -r test-requirements.txt
   script:
     - pytest
