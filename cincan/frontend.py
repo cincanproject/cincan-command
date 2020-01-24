@@ -359,29 +359,32 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-    sub_parser.add_argument('--network', nargs='?', help='Container network (same as docker run --network)')
+
+    sub_parser.add_argument('--in', dest='input_tar', nargs='?',
+                            help='Provide the input files to load unfiltered into the container working directory')
+    sub_parser.add_argument('--out', dest='output_tar', nargs='?',
+                            help='Upload output files into specified tar archive')
+    sub_parser.add_argument('-I', '--in-filter', action='append', dest='in_filter', nargs='?',
+                            help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
+    sub_parser.add_argument('-O', '--out-filter', action='append', dest='out_filter', nargs='?',
+                            help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
+    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
+                            help='Force an empty directory to container')
+
+    # Docker look-a-like settings for 'cincan run'
+
+    sub_parser.add_argument('--network', nargs='?',
+                            help='Container network (same as docker run --network)')
     sub_parser.add_argument('--user', nargs='?', help='User in container (same as docker run --user)')
     sub_parser.add_argument('--cap-add', action='append', dest='cap_add', nargs='?',
                             help='Add Linux capability, use many times if required')
     sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
                             help='Drop Linux capability, use many times if required')
-    sub_parser.add_argument('--runtime', nargs='?', help="Runtime to use with this container (same as docker run --runtime)")
-
-    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
-                            help='Force an empty directory to container')
-    sub_parser.add_argument('--in', dest='input_tar', nargs='?',
-                            help='Provide the input files to load unfiltered into the container working directory')
-
-    sub_parser.add_argument('--out', dest='output_tar', nargs='?',
-                            help='Upload output files into specified tar archive')
-
-    sub_parser.add_argument('-I', '--in-filter', action='append', dest='in_filter', nargs='?',
-                            help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
-    sub_parser.add_argument('-O', '--out-filter', action='append', dest='out_filter', nargs='?',
-                            help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
-
+    sub_parser.add_argument('--runtime', nargs='?',
+                            help="Runtime to use with this container (same as docker run --runtime)")
     sub_parser.add_argument('-i', '--interactive', action='store_true', help='Keep STDIN open even if not attached')
     sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY')
+
 
 def main():
     """Parse command line and run the tool"""
