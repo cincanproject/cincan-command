@@ -149,17 +149,22 @@ class CommandLogIndex(CommandLogBase):
     """Command log index for reading command log"""
     def __init__(self, log_directory: Optional[pathlib.Path] = None):
         super().__init__(log_directory)
-        self.array = self.__read_log()
+        log_root = self.log_directory.parent or self.log_directory  # read log from all users
+        self.array = self.__read_log(log_root)
 
     def list_entries(self, reverse: bool = False) -> Iterable[CommandLog]:
         return sorted(self.array, key=lambda e: e.timestamp, reverse=reverse)
 
-    def __read_log(self) -> List[CommandLog]:
+    def __read_log(self, directory: pathlib.Path) -> List[CommandLog]:
         log_l = []
         for file in self.log_directory.iterdir():
-            with file.open('r') as f:
-                js = json.load(f)
-                log_l.append(CommandLog.from_json(js))
+            if file.is_dir():
+                # recursively go to sub d
+                log_l.extend(self.__read_log(file))
+            else:
+                with file.open('r') as f:
+                    js = json.load(f)
+                    log_l.append(CommandLog.from_json(js))
         return log_l
 
 
