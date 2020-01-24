@@ -230,7 +230,7 @@ radare2 should open `/bin/ls` file, and this can be analysed by typing `aaa` and
 
 The following table lists all command-line options available for the run -sub command:
 
-| `cincan` specific         |    | Description |
+| Specific to `cincan`    |    | Description |
 |-------------------------|----|-------------|
 | --in tar-file           |  | Upload input to container in a tar |
 | --out tar-file          |  | Download output files from container to a tar|
@@ -238,7 +238,7 @@ The following table lists all command-line options available for the run -sub co
 | --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
 | --mkdir directory       | -d | Mark output directory, not uploaded as input
 
-| Supported Docker run switches |   | Description
+| Similar to `docker run` |    | Description
 |-------------------------|----|-------------|
 | --tty                   | -t | Allocate a pseudo-TTY
 | --interactive           | -i | Keep STDIN open even if not attached
