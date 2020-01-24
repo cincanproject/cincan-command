@@ -5,7 +5,7 @@ unittests:
   stage: test
   image: "python:3-alpine"
   before_script:
-    - apk add gcc --no-cache
+    - apk add gcc musl-dev --no-cache
     - pip3 install .
     - pip3 install -r test-requirements.txt
   script:
