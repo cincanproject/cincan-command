@@ -374,16 +374,17 @@ def image_default_args(sub_parser):
     # Docker look-a-like settings for 'cincan run'
 
     sub_parser.add_argument('--network', nargs='?',
-                            help='Container network (same as docker run --network)')
-    sub_parser.add_argument('--user', nargs='?', help='User in container (same as docker run --user)')
+                            help='Container network (see docker run --help)')
+    sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
     sub_parser.add_argument('--cap-add', action='append', dest='cap_add', nargs='?',
-                            help='Add Linux capability, use many times if required')
+                            help='Add Linux capability, use many times if required (see docker run --help)')
     sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
-                            help='Drop Linux capability, use many times if required')
+                            help='Drop Linux capability, use many times if required (see docker run --help)')
     sub_parser.add_argument('--runtime', nargs='?',
-                            help="Runtime to use with this container (same as docker run --runtime)")
-    sub_parser.add_argument('-i', '--interactive', action='store_true', help='Keep STDIN open even if not attached')
-    sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY')
+                            help="Runtime to use with this container (see docker run --help)")
+    sub_parser.add_argument('-i', '--interactive', action='store_true',
+                            help='Keep STDIN open even if not attached (see docker run --help)')
+    sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
 
 
 def main():
