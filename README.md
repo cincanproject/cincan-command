@@ -208,7 +208,7 @@ For example, the following should write file `output.tar`
 
 We are using [radare2](https://gitlab.com/CinCan/tools/tree/master/radare2) as example here. Tool with interactive mode requires `--interactive` (or `-i`) and --tty (or `-t`) switches. Start radare2 disassembler for local file `/bin/ls` by running command:
 ```
-% cincan run  -it cincan/radare2 r2 /bin/ls
+% cincan run -it cincan/radare2 r2 /bin/ls
  cincan/radare2: <= /usr/bin/ls
  -- We are surrounded by the enemy. - Excellent, we can attack in any direction!
 [0x00005b10]> aaa
