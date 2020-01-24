@@ -499,7 +499,7 @@ def main():
         else:
             print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
             print("type 'git init' and attach folder to remote repository for sharing logs")
-            print("git remote add origin https://gitlab.com/CinCan/log-sharing.git")
+            print("git remote add origin git@gitlab.com:CinCan/log-sharing.git")
             print("git pull origin master")
             print("git branch --set-upstream-to=origin/master master")
     else:
