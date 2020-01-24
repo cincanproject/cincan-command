@@ -1,0 +1,11 @@
+stages:
+  - test
+
+unit-tests:
+  stage: test
+  image: "python:3-alpine"
+  before_script:
+    - pip3 install .
+    - pip3 intall -r test-requirements.txt
+  script:
+    - pytest
