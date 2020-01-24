@@ -369,8 +369,6 @@ def image_default_args(sub_parser):
 
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
-
-    # FIXME -i and -o missing 
     sub_parser.add_argument('--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
 

@@ -1,5 +1,10 @@
 # Change log
 
+## [0.2.6]
+
+- Bugfix: Piping input for tools should be working now.
+- Feature: Added support for interactive tools. Docker run switches `--interactive` (or `-i`)and `--tty` (or `-t`) must be explicitly defined for this to work. This feature also changed the arguments of `--in` and `--out`: shortened `-i` and `-o` removed.
+
 ## [0.2.5]
 
 Changed
