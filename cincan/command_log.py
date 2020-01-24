@@ -116,7 +116,6 @@ class CommandLogBase:
 
         #check if .cincan contains uuid.obj, don't create new folder
         if(os.path.isfile('uuid.obj')):
-            print("use the old folder")
             file_pi2 = open('uuid.obj', 'rb')
             self.directoryName = pickle.load(file_pi2)
            # self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
