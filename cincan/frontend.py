@@ -468,9 +468,6 @@ def main():
                                     ",".join(lst.tags)))
     elif sub_command == 'commit':
 
-        #file_pi2 = open('filename_pi.obj', 'rb') 
-        #directoryName = pickle.load(file_pi2)
-#        repoPath = str(pathlib.Path.home() / 'projects' / 'cincan' / 'log-sharing' /'shared')
         log_path = str(pathlib.Path.home() / '.cincan/shared')
 
         #change working dir where logs lie. 

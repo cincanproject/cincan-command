@@ -3,7 +3,6 @@ import json
 import pathlib
 import string
 import uuid
-import pickle
 import os
 import getpass
 from datetime import datetime
@@ -41,7 +40,6 @@ class FileLog:
         self.path = path
         self.digest = digest
         self.timestamp = timestamp
-        self.uid = uuid.uuid1()
 
     def to_json(self) -> Dict[str, Any]:
         js = {
@@ -51,8 +49,6 @@ class FileLog:
             js['sha256'] = self.digest
         if self.timestamp:
             js['timestamp'] = self.timestamp.strftime(JSON_TIME_FORMAT)
-        if self.uid:
-            js['uid'] = str(self.uid)
         return js
 
     @classmethod
@@ -60,8 +56,6 @@ class FileLog:
         log = FileLog(pathlib.Path(js['path']), js.get('sha256', ''))
         if 'timestamp' in js:
             log.timestamp = datetime.strptime(js['timestamp'], JSON_TIME_FORMAT)
-        if 'uid' in js:
-            log.id = js['uid']
         return log
 
     def __repr__(self) -> str:
@@ -114,18 +108,18 @@ class CommandLogBase:
         
         self.file_name_format = '%Y-%m-%d-%H-%M-%S-%f'
 
-        #check if .cincan contains uuid.obj, don't create new folder
-        if(os.path.isfile('uuid.obj')):
-            file_pi2 = open('uuid.obj', 'rb')
-            self.directoryName = pickle.load(file_pi2)
-           # self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
+        #check if .cincan contains uuid.string, don't create new folder
+        if(os.path.isfile(pathlib.Path.home() / '.cincan/uid.txt')):
+            with open(pathlib.Path.home() / '.cincan/uid.txt', "r") as f:
+                self.directoryname =  f.read()
         else:
             #create uuid.object and folder and such
-            self.directoryName = str(uuid.uuid1())
-            file_pi = open('uuid.obj', 'wb') 
-            pickle.dump(self.directoryName, file_pi)
+            self.directoryname = str(uuid.uuid1())
 
-        self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryName /'logs'
+            with open(pathlib.Path.home() / '.cincan/uid.txt', "w") as uid_file:
+                uid_file.write(self.directoryname)
+
+        self.log_directory = log_directory or pathlib.Path.home() / '.cincan' / 'shared' / self.directoryname /'logs'
         self.log_directory.mkdir(parents=True, exist_ok=True)
 
 
