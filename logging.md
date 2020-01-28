@@ -31,7 +31,7 @@ FIXME: Our local experimental repository is
 `git@gitlab.com:CinCan/log-sharing.git`.
 
 Make sure that the repository is in correct directory 
-e.g. by checking that the directory ``~/.cincan/shared/.git`exists.
+e.g. by checking that the directory `~/.cincan/shared/.git`exists.
 
 Note, you must explicitly use 'cincan' sub command `commit` to
 commit and push your logs into the shared log repository. See below.
