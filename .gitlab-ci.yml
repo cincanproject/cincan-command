@@ -1,11 +1,14 @@
 stages:
   - test
 
+services:
+  - docker:dind
+  
 unittests:
   stage: test
-  image: "docker:dind"
+  image: alpine:python3
   before_script:
-    - apk add gcc musl-dev libffi-dev openssl-dev python3 python3-dev --no-cache
+    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3-dev
     - pip3 install .
     - pip3 install -r test-requirements.txt
     # - eval ${docker-machine env default}
