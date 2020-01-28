@@ -37,7 +37,7 @@ def test_run_get_string():
     assert out == 'Hello\n'
 
     out = tool.run_get_string(['echxo', 'Hello'])
-    assert 'No such file or directory' in out
+    assert 'OCI runtime exec failed: exec failed:' in out
 
 
 def test_magic_file_io():
@@ -239,7 +239,7 @@ def test_interactive_mode():
     Test interactive support with very simple commands by using subprocess
     It seems to impossible to test code by just by using functions, should split it more
     """
-    process = subprocess.Popen(['python', '-m', 'cincan', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(['python3', '-m', 'cincan', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = process.communicate(b'echo Hello, World!\n')
     assert outs == b"Hello, World!\n"
     assert errs == b""
