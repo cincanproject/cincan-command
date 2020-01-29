@@ -10,10 +10,12 @@ from logging import Logger
 from typing import Dict, Optional, List
 
 from docker.models.containers import Container
+from docker.errors import NotFound
 
 from cincan.command_log import FileLog, read_with_hash
 from cincan.file_tool import FileMatcher
 
+IGNORE_FILENAME = ".cincanignore"
 
 class TarTool:
     def __init__(self, logger: Logger, container: Container, upload_stats: Dict[str, List],
@@ -111,9 +113,37 @@ class TarTool:
         return p_file
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
+
+        ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
+        # Check if container has .cincanignore file - these are not downloaded
+        try:
+            chunks, stat = self.container.get_archive(ignore_file)
+            tmp_tar = tempfile.TemporaryFile()
+            # Write all chunks to construct tar
+            for chunk in chunks:
+                tmp_tar.write(chunk)
+            # Back to beginning of file
+            tmp_tar.seek(0)
+            open_tmp_tar = tarfile.open(fileobj=tmp_tar)
+            # Extract ignorefile to fileobject
+            f = open_tmp_tar.extractfile(IGNORE_FILENAME)
+            content = f.readlines()
+            print(content)
+            # open_tmp_tar.extract(IGNORE_FILENAME, tmp_ignore_file.name)
+            # with open(tmp_ignore_file) as f:
+            #     content = f.readlines()
+            #     print(content)
+            # print(tmp_ignore_file)
+            print(stat)
+        except NotFound as e:
+            self.logger.debug(f"Excepted .cincanignore file not found from path '{ignore_file}''")
+            self.logger.debug(e)
+
         # check all modified (includes the ones we uploaded)
+        # print(self.container.diff())
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
                             reverse=True)
+        # print(candidates)
         # remove files which are paths to files
         skip_set = set()
         for i, c in enumerate(candidates):
