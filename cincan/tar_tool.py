@@ -16,6 +16,7 @@ from cincan.command_log import FileLog, read_with_hash
 from cincan.file_tool import FileMatcher
 
 IGNORE_FILENAME = ".cincanignore"
+COMMENT_CHAR = "#"
 
 class TarTool:
     def __init__(self, logger: Logger, container: Container, upload_stats: Dict[str, List],
@@ -115,6 +116,7 @@ class TarTool:
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
 
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
+        ignore_paths = []
         # Check if container has .cincanignore file - these are not downloaded
         try:
             chunks, stat = self.container.get_archive(ignore_file)
@@ -122,23 +124,15 @@ class TarTool:
             # Write all chunks to construct tar
             for chunk in chunks:
                 tmp_tar.write(chunk)
-            # Back to beginning of file
             tmp_tar.seek(0)
             open_tmp_tar = tarfile.open(fileobj=tmp_tar)
             # Extract ignorefile to fileobject
             f = open_tmp_tar.extractfile(IGNORE_FILENAME)
-            content = f.readlines()
-            print(content)
-            # open_tmp_tar.extract(IGNORE_FILENAME, tmp_ignore_file.name)
-            # with open(tmp_ignore_file) as f:
-            #     content = f.readlines()
-            #     print(content)
-            # print(tmp_ignore_file)
-            print(stat)
+            ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
+            tmp_tar.close()
         except NotFound as e:
-            self.logger.debug(f"Excepted .cincanignore file not found from path '{ignore_file}''")
+            self.logger.debug(f"Excepted .cincanignore file not found from path '{ignore_file}'. No container specific ignore applied.")
             self.logger.debug(e)
-
         # check all modified (includes the ones we uploaded)
         # print(self.container.diff())
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
@@ -161,9 +155,28 @@ class TarTool:
         candidates.sort()
 
         # filters?
-        for filth in output_filters or []:
-            # remove non-matching files
-            candidates = filth.filter_download_files(candidates, self.work_dir)
+
+        # If user has not defined output_filters, use .cincanignore from container
+        if not output_filters and ignore_paths:
+            self.logger.debug("No user provided output filters - using .cincanignore")
+            ignore_filters = []
+            for file in ignore_paths:
+                if file.endswith("/"):
+                    file = file + "*"
+                    ignore_filters.append(FileMatcher(file, include=False))
+                    continue
+                if not file.endswith("*") and not file.endswith("/"):
+                    ignore_filters.append(FileMatcher(file, include=False))
+                    ignore_filters.append(FileMatcher(file + "/*", include=False))
+                    continue
+                ignore_filters.append(FileMatcher(file, include=False))
+            
+            for filth in ignore_filters or []:
+                candidates = filth.filter_download_files(candidates, self.work_dir)
+        else:
+            for filth in output_filters or []:
+                # remove non-matching files
+                candidates = filth.filter_download_files(candidates, self.work_dir)
 
         # write to a tar?
         explicit_file = None
