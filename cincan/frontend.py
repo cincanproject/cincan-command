@@ -3,10 +3,12 @@ import hashlib
 import io
 import json
 import logging
+import os
 import pathlib
 import select
 import socket
 import struct
+import subprocess
 import sys
 import os
 import tty, termios
@@ -30,13 +32,13 @@ class ToolStream:
     """Handle stream to or from the container"""
     def __init__(self, stream: IOBase):
         self.data_length = 0
-        self.md5 = hashlib.md5()
+        self.hash = hashlib.sha256()
         self.raw = bytearray()  # when collected
         self.stream = stream
 
     def update(self, data: bytes):
         self.data_length += len(data)
-        self.md5.update(data)
+        self.hash.update(data)
 
 
 class ToolImage(CommandRunner):
@@ -285,11 +287,11 @@ class ToolImage(CommandRunner):
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
             if stdin_s and stdin_s.data_length:
-                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
+                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.hash.hexdigest()))
             if stdout_s and stdout_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.hash.hexdigest()))
             if stderr_s and stderr_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.hash.hexdigest()))
 
         return log
 
@@ -414,6 +416,9 @@ def main():
 
     help_parser = subparsers.add_parser('help')
 
+    commit_parser = subparsers.add_parser('commit')
+    image_default_args(commit_parser)
+
     if len(sys.argv) > 1:
         args = m_parser.parse_args(args=sys.argv[1:])
     else:
@@ -499,5 +504,28 @@ def main():
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
+    elif sub_command == 'commit':
+
+        log_path = str(pathlib.Path.home() / '.cincan/shared')
+
+        #change working dir where logs lie. 
+        os.chdir(log_path)
+           
+        print("check if git exists in current directory")
+
+        if os.path.exists('.git'):
+            print("if git exists, pull repo")
+            subprocess.call(["git", "pull"])
+            print("Add, commit and push logs")
+            subprocess.call(["git", "add", "."])
+            subprocess.call(["git", "status"])
+            subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
+            subprocess.call(["git", "push"])      
+        else:
+            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
+            print("type 'git init' and attach folder to remote repository for sharing logs")
+            print("git remote add origin git@gitlab.com:CinCan/log-sharing.git")
+            print("git pull origin master")
+            print("git branch --set-upstream-to=origin/master master")
     else:
         raise Exception(f"Unexpected sub command '{sub_command}")

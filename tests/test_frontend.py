@@ -101,7 +101,7 @@ def test_log_stdout():
 
     assert len(log.out_files) == 1
     assert log.out_files[0].path == pathlib.Path('/dev/stdout')
-    assert log.out_files[0].md5 == '0bee89b07a248e27c83fc3d5951213c1'
+    assert log.out_files[0].digest == 'edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb'
 
 
 def test_log_entries():
@@ -111,15 +111,15 @@ def test_log_entries():
 
     assert len(log.in_files) == 1
     assert log.in_files[0].path == pathlib.Path().cwd() / '_test/ab.zip'
-    assert log.in_files[0].md5 == 'c0e2d802aadc37f6f3ef51aa98b6b885'
+    assert log.in_files[0].digest == 'b7514875bbb128f436a607a9a1b434d928cca9bb49b3608f58e25420e7ac827d'
 
     assert len(log.out_files) == 3
     assert log.out_files[0].path == pathlib.Path('/dev/stdout')
-    assert log.out_files[0].md5 == '211a5763cbd6622cca4d801ab22ea171'
+    assert log.out_files[0].digest == 'bf1844bc9dd9d1a3fca260f20f07b2560383e13a4537b65e7ea4304370d48d85'
     assert log.out_files[1].path == pathlib.Path().cwd() / '_test/source-a.txt'
-    assert log.out_files[1].md5 == 'b7e3a4d97941c994007322fd47d5ec03'
+    assert log.out_files[1].digest == '07a1a41dc6b0949c94b382890ce222005f8bf06a6bc9a2ad7d21fe577e17d2a3'
     assert log.out_files[2].path == pathlib.Path().cwd() / '_test/source-b.txt'
-    assert log.out_files[2].md5 == '10ef82451bb3e854b122e68897d3b0a2'
+    assert log.out_files[2].digest == 'ad3b361a1df9bdcf159a68b122b3e21cfca69ccc13245a3df4acc996aa7414c5'
 
 
 def test_output_to_tar():
@@ -145,15 +145,15 @@ def test_tar_input_log():
 
     assert len(log.in_files) == 1
     assert log.in_files[0].path == pathlib.Path().cwd() / '_test/ab.zip'
-    assert log.in_files[0].md5 == 'c0e2d802aadc37f6f3ef51aa98b6b885'
+    assert log.in_files[0].digest == 'b7514875bbb128f436a607a9a1b434d928cca9bb49b3608f58e25420e7ac827d'
 
     assert len(log.out_files) == 3
     assert log.out_files[0].path == pathlib.Path('/dev/stdout')
-    assert log.out_files[0].md5 == '211a5763cbd6622cca4d801ab22ea171'
+    assert log.out_files[0].digest == 'bf1844bc9dd9d1a3fca260f20f07b2560383e13a4537b65e7ea4304370d48d85'
     assert log.out_files[1].path == pathlib.Path().cwd() / '_test/source-a.txt'
-    assert log.out_files[1].md5 == 'b7e3a4d97941c994007322fd47d5ec03'
+    assert log.out_files[1].digest == '07a1a41dc6b0949c94b382890ce222005f8bf06a6bc9a2ad7d21fe577e17d2a3'
     assert log.out_files[2].path == pathlib.Path().cwd() / '_test/source-b.txt'
-    assert log.out_files[2].md5 == '10ef82451bb3e854b122e68897d3b0a2'
+    assert log.out_files[2].digest == 'ad3b361a1df9bdcf159a68b122b3e21cfca69ccc13245a3df4acc996aa7414c5'
 
 
 def test_explicit_in_out_files():
