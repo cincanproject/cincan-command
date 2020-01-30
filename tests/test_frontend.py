@@ -3,11 +3,17 @@ import shutil
 import tarfile
 import time
 from typing import List
-
+import io
 import pytest
-
+import subprocess
 from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
+
+@pytest.fixture(autouse=True)
+def disable_tty_interactive(monkeypatch):
+    """Mock stdin to make tty part of tests to complete"""
+    monkeypatch.setattr('sys.stdin', io.StringIO(''))
+    monkeypatch.setattr('sys.stdin.fileno', lambda : 0)
 
 
 def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
@@ -206,3 +212,34 @@ def test_input_filtering():
     assert out == 'ab.zip\n'
     assert tool.upload_files == ['_test', '_test/ab.zip']
     assert tool.download_files == []
+
+
+def test_download_prefix_files():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', [])
+    tool.output_dirs = ['_test/fuzzed']
+    r = tool.run(['sh', '-c', 'touch _test/fuzzed/a && touch _test/fuzzed/ab'])
+    assert r.exit_code == 0
+    assert tool.upload_files == ['_test/fuzzed']
+    assert tool.download_files == ['_test/fuzzed/a', '_test/fuzzed/ab']
+
+
+def test_colon_in_file_name():
+    tool = ToolImage(image='cincan/env', rm=False)
+    work_dir = prepare_work_dir('_test', [])
+    r = tool.run(['sh', '-c', 'echo Hello > "_test/file:0.txt"'])
+    assert r.exit_code == 0
+    assert tool.download_files == ['_test/file:0.txt']
+    with open("_test/file:0.txt") as f:
+        assert f.read() == 'Hello\n'
+
+
+def test_interactive_mode():
+    """
+    Test interactive support with very simple commands by using subprocess
+    It seems to impossible to test code by just by using functions, should split it more
+    """
+    process = subprocess.Popen(['python', '-m', 'cincan', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    outs, errs = process.communicate(b'echo Hello, World!\n')
+    assert outs == b"Hello, World!\n"
+    assert errs == b""

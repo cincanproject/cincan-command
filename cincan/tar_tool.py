@@ -82,6 +82,7 @@ class TarTool:
                 tar.addfile(self.__new_directory(arc_name))
             else:
                 tar_file = tar.gettarinfo(host_file, arcname=arc_name)
+                tar_file.mode = 511  # 777 - allow all to access (uid may be different in container)
                 self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
                 if host_file.is_file():
                     # put file to tar
@@ -106,19 +107,28 @@ class TarTool:
         p_file.type = tarfile.DIRTYPE
         p_file.uid = os.getuid()
         p_file.gid = os.getgid()
-        p_file.mode = 504  # 770
+        p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
     def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
         # check all modified (includes the ones we uploaded)
-        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])])
+        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
+                            reverse=True)
         # remove files which are paths to files
+        skip_set = set()
         for i, c in enumerate(candidates):
-            if i < len(candidates) - 1 and candidates[i + 1].startswith(c):
+            if c in skip_set:
                 candidates[i] = None
+                continue
+            c_parent = pathlib.Path(c).parent
+            while c_parent and c_parent.name:
+                skip_set.add(c_parent.as_posix())
+                c_parent = c_parent.parent
         candidates = list(filter(lambda s: s, candidates))
         # remove candidates which are not in working directory
         candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
+        # nicely sorted
+        candidates.sort()
 
         # filters?
         for filth in output_filters or []:
@@ -142,7 +152,7 @@ class TarTool:
 
     def __download_file_maybe(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
         host_file = pathlib.Path(
-            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name).replace(':', '_'))
+            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name))
 
         # fetch the file from container in its own tar ball
         get_arc_start = timeit.default_timer()
