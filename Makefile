@@ -33,6 +33,9 @@ check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 unit-tests:
 	pytest
 
+unit-tests-with-coverage:
+	pytest --cov=cincan tests
+
 $(VERSION_LOCAL): setup.py
 	mkdir -p $(dir $@)
 	grep "version.*=" setup.py |  grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" > $@
