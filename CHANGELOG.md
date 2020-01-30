@@ -6,6 +6,7 @@
 - Added: Support for interactive tools, enabled with  `--interactive` (or `-i`)
 - Changed: Must explicitly enable container TTY with `--tty` (or `-t`)
 - Changed: For docker compatibility dropped the shorthand versions of `--in` and `--out` (`-i` and `-o`).
+- Added: Point out if cannot use docker
 
 ## [0.2.5]
 
