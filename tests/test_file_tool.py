@@ -4,7 +4,6 @@ import pytest
 
 from cincan.file_tool import FileResolver, FileMatcher
 
-
 def test_upload_file_detection():
     resolver = FileResolver(['README.md'], pathlib.Path())
     assert resolver.command_args == ['README.md']
@@ -114,3 +113,7 @@ def test_with_existing_directory():
     resolver = FileResolver(['-o', '//'], pathlib.Path())
     assert resolver.command_args == ['-o', '//']
     assert len(resolver.detect_upload_files()) == 0
+
+    # Issue #26 - space character doesn't work in file name
+    resolver = FileResolver(["-i", "keke/foo: story of foo-bar.pdf"], pathlib.Path())
+    assert resolver.host_files == [pathlib.Path("keke/foo: story of foo-bar.pdf")]

@@ -86,7 +86,7 @@ class FileResolver:
         self.directory = directory
 
         # NOTE: Not good for Windows paths!
-        self.arg_pattern = re.compile("([a-zA-Z_0-9-/.~]+)")
+        self.arg_pattern = re.compile("([: a-zA-Z_0-9-/.~]+)")
 
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
