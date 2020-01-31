@@ -130,8 +130,9 @@ class TarTool:
             f = open_tmp_tar.extractfile(IGNORE_FILENAME)
             ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
             tmp_tar.close()
+            f.close()
         except NotFound as e:
-            self.logger.debug(f"Excepted .cincanignore file not found from path '{ignore_file}'. No container specific ignore applied.")
+            self.logger.debug(f"Excepted {IGNORE_FILENAME} file not found from path '{ignore_file}'. No container specific ignore applied.")
             self.logger.debug(e)
         # check all modified (includes the ones we uploaded)
         # print(self.container.diff())
@@ -155,10 +156,7 @@ class TarTool:
         candidates.sort()
 
         # filters?
-
-        # If user has not defined output_filters, use .cincanignore from container
-        if not output_filters and ignore_paths:
-            self.logger.debug("No user provided output filters - using .cincanignore")
+        if ignore_paths:
             ignore_filters = []
             for file in ignore_paths:
                 if file.endswith("/"):
@@ -170,9 +168,24 @@ class TarTool:
                     ignore_filters.append(FileMatcher(file + "/*", include=False))
                     continue
                 ignore_filters.append(FileMatcher(file, include=False))
-            
+
+        # If user has not defined output_filters, use .cincanignore from container
+        NO_DEFAULTS = False
+        if not output_filters and ignore_paths:
+            self.logger.debug("No user provided output filters - using .cincanignore")
             for filth in ignore_filters or []:
                 candidates = filth.filter_download_files(candidates, self.work_dir)
+
+        elif output_filters and ignore_paths:
+
+            if NO_DEFAULTS:
+                for filth in output_filters or []:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
+            else:
+                combined_filters = list(set(output_filters) - set(ignore_paths))
+                for filth in combined_filters or []:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
+
         else:
             for filth in output_filters or []:
                 # remove non-matching files
