@@ -3,11 +3,15 @@ import hashlib
 import io
 import json
 import logging
+import os
 import pathlib
 import select
 import socket
 import struct
+import subprocess
 import sys
+import os
+import tty, termios
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
@@ -28,13 +32,13 @@ class ToolStream:
     """Handle stream to or from the container"""
     def __init__(self, stream: IOBase):
         self.data_length = 0
-        self.md5 = hashlib.md5()
+        self.hash = hashlib.sha256()
         self.raw = bytearray()  # when collected
         self.stream = stream
 
     def update(self, data: bytes):
         self.data_length += len(data)
-        self.md5.update(data)
+        self.hash.update(data)
 
 
 class ToolImage(CommandRunner):
@@ -86,6 +90,10 @@ class ToolImage(CommandRunner):
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
         self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
+        self.runtime: Optional[str] = None # docker run --runtime=<value>
+
+        self.is_tty : bool = False
+        self.read_stdin : bool = False
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -122,11 +130,14 @@ class ToolImage(CommandRunner):
             self.logger.debug("option cap-add={}".format(",".join(self.cap_add)))
         if self.cap_drop:
             self.logger.debug("option cap-drop={}".format(",".join(self.cap_drop)))
+        if self.runtime:
+            self.logger.debug(f"option runtime={self.runtime}")
 
         # override entry point to just keep the container running
         container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
                                                   stdin_open=True, tty=True, network_mode=self.network_mode,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop)
+                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                  runtime=self.runtime)
         container.start()
 
         # kludge, lets show work directory in tests
@@ -161,7 +172,7 @@ class ToolImage(CommandRunner):
             buf.extend(r)
         return s_type, buf
 
-    def __container_exec(self, container, cmd_args: List[str], read_stdin: bool, write_stdout: bool) -> CommandLog:
+    def __container_exec(self, container, cmd_args: List[str], write_stdout: bool) -> CommandLog:
         """Execute a command in the container"""
         # create the full command line and run with exec
         entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
@@ -174,16 +185,27 @@ class ToolImage(CommandRunner):
         full_cmd = entry_point + user_cmd
 
         log = CommandLog([self.name] + user_cmd)
-
-        stdin_s = ToolStream(sys.stdin) if read_stdin else None
+        stdin_s = ToolStream(sys.stdin) if self.read_stdin else None
         stdout_s = ToolStream(sys.stdout.buffer) if write_stdout else None
         stderr_s = ToolStream(sys.stderr.buffer)
 
-        is_tty = sys.stdout.isatty()  # follow stdout, as stdout and stderr are returned the same with TTY
-        self.logger.debug(f"exec tty={is_tty}")
+        self.logger.debug(f"exec tty={self.is_tty}")
+
+        fd = sys.stdin.fileno()
+        try:
+            # Check for read_stdin to prevent user from getting stuck inside container with raw mode
+            if self.is_tty and self.read_stdin:
+                # Store old terminal settings e.g. text alignment and ctrl+c functionality
+                old_settings = termios.tcgetattr(fd)
+                # stdin as raw and unblocking, not waiting newline nor EOF, ctrl + c passed into container
+                tty.setraw(fd)
+                self.logger.debug("Raw mode for terminal enabled.")
+        except termios.error as e:
+            self.logger.debug(e)
+            raise Exception("The input device is not a TTY. Did you pipe input when -it enabled?") from None
 
         # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=read_stdin, tty=is_tty)
+        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=self.read_stdin, tty=self.is_tty)
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
         c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
@@ -192,57 +214,65 @@ class ToolImage(CommandRunner):
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [c_socket_sock]  # prefer socket to limit the amount of data in the container (?)
-        if read_stdin:
+        if self.read_stdin:
             active_streams.append(sys.stdin)
         c_socket_open = True
-        while c_socket_open:
-            try:
-                # FIXME: Using select, which is known not to work with Windows!
-                select_in, _, _ = select.select(active_streams, [], [])
-            except io.UnsupportedOperation as e:
-                if sys.stdin in active_streams:
-                    # pytest stdin is somehow fundamentally dysfunctional
-                    active_streams.remove(sys.stdin)
-                    continue
-                raise e
-
-            for sel in select_in:
-                if sel == sys.stdin:
-                    s_data = sys.stdin.buffer.read(buffer_size)
-                    if not s_data:
-                        self.logger.debug(f"received eof from stdin")
-                        active_streams.remove(sel)
-                        c_socket_sock.shutdown(socket.SHUT_WR)
-                    else:
-                        self.logger.debug(f"received {len(s_data)} bytes from stdin")
-                        stdin_s.update(s_data)
-
-                        out_off = 0
-                        while out_off < len(s_data):
-                            out_off += c_socket_sock.send(s_data[out_off:])
-                            self.logger.debug(f"wrote ...{out_off} bytes to container stdin")
-
-                elif sel == c_socket_sock:
-                    s_type, s_data = self.__unpack_container_stream(c_socket)
-                    if not s_data:
-                        self.logger.debug(f"received eof from container")
-                        c_socket_open = False
+        try:
+            while c_socket_open:
+                try:
+                    # FIXME: Using select, which is known not to work with Windows!
+                    select_in, _, _ = select.select(active_streams, [], [])
+                except io.UnsupportedOperation as e:
+                    if sys.stdin in active_streams:
+                        # pytest stdin is somehow fundamentally dysfunctional
+                        active_streams.remove(sys.stdin)
                         continue
-                    if s_type == 1:
-                        self.logger.debug(f"received {len(s_data)} bytes from stdout")
-                        std_s = stdout_s
-                    elif s_type == 2:
-                        self.logger.debug(f"received {len(s_data)} bytes from stderr")
-                        std_s = stderr_s
-                    else:
-                        self.logger.warning(f"received {len(s_data)} bytes from ???, discarding")
-                        std_s = None
-                    if std_s:
-                        std_s.update(s_data)
-                        if self.buffer_output:
-                            std_s.raw.extend(s_data)
+                    raise e
+
+                for sel in select_in:
+                    if sel == sys.stdin:
+                        s_data = os.read(0, buffer_size)  # fd 0 is stdin
+                        if not s_data:
+                            self.logger.debug(f"received eof from stdin")
+                            active_streams.remove(sel)
+                            c_socket_sock.shutdown(socket.SHUT_WR)
                         else:
-                            std_s.stream.write(s_data)
+                            self.logger.debug(f"received {len(s_data)} bytes from stdin")
+                            stdin_s.update(s_data)
+
+                            out_off = 0
+                            while out_off < len(s_data):
+                                out_off += c_socket_sock.send(s_data[out_off:])
+                                self.logger.debug(f"wrote ...{out_off} bytes to container stdin")
+
+                    elif sel == c_socket_sock:
+                        s_type, s_data = self.__unpack_container_stream(c_socket)
+                        if not s_data:
+                            self.logger.debug(f"received eof from container")
+                            c_socket_open = False
+                            continue
+                        if s_type == 1:
+                            self.logger.debug(f"received {len(s_data)} bytes from stdout")
+                            std_s = stdout_s
+                        elif s_type == 2:
+                            self.logger.debug(f"received {len(s_data)} bytes from stderr")
+                            std_s = stderr_s
+                        else:
+                            self.logger.warning(f"received {len(s_data)} bytes from ???, discarding")
+                            std_s = None
+                        if std_s:
+                            std_s.update(s_data)
+                            if self.buffer_output:
+                                std_s.raw.extend(s_data)
+                            else:
+                                std_s.stream.write(s_data)
+                            # Flush data immediately into terminal screen
+                            std_s.stream.flush()
+
+        finally:
+            if self.is_tty and self.read_stdin:
+                # Restore old terminal settings, regardless of what happened
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
         # inspect execution result
         inspect = self.client.api.exec_inspect(exec_id)
@@ -257,11 +287,11 @@ class ToolImage(CommandRunner):
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
             if stdin_s and stdin_s.data_length:
-                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
+                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.hash.hexdigest()))
             if stdout_s and stdout_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.hash.hexdigest()))
             if stderr_s and stderr_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.hash.hexdigest()))
 
         return log
 
@@ -280,8 +310,7 @@ class ToolImage(CommandRunner):
         container = self.__create_container(upload_files, in_files)
         log = CommandLog([])
         try:
-            log = self.__container_exec(container, cmd_args,
-                                        read_stdin=(self.input_tar != '-'), write_stdout=(self.output_tar != '-'))
+            log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
@@ -332,25 +361,32 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-    sub_parser.add_argument('--network', nargs='?', help='Container network (same as docker run --network)')
-    sub_parser.add_argument('--user', nargs='?', help='User in container (same as docker run --user)')
-    sub_parser.add_argument('--cap-add', action='append', dest='cap_add', nargs='?',
-                            help='Add Linux capability, use many times if required')
-    sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
-                            help='Drop Linux capability, use many times if required')
 
-    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
-                            help='Force an empty directory to container')
-
-    sub_parser.add_argument('-i', '--in', dest='input_tar', nargs='?',
+    sub_parser.add_argument('--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
-    sub_parser.add_argument('-o', '--out', dest='output_tar', nargs='?',
+    sub_parser.add_argument('--out', dest='output_tar', nargs='?',
                             help='Upload output files into specified tar archive')
-
     sub_parser.add_argument('-I', '--in-filter', action='append', dest='in_filter', nargs='?',
                             help='Filter input files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-O', '--out-filter', action='append', dest='out_filter', nargs='?',
                             help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
+    sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
+                            help='Force an empty directory to container')
+
+    # Docker look-a-like settings for 'cincan run'
+
+    sub_parser.add_argument('--network', nargs='?',
+                            help='Container network (see docker run --help)')
+    sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
+    sub_parser.add_argument('--cap-add', action='append', dest='cap_add', nargs='?',
+                            help='Add Linux capability, use many times if required (see docker run --help)')
+    sub_parser.add_argument('--cap-drop', action='append', dest='cap_drop', nargs='?',
+                            help='Drop Linux capability, use many times if required (see docker run --help)')
+    sub_parser.add_argument('--runtime', nargs='?',
+                            help="Runtime to use with this container (see docker run --help)")
+    sub_parser.add_argument('-i', '--interactive', action='store_true',
+                            help='Keep STDIN open even if not attached (see docker run --help)')
+    sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
 
 
 def main():
@@ -380,6 +416,9 @@ def main():
 
     help_parser = subparsers.add_parser('help')
 
+    commit_parser = subparsers.add_parser('commit')
+    image_default_args(commit_parser)
+
     if len(sys.argv) > 1:
         args = m_parser.parse_args(args=sys.argv[1:])
     else:
@@ -404,6 +443,7 @@ def main():
             tool = ToolImage(name, path=args.path)
         else:
             tool = ToolImage(name)  # should raise exception
+
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None
         tool.output_dirs = args.output_dir or []
@@ -417,6 +457,9 @@ def main():
         tool.user = args.user
         tool.cap_add = args.cap_add
         tool.cap_drop = args.cap_drop
+        tool.runtime = args.runtime
+        tool.is_tty = args.tty
+        tool.read_stdin = args.interactive
 
         all_args = args.tool[1:]
         if sub_command == 'test':
@@ -461,5 +504,28 @@ def main():
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
+    elif sub_command == 'commit':
+
+        log_path = str(pathlib.Path.home() / '.cincan/shared')
+
+        #change working dir where logs lie. 
+        os.chdir(log_path)
+           
+        print("check if git exists in current directory")
+
+        if os.path.exists('.git'):
+            print("if git exists, pull repo")
+            subprocess.call(["git", "pull"])
+            print("Add, commit and push logs")
+            subprocess.call(["git", "add", "."])
+            subprocess.call(["git", "status"])
+            subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
+            subprocess.call(["git", "push"])      
+        else:
+            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
+            print("type 'git init' and attach folder to remote repository for sharing logs")
+            print("git remote add origin git@gitlab.com:CinCan/log-sharing.git")
+            print("git pull origin master")
+            print("git branch --set-upstream-to=origin/master master")
     else:
         raise Exception(f"Unexpected sub command '{sub_command}")

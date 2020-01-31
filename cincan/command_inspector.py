@@ -60,11 +60,11 @@ class CommandInspector:
         already_covered.add(file_check)
 
         for cmd in self.log.list_entries(reverse=True):
-            output_here = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
+            output_here = any(filter(lambda f: f.digest == file_digest, cmd.out_files))
             if output_here:
                 cmd_dep = CommandDependency(cmd, out=False)
                 for file in cmd.in_files:
-                    cmd_dep.next.append(self.fanin(file.path, already_covered, file.md5))
+                    cmd_dep.next.append(self.fanin(file.path, already_covered, file.digest))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
@@ -79,11 +79,11 @@ class CommandInspector:
         already_covered.add(file_check)
 
         for cmd in self.log.list_entries(reverse=True):
-            input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
+            input_here = any(filter(lambda f: f.digest == file_digest, cmd.in_files))
             if input_here:
                 cmd_dep = CommandDependency(cmd, out=True)
                 for file in cmd.out_files:
-                    cmd_dep.next.append(self.fanout(file.path, already_covered, file.md5))
+                    cmd_dep.next.append(self.fanout(file.path, already_covered, file.digest))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
@@ -101,10 +101,10 @@ class CommandInspector:
     def hash_of(cls, file: pathlib.Path) -> str:
         if not file.is_file():
             return ''
-        md5sum = hashlib.md5()
+        md = hashlib.sha256()
         with file.open("rb") as f:
             chunk = f.read(2048)
             while chunk:
-                md5sum.update(chunk)
+                md.update(chunk)
                 chunk = f.read(2048)
-        return md5sum.hexdigest()
+        return md.hexdigest()
