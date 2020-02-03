@@ -416,8 +416,10 @@ def main():
 
     fanin_parser = subparsers.add_parser('fanin', help='Show fan-in to the given file')
     fanin_parser.add_argument('file', help="File to analyze")
+    fanin_parser.add_argument('-d', '--max-depth', default=3, help='Maximum tree depth')
     fanout_parser = subparsers.add_parser('fanout', help='Show fan-out from the given file')
     fanout_parser.add_argument('file', help="File to analyze")
+    fanout_parser.add_argument('-d', '--max-depth', default=3, help='Maximum tree depth')
 
     help_parser = subparsers.add_parser('help')
 
@@ -485,10 +487,11 @@ def main():
         sys.exit(log.exit_code)  # exit code
     elif sub_command in {'fanin', 'fanout'}:
         inspector = CommandInspector(CommandLogIndex(), pathlib.Path().resolve())
+        depth = int(args.max_depth)
         if sub_command == 'fanout':
-            res = inspector.fanout(pathlib.Path(args.file).resolve())
+            res = inspector.fanout(pathlib.Path(args.file).resolve(), depth)
         else:
-            res = inspector.fanin(pathlib.Path(args.file).resolve())
+            res = inspector.fanin(pathlib.Path(args.file).resolve(), depth)
         print(res)
     elif sub_command == 'manifest':
         # sub command 'manifest'
