@@ -83,6 +83,7 @@ class ToolImage(CommandRunner):
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
         self.upload_stats: Dict[str, List] = {} # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
+        self.no_defaults: bool = False # If set true, ignoring container specific rules from .cincanignore
 
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
@@ -313,7 +314,7 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                log.out_files.extend(tar_tool.download_files(self.output_filters))
+                log.out_files.extend(tar_tool.download_files(self.output_filters, self.no_defaults))
         finally:
             self.logger.debug("killing the container")
             container.kill()
@@ -370,6 +371,8 @@ def image_default_args(sub_parser):
                             help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
+    sub_parser.add_argument('-N', '--no-defaults', action='store_true',
+                            help='Ignore all container specific output filters. (Defined inside container in .cincanignore file)')
 
     # Docker look-a-like settings for 'cincan run'
 
@@ -444,6 +447,7 @@ def main():
         tool.output_dirs = args.output_dir or []
         tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
         tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
+        tool.no_defaults = args.no_defaults if args.no_defaults else False
 
         if tool.input_tar and tool.input_filters:
             raise Exception("Cannot specify input filters with input tar file")

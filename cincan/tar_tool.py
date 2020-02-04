@@ -113,7 +113,7 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
+    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults : bool = False) -> List[FileLog]:
 
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
         ignore_paths = []
@@ -135,10 +135,8 @@ class TarTool:
             self.logger.debug(f"Excepted {IGNORE_FILENAME} file not found from path '{ignore_file}'. No container specific ignore applied.")
             self.logger.debug(e)
         # check all modified (includes the ones we uploaded)
-        # print(self.container.diff())
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
                             reverse=True)
-        # print(candidates)
         # remove files which are paths to files
         skip_set = set()
         for i, c in enumerate(candidates):
@@ -169,20 +167,29 @@ class TarTool:
                     continue
                 ignore_filters.append(FileMatcher(file, include=False))
 
-        # If user has not defined output_filters, use .cincanignore from container
-        NO_DEFAULTS = False
-        if not output_filters and ignore_paths:
+        # If user has not defined output_filters, use .cincanignore from container if not set to be ignored
+        if not output_filters and ignore_paths and not no_defaults:
             self.logger.debug("No user provided output filters - using .cincanignore")
             for filth in ignore_filters or []:
                 candidates = filth.filter_download_files(candidates, self.work_dir)
 
         elif output_filters and ignore_paths:
 
-            if NO_DEFAULTS:
+            # Check if user has defined to ignore container specific output filters
+            if no_defaults:
                 for filth in output_filters or []:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
             else:
-                combined_filters = list(set(output_filters) - set(ignore_paths))
+                # User supplied filters will override container specific 
+                # Or additional filters are included
+                combined_filters = set(output_filters)
+                for i_f in ignore_filters:
+                    for o_f in output_filters:
+                        if i_f.match_string == o_f.match_string:
+                            break
+                        else:
+                            combined_filters.add(i_f)
+                        
                 for filth in combined_filters or []:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
 
