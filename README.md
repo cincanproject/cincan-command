@@ -1,3 +1,5 @@
+[![pipeline status](https://gitlab.com/CinCan/cincan-command/badges/master/pipeline.svg)](https://gitlab.com/CinCan/cincan-command/commits/master) [![coverage report](https://gitlab.com/CinCan/cincan-command/badges/master/coverage.svg)](https://gitlab.com/CinCan/cincan-command/commits/master)
+
 # CinCan command
 
 The tool `cincan` command provide for a convenient

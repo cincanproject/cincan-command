@@ -3,10 +3,12 @@ import hashlib
 import io
 import json
 import logging
+import os
 import pathlib
 import select
 import socket
 import struct
+import subprocess
 import sys
 import os
 import tty, termios
@@ -30,13 +32,13 @@ class ToolStream:
     """Handle stream to or from the container"""
     def __init__(self, stream: IOBase):
         self.data_length = 0
-        self.md5 = hashlib.md5()
+        self.hash = hashlib.sha256()
         self.raw = bytearray()  # when collected
         self.stream = stream
 
     def update(self, data: bytes):
         self.data_length += len(data)
-        self.md5.update(data)
+        self.hash.update(data)
 
 
 class ToolImage(CommandRunner):
@@ -76,7 +78,7 @@ class ToolImage(CommandRunner):
                     self.__get_image(image, pull=True)
             self.context = '.'  # not really correct, but will do
         else:
-            raise Exception("No file nor image specified")
+            sys.exit("No file nor image specified")
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
@@ -167,7 +169,7 @@ class ToolImage(CommandRunner):
         while len(buf) < s_len:
             r = c_socket.read(s_len - len(buf))
             if not r:
-                raise Exception('Failed to read all data from the container')
+                sys.exit('Failed to read all data from the container')
             buf.extend(r)
         return s_type, buf
 
@@ -286,11 +288,11 @@ class ToolImage(CommandRunner):
         if log.exit_code == 0:
             # collect stdin, stdout, stderr hash codes
             if stdin_s and stdin_s.data_length:
-                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.md5.hexdigest()))
+                log.in_files.append(FileLog(pathlib.Path('/dev/stdin'), stdin_s.hash.hexdigest()))
             if stdout_s and stdout_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stdout'), stdout_s.hash.hexdigest()))
             if stderr_s and stderr_s.data_length:
-                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.md5.hexdigest()))
+                log.out_files.append(FileLog(pathlib.Path('/dev/stderr'), stderr_s.hash.hexdigest()))
 
         return log
 
@@ -390,6 +392,11 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
 
 
+def docker_connect_error():
+    print("Couldn't connect to Docker, is it running & user has perms to access socket?",
+          file=sys.stderr)
+    sys.exit(1)
+
 def main():
     """Parse command line and run the tool"""
     m_parser = argparse.ArgumentParser()
@@ -412,10 +419,15 @@ def main():
 
     fanin_parser = subparsers.add_parser('fanin', help='Show fan-in to the given file')
     fanin_parser.add_argument('file', help="File to analyze")
+    fanin_parser.add_argument('-d', '--max-depth', default=3, help='Maximum tree depth')
     fanout_parser = subparsers.add_parser('fanout', help='Show fan-out from the given file')
     fanout_parser.add_argument('file', help="File to analyze")
+    fanout_parser.add_argument('-d', '--max-depth', default=3, help='Maximum tree depth')
 
     help_parser = subparsers.add_parser('help')
+
+    commit_parser = subparsers.add_parser('commit')
+    image_default_args(commit_parser)
 
     if len(sys.argv) > 1:
         args = m_parser.parse_args(args=sys.argv[1:])
@@ -433,7 +445,7 @@ def main():
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
         if len(args.tool) == 0:
-            raise Exception('Missing tool name argument')
+            sys.exit('Missing tool name argument')
         name = args.tool[0]
         if args.path is None:
             tool = ToolImage(name, image=name, pull=args.pull)
@@ -450,7 +462,7 @@ def main():
         tool.no_defaults = args.no_defaults if args.no_defaults else False
 
         if tool.input_tar and tool.input_filters:
-            raise Exception("Cannot specify input filters with input tar file")
+            sys.exit("Cannot specify input filters with input tar file")
 
         tool.network_mode = args.network
         tool.user = args.user
@@ -479,18 +491,22 @@ def main():
         sys.exit(log.exit_code)  # exit code
     elif sub_command in {'fanin', 'fanout'}:
         inspector = CommandInspector(CommandLogIndex(), pathlib.Path().resolve())
+        depth = int(args.max_depth)
         if sub_command == 'fanout':
-            res = inspector.fanout(pathlib.Path(args.file).resolve())
+            res = inspector.fanout(pathlib.Path(args.file).resolve(), depth)
         else:
-            res = inspector.fanin(pathlib.Path(args.file).resolve())
+            res = inspector.fanin(pathlib.Path(args.file).resolve(), depth)
         print(res)
     elif sub_command == 'manifest':
         # sub command 'manifest'
         if len(args.tool) == 0:
-            raise Exception('Missing tool name argument')
+            sys.exit('Missing tool name argument')
         name = args.tool[0]
         reg = registry.ToolRegistry()
-        info = reg.fetch_manifest(name)
+        try:
+            info = reg.fetch_manifest(name)
+        except OSError as e:
+            docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
         format_str = "{0:<25}"
@@ -498,10 +514,36 @@ def main():
             format_str += " {4:<20}"
         format_str += " {1}"
         reg = registry.ToolRegistry()
-        tool_list = reg.list_tools()
+        try:
+            tool_list = reg.list_tools()
+        except OSError as e:
+            docker_connect_error()
         for tool in sorted(tool_list):
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
                                     ",".join(lst.tags)))
+    elif sub_command == 'commit':
+
+        log_path = str(pathlib.Path.home() / '.cincan/shared')
+
+        #change working dir where logs lie. 
+        os.chdir(log_path)
+           
+        print("check if git exists in current directory")
+
+        if os.path.exists('.git'):
+            print("if git exists, pull repo")
+            subprocess.call(["git", "pull"])
+            print("Add, commit and push logs")
+            subprocess.call(["git", "add", "."])
+            subprocess.call(["git", "status"])
+            subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
+            subprocess.call(["git", "push"])      
+        else:
+            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
+            print("type 'git init' and attach folder to remote repository for sharing logs")
+            print("git remote add origin git@gitlab.com:CinCan/log-sharing.git")
+            print("git pull origin master")
+            print("git branch --set-upstream-to=origin/master master")
     else:
-        raise Exception(f"Unexpected sub command '{sub_command}")
+        sys.exit(f"Unexpected sub command '{sub_command}")
