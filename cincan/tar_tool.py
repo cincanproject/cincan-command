@@ -152,7 +152,6 @@ class TarTool:
         candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
         # nicely sorted
         candidates.sort()
-
         # filters?
         if ignore_paths:
             ignore_filters = []
