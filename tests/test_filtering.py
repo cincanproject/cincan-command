@@ -59,12 +59,13 @@ def test_container_specific_ignore(tmp_path, tool):
 
 def test_container_specific_ignore_not_match(tmp_path, tool):
     """
+    Continuation for previous test
     Test for not ignored file
     """
     d = tmp_path / "tcs"
     d.mkdir()
     work_dir = prepare_work_dir('_test', ['.cincanignore'])
     relative_outdir = d.relative_to(pathlib.Path.cwd())
-    # File `.test` is ignored by .cincanignore
+    # File `.test` is not ignored by .cincanignore
     out = tool.run_get_string(['sh', '-c', f'cat samples/.cincanignore > .cincanignore; cat .cincanignore; touch {relative_outdir}/.test'])
     assert pathlib.Path(d / ".test").is_file()
