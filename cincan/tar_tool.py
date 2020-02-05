@@ -113,7 +113,7 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults : bool = False) -> List[FileLog]:
+    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
 
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
         ignore_paths = []
