@@ -129,6 +129,8 @@ class TarTool:
             # Extract ignorefile to fileobject
             f = open_tmp_tar.extractfile(IGNORE_FILENAME)
             ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
+            # Ignore the ignorefile itself..
+            ignore_paths.append(IGNORE_FILENAME)
             tmp_tar.close()
             f.close()
         except NotFound as e:

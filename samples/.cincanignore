@@ -1,0 +1,5 @@
+# Ignoring file named as '.test'
+.test
+
+# Ignoring folder named as 'tests' and all its content
+tests/*

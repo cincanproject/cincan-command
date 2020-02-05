@@ -1,6 +1,4 @@
 from cincan.frontend import ToolImage
-import pytest
-import io
 
 
 def test_option_user():
