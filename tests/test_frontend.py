@@ -54,16 +54,6 @@ def test_magic_file_io():
     assert tool.upload_files == ['_test/source-b.txt']
     assert tool.download_files == []
 
-    work_dir = prepare_work_dir('_test', ['source-a.txt'])
-    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
-    assert tool.upload_files == ['_test/source-a.txt']
-    assert tool.download_files == ['_test/test_a.txt']
-
-    time.sleep(1.5)  # make sure file timestamp gets old
-    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
-    assert tool.upload_files == ['_test/source-a.txt', '_test/test_a.txt']
-    assert tool.download_files == ['_test/test_a.txt']
-
 
 def test_input_directory():
     tool = ToolImage(image='busybox', rm=False)
