@@ -1,3 +1,5 @@
+[![pipeline status](https://gitlab.com/CinCan/cincan-command/badges/master/pipeline.svg)](https://gitlab.com/CinCan/cincan-command/commits/master) [![coverage report](https://gitlab.com/CinCan/cincan-command/badges/master/coverage.svg)](https://gitlab.com/CinCan/cincan-command/commits/master)
+
 # CinCan command
 
 The tool `cincan` command provide for a convenient
@@ -31,7 +33,7 @@ You can check that all works as follows:
 
     % cincan list
 
-If all goes well you get a list of the tools dockerized in the 'Cincan' project.
+If all goes well you get a list of the tools dockerized in the 'CinCan' project.
 However, you can use any dockerized tools as long as they meet the
 requirements listed in the end of this document.
 First time running this will take a while as it must fetch information of the tools
@@ -45,7 +47,7 @@ A tool can be invoked with cincan using 'run' sub-command like this:
 
     % cincan run <tool> <parameters..>
 
-As you may remember you get the list of tools dockerized in 'Cincan' project
+As you may remember you get the list of tools dockerized in 'CinCan' project
 with `cincan list`.
 For example the tool `cincan/pywhois`:
 
@@ -187,7 +189,7 @@ can provide the input files directly as tar-file. When this is done,
 the tool does not try to apply any logic to upload files, so you
 have the full control. You cannot use input file filtering with this approach.
 
-The input tar file is specified with option `--in` (or `-i` ) and
+The input tar file is specified with option `--in` and
 you can provide a file or use `-` to read from standard input. For example:
 
     % tar c myfile.pcap | cincan run --in - cincan/tshark -r myfile.pcap
@@ -195,7 +197,7 @@ you can provide a file or use `-` to read from standard input. For example:
 ### Getting tool output as tar file
 
 You can also request the tool output files in a tar container. This
-is done with argument `--out` (or `-o`). You can provide for the argument
+is done with argument `--out`. You can provide for the argument
 either a file name or `-`for standard output. You can also apply output
 file filtering to limit the number of files copied into the output tar archive.
 
@@ -203,21 +205,52 @@ For example, the following should write file `output.tar`
 
     % cincan run --out output.tar cincan/tshark -r myfile.pcap -w output.pcap
 
+
+### Running tool with interactive support
+
+We are using [radare2](https://gitlab.com/CinCan/tools/tree/master/radare2) as example here. Tool with interactive mode requires `--interactive` (or `-i`) and --tty (or `-t`) switches. Start radare2 disassembler for local file `/bin/ls` by running command:
+```
+% cincan run -it cincan/radare2 r2 /bin/ls
+ cincan/radare2: <= /usr/bin/ls
+ -- We are surrounded by the enemy. - Excellent, we can attack in any direction!
+[0x00005b10]> aaa
+[x] Analyze all flags starting with sym. and entry0 (aa)
+[x] Analyze function calls (aac)
+[x] Analyze len bytes of instructions for references (aar)
+[x] Check for objc references
+[x] Check for vtables
+[x] Type matching analysis for all functions (aaft)
+[x] Propagate noreturn information
+[x] Use -AA or aaaa to perform additional experimental analysis.
+[0x00005b10]> 
+```
+
+radare2 should open `/bin/ls` file, and this can be analysed by typing `aaa` and pressing enter.
+
+
 ### All run options
 
 The following table lists all command-line options available for the run -sub command:
 
-| Option                  |    | Description |
+| Specific to `cincan`    |    | Description |
 |-------------------------|----|-------------|
-| --in tar-file           | -i | Upload input to container in a tar |
-| --out tar-file          | -o | Download output files from container to a tar|
+| --in tar-file           |  | Upload input to container in a tar |
+| --out tar-file          |  | Download output files from container to a tar|
 | --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter|
 | --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
 | --mkdir directory       | -d | Mark output directory, not uploaded as input
-| --network value         |    | Network to connect (see help of docker run --network)|
-| --user name             |    | User to run with (see help of docker run --user)|
-| --cap-add CAP           |    | Add kernel capability (see help of docker run --cap-add)|
-| --cap-drop CAP          |    | Drop kernel capability (see help of docker run --cap-drop)|
+
+| Similar to `docker run` |    | Description
+|-------------------------|----|-------------|
+| --tty                   | -t | Allocate a pseudo-TTY
+| --interactive           | -i | Keep STDIN open even if not attached
+| --network value         |    | Network to connect |
+| --user name             |    | User to run with |
+| --cap-add CAP           |    | Add kernel capability |
+| --cap-drop CAP          |    | Drop kernel capability |
+| --runtime               |    | Container runtime |
+
+Consult [Docker run documentation](https://docs.docker.com/engine/reference/commandline/run/) for more details.
 
 ## Invoking tool without 'cincan' wrapper
 

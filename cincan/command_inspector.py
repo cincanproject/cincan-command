@@ -49,62 +49,52 @@ class CommandInspector:
         except ValueError:
             return path.resolve()
 
-    def fanin(self, file: pathlib.Path, already_covered: Set[str] = None,
+    def fanin(self, file: pathlib.Path, depth: int, already_covered: Set[str] = None,
               digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(self.__work_path(file), file_digest, out=False)
         file_check = file.as_posix() + ':' + file_digest
         already_covered = already_covered or set([])
-        if file_check in already_covered:
+        if depth < 1 or file_check in already_covered:
             return file_dep
         already_covered.add(file_check)
 
         for cmd in self.log.list_entries(reverse=True):
-            output_here = any(filter(lambda f: f.md5 == file_digest, cmd.out_files))
+            output_here = any(filter(lambda f: f.digest == file_digest, cmd.out_files))
             if output_here:
                 cmd_dep = CommandDependency(cmd, out=False)
                 for file in cmd.in_files:
-                    cmd_dep.next.append(self.fanin(file.path, already_covered, file.md5))
+                    cmd_dep.next.append(self.fanin(file.path, depth - 1, already_covered, file.digest))
                 file_dep.next.append(cmd_dep)
         return file_dep
 
-    def fanout(self, file: pathlib.Path, already_covered: Set[str] = None,
+    def fanout(self, file: pathlib.Path, depth: int, already_covered: Set[str] = None,
                digest: Optional[str] = None) -> FileDependency:
         file_digest = digest or self.hash_of(file)
         file_dep = FileDependency(self.__work_path(file), file_digest, out=True)
         file_check = file.as_posix() + ':' + file_digest
         already_covered = already_covered or set([])
-        if file_check in already_covered:
+        if depth < 1 or file_check in already_covered:
             return file_dep
         already_covered.add(file_check)
 
         for cmd in self.log.list_entries(reverse=True):
-            input_here = any(filter(lambda f: f.md5 == file_digest, cmd.in_files))
+            input_here = any(filter(lambda f: f.digest == file_digest, cmd.in_files))
             if input_here:
                 cmd_dep = CommandDependency(cmd, out=True)
                 for file in cmd.out_files:
-                    cmd_dep.next.append(self.fanout(file.path, already_covered, file.md5))
+                    cmd_dep.next.append(self.fanout(file.path, depth -1, already_covered, file.digest))
                 file_dep.next.append(cmd_dep)
         return file_dep
-
-    def print_fanout(self, writer: TextIOBase, fanout: List[Tuple[CommandLog, List]]):
-        self.__print_fans(writer, fanout, fanout=True, indent='')
-
-    def __print_fans(self, writer: TextIOBase, fans: List[Tuple[CommandLog, List]], fanout: bool, indent: str):
-        for cmd, next in fans:
-            cmd_string = " ".join(quote_args(cmd.command))
-            writer.write(f"{indent}{cmd_string}\n")
-            if isinstance(next, List):
-                self.__print_fans(writer, next, fanout, indent + '  ')
 
     @classmethod
     def hash_of(cls, file: pathlib.Path) -> str:
         if not file.is_file():
             return ''
-        md5sum = hashlib.md5()
+        md = hashlib.sha256()
         with file.open("rb") as f:
             chunk = f.read(2048)
             while chunk:
-                md5sum.update(chunk)
+                md.update(chunk)
                 chunk = f.read(2048)
-        return md5sum.hexdigest()
+        return md.hexdigest()
