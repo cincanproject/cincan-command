@@ -251,7 +251,7 @@ The following table lists all command-line options available for the run -sub co
 | --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter|
 | --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
 | --mkdir directory       | -d | Mark output directory, not uploaded as input
-| --no-defaults           |    | Do not use .cincanignore file which might be stored inside container 
+| --no-defaults           |    | Ignore all container specific output filters. (Defined inside container in .cincanignore file)
 
 | Similar to `docker run` |    | Description
 |-------------------------|----|-------------|
