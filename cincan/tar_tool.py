@@ -117,7 +117,13 @@ class TarTool:
 
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
         ignore_paths = []
-        # Check if container has .cincanignore file - these are not downloaded
+        # Sort by excluding and including filters
+        # Including filter has more power than excluding one!
+        if output_filters:
+            output_filters_to_exclude = output_filters.copy()
+            output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude) if f.include]
+
+        # Check if container has .cincanignore file - these are not downloaded by default
         try:
             chunks, stat = self.container.get_archive(ignore_file)
             tmp_tar = tempfile.TemporaryFile()
@@ -176,22 +182,27 @@ class TarTool:
 
         elif output_filters and ignore_paths:
 
-            # Check if user has defined to ignore container specific output filters
+            # Check if user has defined to not use container specific output filters
             if no_defaults:
                 for filth in output_filters or []:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
+            elif output_filters_to_include:
+                # If we have some including filters, only those are applied
+                for filth in output_filters_to_include:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
             else:
-                # User supplied filters will override container specific 
-                # Or additional filters are included
-                combined_filters = set(output_filters)
-                for i_f in ignore_filters:
-                    for o_f in output_filters:
-                        if i_f.match_string == o_f.match_string:
-                            break
-                        else:
-                            combined_filters.add(i_f)
-                        
-                for filth in combined_filters or []:
+                # Merge excluding/ignoring filters, no duplicates
+                combined_excluding_filters = set(output_filters_to_exclude)
+                if not output_filters_to_exclude:
+                    combined_excluding_filters = ignore_filters
+                else:
+                    for i_f in ignore_filters:
+                        for o_f in output_filters_to_exclude:
+                            if i_f.match_string == o_f.match_string:
+                                break
+                            else:
+                                combined_excluding_filters.add(i_f)
+                for filth in combined_excluding_filters or []:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
 
         else:

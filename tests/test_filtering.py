@@ -48,7 +48,7 @@ def test_explicit_in_out_files(tool):
 
 def test_container_specific_ignore(tmp_path, tool):
     """
-    Method for testing wheather .cincanignore marks files not to be downloaded from the container
+    Method for testing wheather .cincanignore marks files not to be downloaded from the container or works together with user supplied filters
     """
     d = tmp_path / "tcs"
     d.mkdir()
@@ -66,11 +66,11 @@ def test_container_specific_ignore(tmp_path, tool):
     os.remove(".test")
 
     # File `.test` is not ignored by .cincanignore (path is different) # Using tmp directory here and from this
-    out = tool.run_get_string(['sh', '-c', f'touch {relative_outdir}/.test'])
+    out = tool.run_get_string(['sh', '-c', f'cat _test/.cincanignore > .cincanignore; touch {relative_outdir}/.test'])
     assert pathlib.Path(d / ".test").is_file()
     os.remove(pathlib.Path(d / ".test"))
 
-    # File `.test` is not ignored by .cincanignore - --no-defaults argument used
+    # File `.test`  and `.cincanignore` is not ignored by .cincanignore - --no-defaults argument used
     tool.no_defaults = True
     out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
     assert pathlib.Path(d / ".test").is_file()
@@ -80,13 +80,13 @@ def test_container_specific_ignore(tmp_path, tool):
     os.remove(pathlib.Path(".cincanignore"))
     tool.no_defaults = False
 
-    # File `.test` is not ignored by .cincanignore - --outfilter overrides
+    # File `.test` is  ignored by .cincanignore - --out-filter overrides to not ignore
     tool.output_filters = FileMatcher.parse([f"{relative_outdir}/.test"])
     out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
     assert pathlib.Path(d / ".test").is_file()
     os.remove(pathlib.Path(d / ".test"))
 
-    # File `.test` is ignored by .cincanignore - --outfilter used for wrong file
+    # File `.test` is ignored by .cincanignore - --outfilter used for wrong file thus file stays ignored
     tool.output_filters = FileMatcher.parse([f"{relative_outdir}/.testt"])
     out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
     assert not pathlib.Path(d / ".test").is_file()
@@ -100,3 +100,20 @@ def test_container_specific_ignore(tmp_path, tool):
     assert pathlib.Path(d / ".test").is_file()
     assert not pathlib.Path(d / ".testagain").is_file()
     os.remove(pathlib.Path(".cincanignore"))
+
+def test_container_specific_ignore_with_wildchar(tmp_path, tool):
+    """
+    Method for testing few wildcharacter cases with .cincanignore and filters
+    """
+    d = tmp_path / "tcsiww"
+    d.mkdir()
+    relative_outdir = d.relative_to(pathlib.Path.cwd())
+    work_dir = prepare_work_dir('_test', ['.cincanignore2'])
+
+    out = tool.run_get_string(['sh', '-c', f'cat _test/.cincanignore2 > .cincanignore; touch {relative_outdir}/.test'])
+    assert not pathlib.Path(d / ".test").is_file()
+
+    # This time, we want to include .test file by defining include filter - this overrides all filters only defined is downloaded
+    tool.output_filters = FileMatcher.parse([f"{relative_outdir}/.test"])
+    out = tool.run_get_string(['sh', '-c', f'cat _test/.cincanignore2 > .cincanignore; touch {relative_outdir}/.test'])
+    assert pathlib.Path(d / ".test").is_file()
