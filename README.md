@@ -182,6 +182,18 @@ copying of files under `dump/` like this:
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
 
+#### Filtering by `.cincanignore` - file stored inside container
+
+Downloadable files can be filtered by `.cincanignore` file as well, which should be stored inside tool container in build phase. All files listed in that file are not downloaded from the container. Paths are relative of the working directory of container.
+
+Ignore file supports `#` char as comment character.
+
+See example file [in here.](samples/.cincanignore)
+
+This works with user supplied filters as well.
+
+Argument `--no-defaults` can be passed for `run` command to not use this file.
+
 ### Providing tool input as tar file
 
 Instead of letting the tool to figure out the input files from command-line, you
@@ -239,6 +251,7 @@ The following table lists all command-line options available for the run -sub co
 | --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter|
 | --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter
 | --mkdir directory       | -d | Mark output directory, not uploaded as input
+| --no-defaults           |    | Do not use .cincanignore file which might be stored inside container 
 
 | Similar to `docker run` |    | Description
 |-------------------------|----|-------------|

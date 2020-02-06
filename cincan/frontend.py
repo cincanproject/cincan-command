@@ -373,7 +373,7 @@ def image_default_args(sub_parser):
                             help='Include output files by pattern (* as wildcard, ^-prefix for inverse filter)')
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
-    sub_parser.add_argument('-N', '--no-defaults', action='store_true',
+    sub_parser.add_argument('--no-defaults', action='store_true',
                             help='Ignore all container specific output filters. (Defined inside container in .cincanignore file)')
 
     # Docker look-a-like settings for 'cincan run'

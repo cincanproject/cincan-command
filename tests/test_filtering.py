@@ -48,7 +48,7 @@ def test_explicit_in_out_files(tool):
 
 def test_container_specific_ignore(tmp_path, tool):
     """
-    Method for testing wheather .cincanignore marks files not to be downloaded from the container or works together with user supplied filters
+    Method for testing wheather .cincanignore marked files are not to be downloaded from the container or works together with user supplied filters
     """
     d = tmp_path / "tcs"
     d.mkdir()
@@ -74,7 +74,7 @@ def test_container_specific_ignore(tmp_path, tool):
     tool.no_defaults = True
     out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
     assert pathlib.Path(d / ".test").is_file()
-    # Ignore file is brought as well
+    # Ignore file is downlaoded as well
     assert pathlib.Path(".cincanignore").is_file()
     os.remove(pathlib.Path(d / ".test"))
     os.remove(pathlib.Path(".cincanignore"))

@@ -3,3 +3,6 @@
 
 # Ignoring folder named as 'tests' and all its content
 tests/*
+
+# Ignoring all which starts with 'test'
+test*
