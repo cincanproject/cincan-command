@@ -1,6 +1,7 @@
 import pathlib
 import tarfile
 import time
+import os
 from typing import List
 import pytest
 from cincan.file_tool import FileMatcher
@@ -54,18 +55,48 @@ def test_container_specific_ignore(tmp_path, tool):
     work_dir = prepare_work_dir('_test', ['.cincanignore'])
     relative_outdir = d.relative_to(pathlib.Path.cwd())
     # File `.test` is ignored by .cincanignore
-    out = tool.run_get_string(['sh', '-c', f'cat samples/.cincanignore > .cincanignore; echo "{relative_outdir}/.test" >> .cincanignore;cat .cincanignore; touch {relative_outdir}/.test'])
+    out = tool.run_get_string(['sh', '-c', f'cat _test/.cincanignore > .cincanignore; touch .test'])
+    assert not pathlib.Path(".test").is_file()
+    # check that .cincanignore is ignored as well
+    assert not pathlib.Path(".cincanignore").is_file()
+
+    # No ignore file
+    out = tool.run_get_string(['sh', '-c', f'touch .test'])
+    assert pathlib.Path(".test").is_file()
+    os.remove(".test")
+
+    # File `.test` is not ignored by .cincanignore (path is different) # Using tmp directory here and from this
+    out = tool.run_get_string(['sh', '-c', f'touch {relative_outdir}/.test'])
+    assert pathlib.Path(d / ".test").is_file()
+    os.remove(pathlib.Path(d / ".test"))
+
+    # File `.test` is not ignored by .cincanignore - --no-defaults argument used
+    tool.no_defaults = True
+    out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
+    assert pathlib.Path(d / ".test").is_file()
+    # Ignore file is brought as well
+    assert pathlib.Path(".cincanignore").is_file()
+    os.remove(pathlib.Path(d / ".test"))
+    os.remove(pathlib.Path(".cincanignore"))
+    tool.no_defaults = False
+
+    # File `.test` is not ignored by .cincanignore - --outfilter overrides
+    tool.output_filters = FileMatcher.parse([f"{relative_outdir}/.test"])
+    out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
+    assert pathlib.Path(d / ".test").is_file()
+    os.remove(pathlib.Path(d / ".test"))
+
+    # File `.test` is ignored by .cincanignore - --outfilter used for wrong file
+    tool.output_filters = FileMatcher.parse([f"{relative_outdir}/.testt"])
+    out = tool.run_get_string(['sh', '-c', f'echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test'])
     assert not pathlib.Path(d / ".test").is_file()
 
-def test_container_specific_ignore_not_match(tmp_path, tool):
-    """
-    Continuation for previous test
-    Test for not ignored file
-    """
-    d = tmp_path / "tcs"
-    d.mkdir()
-    work_dir = prepare_work_dir('_test', ['.cincanignore'])
-    relative_outdir = d.relative_to(pathlib.Path.cwd())
-    # File `.test` is not ignored by .cincanignore
-    out = tool.run_get_string(['sh', '-c', f'cat samples/.cincanignore > .cincanignore; cat .cincanignore; touch {relative_outdir}/.test'])
+    # File `.test` is not ignored by .cincanignore because --no-defaults option --outfilter ignores other file '.testagain'
+    tool.no_defaults = True
+    tool.output_filters = FileMatcher.parse([f"^{relative_outdir}/.testagain"])
+    out = tool.run_get_string(['sh', '-c', f' echo "{relative_outdir}/.test" >> .cincanignore; touch {relative_outdir}/.test; touch {relative_outdir}/.testagain'])
+
+    assert pathlib.Path(".cincanignore").is_file()
     assert pathlib.Path(d / ".test").is_file()
+    assert not pathlib.Path(d / ".testagain").is_file()
+    os.remove(pathlib.Path(".cincanignore"))
