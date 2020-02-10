@@ -86,8 +86,8 @@ class FileResolver:
         self.directory = directory
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
-        # Additional punctuation chars, whereas we might split command (On top of shlex default)
-        self.additional_punc_chars = "%&=,"
+        # Additional punctuation chars, whereas we might split command (On top of shlex basic)
+        self.additional_punc_chars = "=,"
         # these are output directories, upload them without contents
         for dir in output_dirs or []:
             self.host_files.append(pathlib.Path(dir))
@@ -102,10 +102,15 @@ class FileResolver:
                 self.host_files = filth.filter_upload_files(self.host_files)
 
 
-    def __file_exists(self, part: str, already_listed: Set[pathlib.Path]) -> str:
+    def __file_exists(self, part: str, already_listed: Set[pathlib.Path], parent_check: bool = True) -> str:
         o_file = pathlib.Path(part)
         # does file/dir exists? No attempt to copy '/', leave it as it is...
         file_exists = o_file.exists() and not all([c == '/' for c in part])
+
+        # When filename contains potentially spaces, were are only interested about absolute path
+        # Not checking parents
+        if not file_exists and not parent_check and not " " in part:
+            return None
         if not file_exists and not o_file.is_absolute() and '..' not in o_file.as_posix():
             # the file does not exist, but it is relative path to a file/directory...
             o_parent = o_file.parent
@@ -138,16 +143,13 @@ class FileResolver:
         self.command_args = []
         already_listed: Set[pathlib.Path] = self.output_dirs.copy()
         for o_arg in self.original_args:
-            # Check that string does not contain characters &, % etc, those paths with spaces not supported yet
-            if 1 not in [c in o_arg for c in self.additional_punc_chars]:
-                a_name = self.__file_exists(o_arg, already_listed)
-                # Potential path as argument, not dividing it pieces for further analysis
-                if a_name:
-                    self.command_args.append(a_name)
-                    continue
+            a_name = self.__file_exists(o_arg, already_listed, parent_check=False)
+            # Potential path as argument, not dividing it pieces yet for further analysis
+            if a_name:
+                self.command_args.append(a_name)
+                continue
             # NOTE: Shlex not Windows compatible!
             lex  = shlex.shlex(o_arg, posix=True, punctuation_chars=self.additional_punc_chars)
-            lex.whitespace_split = True
             split = list(lex)
             modified_paths = []
             for part in split:
