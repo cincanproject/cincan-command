@@ -1,7 +1,7 @@
 import pathlib
 import re
 from typing import List, Optional, Dict, Set, Tuple, Iterable
-
+import shlex
 
 class FileMatcher:
     """Match files based on a pattern"""
@@ -84,10 +84,6 @@ class FileResolver:
                  do_resolve: bool = True, input_filters: List[FileMatcher] = None):
         self.original_args = args
         self.directory = directory
-
-        # NOTE: Not good for Windows paths!
-        self.arg_pattern = re.compile("([: a-zA-Z_0-9-/.~]+)")
-
         self.host_files: List[pathlib.Path] = []
         self.command_args = args.copy()
 
@@ -109,11 +105,14 @@ class FileResolver:
         self.command_args = []
         already_listed: Set[pathlib.Path] = self.output_dirs.copy()
         for o_arg in self.original_args:
-            split = list(filter(lambda s: s, self.arg_pattern.split(o_arg)))
-            c_args = []
+            split = shlex.split(o_arg)
+            # NOTE: Shlex not Windows compatible!
+            lex  = shlex.shlex(o_arg, posix=True, punctuation_chars="&%=,")
+            lex.whitespace_split = True
+            split = list(lex)
+            modified_paths = []
             for part in split:
                 o_file = pathlib.Path(part)
-
                 # does file/dir exists? No attempt to copy '/', leave it as it is...
                 file_exists = o_file.exists() and not all([c == '/' for c in part])
 
@@ -136,16 +135,15 @@ class FileResolver:
                         if part[p] != '/':
                             break
                         a_name += '/'
-
-                    c_args.append(a_name)
-                else:
-                    c_args.append(part)
+                    modified_paths.append((part, a_name))
 
                 if file_exists and o_file.is_dir() and o_file not in self.output_dirs:
                     # include files in sub directories
                     self.__include_sub_dirs(o_file.iterdir(), already_listed)
 
-            self.command_args.append(''.join(c_args))
+            for  m_part, m_name in modified_paths:
+                o_arg = o_arg.replace(m_part, m_name)
+            self.command_args.append(o_arg)
 
     def __include_sub_dirs(self, files: Iterable[pathlib.Path], file_set: Set[pathlib.Path]):
         """Include files from sub directories"""

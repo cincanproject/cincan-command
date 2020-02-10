@@ -54,6 +54,16 @@ def test_magic_file_io():
     assert tool.upload_files == ['_test/source-b.txt']
     assert tool.download_files == []
 
+    work_dir = prepare_work_dir('_test', ['source-a.txt'])
+    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
+    assert tool.upload_files == ['_test/source-a.txt']
+    assert tool.download_files == ['_test/test_a.txt']
+
+    time.sleep(1.5)  # make sure file timestamp gets old
+    tool.run(["sh", "-c", '''cat _test/source-a.txt > _test/test_a.txt'''])
+    assert tool.upload_files == ['_test/source-a.txt', '_test/test_a.txt']
+    assert tool.download_files == ['_test/test_a.txt']
+
 
 def test_input_directory():
     tool = ToolImage(image='busybox', rm=False)
@@ -217,7 +227,7 @@ def test_download_prefix_files():
 def test_colon_in_file_name():
     tool = ToolImage(image='busybox', rm=False)
     work_dir = prepare_work_dir('_test', [])
-    r = tool.run(['sh', '-c', 'echo Hello > "_test/file:0.txt"'])
+    r = tool.run(['sh', '-c', 'echo "Hello" > "_test/file:0.txt"'])
     assert r.exit_code == 0
     assert tool.download_files == ['_test/file:0.txt']
     with open("_test/file:0.txt") as f:
