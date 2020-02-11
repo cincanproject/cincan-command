@@ -227,7 +227,7 @@ def test_download_prefix_files():
 def test_colon_in_file_name():
     tool = ToolImage(image='busybox', rm=False)
     work_dir = prepare_work_dir('_test', [])
-    r = tool.run(['sh', '-c', 'echo "Hello" > "_test/file:0.txt"'])
+    r = tool.run(['sh', '-c', 'echo Hello > "_test/file:0.txt"'])
     assert r.exit_code == 0
     assert tool.download_files == ['_test/file:0.txt']
     with open("_test/file:0.txt") as f:
