@@ -101,14 +101,23 @@ class FileResolver:
             for filth in input_filters or []:
                 self.host_files = filth.filter_upload_files(self.host_files)
 
-    def __file_exists(self, part: str, already_listed: Set[pathlib.Path], parent_check: bool = True) -> Optional[str]:
-        o_file = pathlib.Path(part)
+    def __file_exists(self, path: str, already_listed: Set[pathlib.Path], parent_check: bool = True) -> Optional[str]:
+        """
+        Method for evaluating the possible existence of input files and potential output directories.
+        If there is local match for file/directory, it is marked as uploadable file into container, and path is changed
+        to be relative of working directory of container, when command is passed into container.
+
+        Special case: when possible argument is coming from first layer (not quoted) of arguments, is valid path
+        and has no whitespace in arguments, we are processing this part later, because we can support special markups
+        such as % and & in here. 
+        """
+        o_file = pathlib.Path(path)
         # does file/dir exists? No attempt to copy '/', leave it as it is...
-        file_exists = o_file.exists() and not all([c == '/' for c in part])
+        file_exists = o_file.exists() and not all([c == '/' for c in path])
 
         # When filename contains potentially spaces, were are only interested about absolute path
         # Not checking parents
-        if not file_exists and not parent_check and not " " in part:
+        if not file_exists and not parent_check and not " " in path:
             return None
         if not file_exists and not o_file.is_absolute() and '..' not in o_file.as_posix():
             # the file does not exist, but it is relative path to a file/directory...
@@ -124,8 +133,8 @@ class FileResolver:
                 self.host_files.append(h_file)
                 already_listed.add(h_file)
             # '/' in the end gets eaten away... fix
-            for p in range(len(part) - 1, 0, -1):
-                if part[p] != '/':
+            for p in range(len(path) - 1, 0, -1):
+                if path[p] != '/':
                     break
                 a_name += '/'
 
