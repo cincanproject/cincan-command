@@ -148,7 +148,7 @@ class FileResolver:
                 self.command_args.append(a_name)
                 continue
             # NOTE: Shlex not Windows compatible!
-            lex  = shlex.shlex(o_arg, posix=True, punctuation_chars=self.additional_punc_chars)
+            lex = shlex.shlex(o_arg, posix=True, punctuation_chars=self.additional_punc_chars)
             split = list(lex)
             modified_paths = []
             for part in split:
@@ -156,7 +156,7 @@ class FileResolver:
                 if a_name:
                     modified_paths.append((part, a_name))
 
-            for  m_part, m_name in modified_paths:
+            for m_part, m_name in modified_paths:
                 o_arg = o_arg.replace(m_part, m_name)
             self.command_args.append(o_arg)
 
