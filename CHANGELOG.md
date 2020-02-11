@@ -1,5 +1,9 @@
 # Change log
 
+## [0.2.7]
+
+- Bugfix: Accept filenames with whitespace(s) as arguments
+
 ## [0.2.6]
 
 - Bugfix: Piping input for tools should be working now
