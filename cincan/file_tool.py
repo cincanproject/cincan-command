@@ -101,8 +101,7 @@ class FileResolver:
             for filth in input_filters or []:
                 self.host_files = filth.filter_upload_files(self.host_files)
 
-
-    def __file_exists(self, part: str, already_listed: Set[pathlib.Path], parent_check: bool = True) -> str:
+    def __file_exists(self, part: str, already_listed: Set[pathlib.Path], parent_check: bool = True) -> Optional[str]:
         o_file = pathlib.Path(part)
         # does file/dir exists? No attempt to copy '/', leave it as it is...
         file_exists = o_file.exists() and not all([c == '/' for c in part])
