@@ -3,6 +3,7 @@
 ## [0.2.7]
 
 - Bugfix: Accept filenames with whitespace(s) as arguments
+- Added: Experimental logging now documented to an extend
 
 ## [0.2.6]
 
