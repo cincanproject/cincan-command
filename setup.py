@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='cincan-command',
-    version='0.2.6',
+    version='0.2.7',
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@gmail.com",
     description='Cincan wrapper for dockerized command-line tools',
