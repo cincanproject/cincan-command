@@ -115,7 +115,7 @@ class TarTool:
 
     def __read_ignore_file(self, filepath: pathlib.Path) -> List[str]:
         """Method for reading contents single ignore file from the container """
-        
+
         ignore_paths = []
         try:
             chunks, stat = self.container.get_archive(filepath)
@@ -127,24 +127,26 @@ class TarTool:
             open_tmp_tar = tarfile.open(fileobj=tmp_tar)
             # Extract ignorefile to fileobject
             f = open_tmp_tar.extractfile(IGNORE_FILENAME)
-            ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
+            ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if
+                                              not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
             # Ignore the ignorefile itself..
             ignore_paths.append(IGNORE_FILENAME)
             tmp_tar.close()
             f.close()
         except NotFound as e:
-            self.logger.debug(f"Excepted {IGNORE_FILENAME} file not found from path '{filepath}'. No container specific ignore applied.")
+            self.logger.debug(
+                f"Excepted {IGNORE_FILENAME} file not found from path '{filepath}'."
+                " No container specific ignore applied.")
             self.logger.debug(e)
         return ignore_paths
-
 
     def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
 
         # Sort by excluding and including filters
         # Including filter has more power than excluding one!
-        if output_filters:
-            output_filters_to_exclude = output_filters.copy()
-            output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude) if f.include]
+        output_filters_to_exclude = output_filters.copy() if output_filters else []
+        output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude)
+                                     if f.include] if output_filters else []
 
         # Check if container has .cincanignore file - these are not downloaded by default
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
@@ -169,14 +171,14 @@ class TarTool:
         # nicely sorted
         candidates.sort()
         # filters?
+        ignore_filters = []
         if ignore_paths:
-            ignore_filters = []
             for file in ignore_paths:
                 if file.endswith("/"):
                     file = file + "*"
                     ignore_filters.append(FileMatcher(file, include=False))
                     continue
-                if not file.endswith("*") and not file.endswith("/"):
+                if not file.endswith("*"):
                     ignore_filters.append(FileMatcher(file, include=False))
                     ignore_filters.append(FileMatcher(file + "/*", include=False))
                     continue
