@@ -113,19 +113,12 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
-
-        ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
+    def __read_ignore_file(self, filepath: pathlib.Path) -> List[str]:
+        """Method for reading contents single ignore file from the container """
+        
         ignore_paths = []
-        # Sort by excluding and including filters
-        # Including filter has more power than excluding one!
-        if output_filters:
-            output_filters_to_exclude = output_filters.copy()
-            output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude) if f.include]
-
-        # Check if container has .cincanignore file - these are not downloaded by default
         try:
-            chunks, stat = self.container.get_archive(ignore_file)
+            chunks, stat = self.container.get_archive(filepath)
             tmp_tar = tempfile.TemporaryFile()
             # Write all chunks to construct tar
             for chunk in chunks:
@@ -140,8 +133,23 @@ class TarTool:
             tmp_tar.close()
             f.close()
         except NotFound as e:
-            self.logger.debug(f"Excepted {IGNORE_FILENAME} file not found from path '{ignore_file}'. No container specific ignore applied.")
+            self.logger.debug(f"Excepted {IGNORE_FILENAME} file not found from path '{filepath}'. No container specific ignore applied.")
             self.logger.debug(e)
+        return ignore_paths
+
+
+    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
+
+        # Sort by excluding and including filters
+        # Including filter has more power than excluding one!
+        if output_filters:
+            output_filters_to_exclude = output_filters.copy()
+            output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude) if f.include]
+
+        # Check if container has .cincanignore file - these are not downloaded by default
+        ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
+        ignore_paths = self.__read_ignore_file(ignore_file)
+
         # check all modified (includes the ones we uploaded)
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
                             reverse=True)
