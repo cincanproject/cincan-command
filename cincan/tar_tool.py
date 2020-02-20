@@ -18,6 +18,7 @@ from cincan.file_tool import FileMatcher
 IGNORE_FILENAME = ".cincanignore"
 COMMENT_CHAR = "#"
 
+
 class TarTool:
     def __init__(self, logger: Logger, container: Container, upload_stats: Dict[str, List],
                  explicit_file: Optional[str] = None):
@@ -346,7 +347,7 @@ class TarTool:
                 # looks like timestamp not updated, but down_time is seconds and up_time has more precision
                 if up_time_s == time_now_s:
                     self.logger.debug(f"timestamps {host_file.as_posix()} now {down_time_s}, may or may not be updated")
-                    return True # edited, but actually we do not know
+                    return True  # edited, but actually we do not know
                 self.logger.debug(f"timestamp {host_file.as_posix()} not updated {down_time_s}")
                 return False  # not edited, we are sure
             self.logger.debug(f"timestamp {host_file.as_posix()} updated {up_time_s} -> {down_time_s}")
