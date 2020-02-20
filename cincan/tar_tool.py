@@ -113,12 +113,14 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def __read_ignore_file(self, filepath: pathlib.Path) -> List[str]:
-        """Method for reading contents single ignore file from the container """
+    def __read_single_file(self, filepath: pathlib.Path, skip_comment: bool = False) -> List[str]:
+        """Method for reading contents single file from the container.
+        Return list of strings, where one index represents single line of the file.
+        """
 
-        ignore_paths = []
+        file_lines = []
         try:
-            chunks, stat = self.container.get_archive(filepath)
+            chunks, stat = self.container.get_archive(str(filepath))
             tmp_tar = tempfile.TemporaryFile()
             # Write all chunks to construct tar
             for chunk in chunks:
@@ -126,19 +128,19 @@ class TarTool:
             tmp_tar.seek(0)
             open_tmp_tar = tarfile.open(fileobj=tmp_tar)
             # Extract ignorefile to fileobject
-            f = open_tmp_tar.extractfile(IGNORE_FILENAME)
-            ignore_paths = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if
-                                              not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
-            # Ignore the ignorefile itself..
-            ignore_paths.append(IGNORE_FILENAME)
+            f = open_tmp_tar.extractfile(filepath.name)
+            if skip_comment:
+                file_lines = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if
+                                                not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
+            else:
+                file_lines = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines()]))
             tmp_tar.close()
             f.close()
         except NotFound as e:
             self.logger.debug(
-                f"Excepted {IGNORE_FILENAME} file not found from path '{filepath}'."
-                " No container specific ignore applied.")
+                f"Excepted {filepath.name} file not found from path '{filepath}'.")
             self.logger.debug(e)
-        return ignore_paths
+        return file_lines
 
     def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
 
@@ -150,8 +152,9 @@ class TarTool:
 
         # Check if container has .cincanignore file - these are not downloaded by default
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
-        ignore_paths = self.__read_ignore_file(ignore_file)
-
+        ignore_paths = self.__read_single_file(ignore_file, skip_comment=True)
+        # Ignore the ignorefile itself..
+        ignore_paths.append(IGNORE_FILENAME)
         # check all modified (includes the ones we uploaded)
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
                             reverse=True)
