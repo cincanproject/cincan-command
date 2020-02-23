@@ -10,7 +10,6 @@ import socket
 import struct
 import subprocess
 import sys
-import os
 import tty, termios
 from datetime import datetime
 from io import IOBase
@@ -18,9 +17,7 @@ from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
-from docker.api.container import DEFAULT_DATA_CHUNK_SIZE
 from docker import utils
-
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -37,7 +34,7 @@ class CustomContainerApiMixin(docker.api.container.ContainerApiMixin):
         super(CustomContainerApiMixin, self).__init__(*args, **kwargs)
 
     @utils.check_resource('container')
-    def get_archive(self, container, path, chunk_size=DEFAULT_DATA_CHUNK_SIZE):
+    def get_archive(self, container, path, chunk_size=docker.api.container.DEFAULT_DATA_CHUNK_SIZE):
 
         params = {
             'path': path
