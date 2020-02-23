@@ -18,6 +18,9 @@ from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
+from docker.api.container import DEFAULT_DATA_CHUNK_SIZE
+from docker import utils
+
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -26,6 +29,30 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
+
+
+class CustomContainerApiMixin(docker.api.container.ContainerApiMixin):
+
+    def __init__(self, *args, **kwargs):
+        super(CustomContainerApiMixin, self).__init__(*args, **kwargs)
+
+    @utils.check_resource('container')
+    def get_archive(self, container, path, chunk_size=DEFAULT_DATA_CHUNK_SIZE):
+
+        params = {
+            'path': path
+        }
+        url = self._url('/containers/{0}/archive', container)
+        headers = {
+            "Accept-Encoding": "identity"
+        }
+        res = self._get(url, params=params, stream=True, headers=headers)
+        self._raise_for_status(res)
+        encoded_stat = res.headers.get('x-docker-container-path-stat')
+        return (
+            self._stream_raw_result(res, chunk_size, False),
+            utils.decode_json_header(encoded_stat) if encoded_stat else None
+        )
 
 
 class ToolStream:
@@ -51,6 +78,8 @@ class ToolImage(CommandRunner):
                  rm: bool = True):
         self.config = Configuration()
         self.logger = logging.getLogger(name)
+        # FIXME dirty hack to override get_archive method. Get fixed in upstream??
+        docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
         self.loaded_image = False  # did we load the image?
         if path is not None:
