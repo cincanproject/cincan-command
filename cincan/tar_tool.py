@@ -166,7 +166,7 @@ class TarTool:
         for c in chunks:
             # self.logger.debug(f"chunk of {len(c)} bytes")
             tmp_tar.write(c)
-        self.logger.debug("get_archive time %.4f ms", timeit.default_timer() - get_arc_start)
+        self.logger.debug("get_archive time %.4f s", timeit.default_timer() - get_arc_start)
 
         tmp_tar.seek(0)
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")

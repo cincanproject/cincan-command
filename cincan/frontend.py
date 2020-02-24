@@ -10,14 +10,15 @@ import socket
 import struct
 import subprocess
 import sys
-import tty, termios
+import tty
+import termios
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
-from docker import utils
+from .dockerapi_fixes import CustomContainerApiMixin
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -26,30 +27,6 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
-
-
-class CustomContainerApiMixin(docker.api.container.ContainerApiMixin):
-
-    def __init__(self, *args, **kwargs):
-        super(CustomContainerApiMixin, self).__init__(*args, **kwargs)
-
-    @utils.check_resource('container')
-    def get_archive(self, container, path, chunk_size=docker.api.container.DEFAULT_DATA_CHUNK_SIZE):
-
-        params = {
-            'path': path
-        }
-        url = self._url('/containers/{0}/archive', container)
-        headers = {
-            "Accept-Encoding": "identity"
-        }
-        res = self._get(url, params=params, stream=True, headers=headers)
-        self._raise_for_status(res)
-        encoded_stat = res.headers.get('x-docker-container-path-stat')
-        return (
-            self._stream_raw_result(res, chunk_size, False),
-            utils.decode_json_header(encoded_stat) if encoded_stat else None
-        )
 
 
 class ToolStream:
@@ -109,17 +86,17 @@ class ToolImage(CommandRunner):
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
-        self.upload_stats: Dict[str, List] = {} # upload file stats
+        self.upload_stats: Dict[str, List] = {}  # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
 
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
         self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
-        self.runtime: Optional[str] = None # docker run --runtime=<value>
+        self.runtime: Optional[str] = None  # docker run --runtime=<value>
 
-        self.is_tty : bool = False
-        self.read_stdin : bool = False
+        self.is_tty: bool = False
+        self.read_stdin: bool = False
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -420,6 +397,7 @@ def docker_connect_error():
           file=sys.stderr)
     sys.exit(1)
 
+
 def main():
     """Parse command line and run the tool"""
     m_parser = argparse.ArgumentParser()
@@ -527,7 +505,7 @@ def main():
         reg = registry.ToolRegistry()
         try:
             info = reg.fetch_manifest(name)
-        except OSError as e:
+        except OSError:
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
@@ -538,7 +516,7 @@ def main():
         reg = registry.ToolRegistry()
         try:
             tool_list = reg.list_tools()
-        except OSError as e:
+        except OSError:
             docker_connect_error()
         for tool in sorted(tool_list):
             lst = tool_list[tool]
@@ -548,9 +526,9 @@ def main():
 
         log_path = str(pathlib.Path.home() / '.cincan/shared')
 
-        #change working dir where logs lie. 
+        # change working dir where logs lie.
         os.chdir(log_path)
-           
+
         print("check if git exists in current directory")
 
         if os.path.exists('.git'):
