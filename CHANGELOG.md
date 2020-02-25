@@ -1,5 +1,9 @@
 # Change log
 
+## [0.2.8]
+
+- Added: Feature for filtering downloadable files from container, based on '.cincanignore' file which is stored inside container.
+
 ## [0.2.7]
 
 - Bugfix: Accept filenames with whitespace(s) as arguments
