@@ -1,5 +1,4 @@
 import pathlib
-import shutil
 import tarfile
 import time
 from typing import List
@@ -8,31 +7,10 @@ import pytest
 import subprocess
 from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
-
-@pytest.fixture(autouse=True)
-def disable_tty_interactive(monkeypatch):
-    """Mock stdin to make tty part of tests to complete"""
-    monkeypatch.setattr('sys.stdin', io.StringIO(''))
-    monkeypatch.setattr('sys.stdin.fileno', lambda : 0)
+from .conftest import prepare_work_dir
 
 
-def prepare_work_dir(name: str, with_files: List['str']) -> pathlib.Path:
-    src_root = pathlib.Path('samples')
-    root = pathlib.Path(name)
-    if root.is_dir():
-        shutil.rmtree(root, ignore_errors=True)
-    root.mkdir()
-    for f_name in with_files:
-        src = src_root / f_name
-        dst = root / f_name
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(src, dst)
-        shutil.copystat(src, dst)
-    return root
-
-
-def test_run_get_string():
-    tool = ToolImage(image='busybox', rm=False)
+def test_run_get_string(tool):
     out = tool.run_get_string(['echo', 'Hello'])
     assert out == 'Hello\n'
 
@@ -40,8 +18,7 @@ def test_run_get_string():
     assert 'OCI runtime exec failed: exec failed:' in out
 
 
-def test_magic_file_io():
-    tool = ToolImage(image='busybox', rm=False)
+def test_magic_file_io(tool):
     work_dir = prepare_work_dir('_test', ['source-a.txt'])
     out = tool.run_get_string(['cat', '_test/source-a.txt'])
     assert out == 'Source A\n'
@@ -65,8 +42,7 @@ def test_magic_file_io():
     assert tool.download_files == ['_test/test_a.txt']
 
 
-def test_input_directory():
-    tool = ToolImage(image='busybox', rm=False)
+def test_input_directory(tool):
     work_dir = prepare_work_dir('_test', ['source-b.txt', 'source-a.txt'])
     out = tool.run_get_string(['ls', '-1', '_test'])
     assert out == 'source-a.txt\nsource-b.txt\n'
@@ -74,8 +50,7 @@ def test_input_directory():
     assert tool.download_files == []
 
 
-def test_output_mkdir():
-    tool = ToolImage(image='busybox', rm=False)
+def test_output_mkdir(tool):
     work_dir = prepare_work_dir('_test', ['source-b.txt', 'source-a.txt'])
     tool.output_dirs = ['_test', '_test/a_test']
     out = tool.run_get_string(['ls', '-1', '_test'])
@@ -84,16 +59,14 @@ def test_output_mkdir():
     assert tool.download_files == ['_test/a_test']
 
 
-def test_many_output_files():
-    tool = ToolImage(image='busybox', rm=False)
+def test_many_output_files(tool):
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
     assert tool.upload_files == ['_test', '_test/ab.zip']
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
-def test_log_stdout():
-    tool = ToolImage(image='busybox', rm=False)
+def test_log_stdout(tool):
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     log = tool.run(['echo', 'abc'])
     assert tool.upload_files == []
@@ -104,8 +77,7 @@ def test_log_stdout():
     assert log.out_files[0].digest == 'edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb'
 
 
-def test_log_entries():
-    tool = ToolImage(image='busybox', rm=False)
+def test_log_entries(tool):
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     log = tool.run(['unzip', '-d', '_test', '_test/ab.zip'])
 
@@ -122,8 +94,7 @@ def test_log_entries():
     assert log.out_files[2].digest == 'ad3b361a1df9bdcf159a68b122b3e21cfca69ccc13245a3df4acc996aa7414c5'
 
 
-def test_output_to_tar():
-    tool = ToolImage(image='busybox', rm=False)
+def test_output_to_tar(tool):
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     tool.output_tar = (work_dir / 'output.tar').as_posix()
     log = tool.run(['unzip', '-d', '_test', '_test/ab.zip'])
@@ -137,8 +108,7 @@ def test_output_to_tar():
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
-def test_tar_input_log():
-    tool = ToolImage(image='busybox', rm=False)
+def test_tar_input_log(tool):
     work_dir = prepare_work_dir('_test', ['ab_zip.tar'])
     tool.input_tar = work_dir / 'ab_zip.tar'
     log = tool.run(['unzip', '-d', '_test', '_test/ab.zip'])
@@ -156,19 +126,7 @@ def test_tar_input_log():
     assert log.out_files[2].digest == 'ad3b361a1df9bdcf159a68b122b3e21cfca69ccc13245a3df4acc996aa7414c5'
 
 
-def test_explicit_in_out_files():
-    tool = ToolImage(image='busybox', rm=False)
-    work_dir = prepare_work_dir('_test', ['ab.zip', 'empty.file'])
-    tool.input_filters = FileMatcher.parse(['_test/ab.zip', '_test/empty.file'])  # NOTHING can pass this filter!
-    tool.output_filters = FileMatcher.parse(['_test/source-b.txt'])
-
-    tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
-    assert tool.upload_files == []
-    assert tool.download_files == []
-
-
-def test_upload_file_from_dir():
-    tool = ToolImage(image='busybox', rm=False)
+def test_upload_file_from_dir(tool):
     # put in extra file, it should *not* get uploaded
     work_dir = prepare_work_dir('_test', ['source-a.txt', 'sub/source-c.txt'])
     tool.run_get_string(['echo', '_test/sub/source-c.txt'])
@@ -176,46 +134,14 @@ def test_upload_file_from_dir():
     assert tool.download_files == []
 
 
-def test_download_file_from_dir():
-    tool = ToolImage(image='busybox', rm=False)
+def test_download_file_from_dir(tool):
     work_dir = prepare_work_dir('_test', ['sub/source-c.txt'])
     tool.run_get_string(['cp', '_test/sub/source-c.txt', '_test/sub.txt'])
     assert tool.upload_files == ['_test/sub/source-c.txt']
     assert tool.download_files == ['_test/sub.txt']
 
 
-def test_input_filtering():
-    tool = ToolImage(image='busybox', rm=False)
-    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
-    out = tool.run_get_string(['ls', '-1', '_test'])
-    assert out == 'ab.zip\nsource-a.txt\nsource-b.txt\n'
-    assert tool.upload_files == ['_test', '_test/ab.zip', '_test/source-a.txt', '_test/source-b.txt']
-    assert tool.download_files == []
-
-    tool.input_filters = FileMatcher.parse(["_test*.zip"])
-    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
-    out = tool.run_get_string(['ls', '-1', '_test'])
-    assert out == 'ab.zip\n'
-    assert tool.upload_files == ['_test/ab.zip']
-    assert tool.download_files == []
-
-    tool.input_filters = FileMatcher.parse(["_test*.txt"])
-    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
-    out = tool.run_get_string(['ls', '-1', '_test'])
-    assert out == 'source-a.txt\nsource-b.txt\n'
-    assert tool.upload_files == ['_test/source-a.txt', '_test/source-b.txt']
-    assert tool.download_files == []
-
-    tool.input_filters = FileMatcher.parse(["^*.txt"])
-    work_dir = prepare_work_dir('_test', ['source-a.txt', 'ab.zip', 'source-b.txt'])
-    out = tool.run_get_string(['ls', '-1', '_test'])
-    assert out == 'ab.zip\n'
-    assert tool.upload_files == ['_test', '_test/ab.zip']
-    assert tool.download_files == []
-
-
-def test_download_prefix_files():
-    tool = ToolImage(image='busybox', rm=False)
+def test_download_prefix_files(tool):
     work_dir = prepare_work_dir('_test', [])
     tool.output_dirs = ['_test/fuzzed']
     r = tool.run(['sh', '-c', 'touch _test/fuzzed/a && touch _test/fuzzed/ab'])
@@ -224,8 +150,7 @@ def test_download_prefix_files():
     assert tool.download_files == ['_test/fuzzed/a', '_test/fuzzed/ab']
 
 
-def test_colon_in_file_name():
-    tool = ToolImage(image='busybox', rm=False)
+def test_colon_in_file_name(tool):
     work_dir = prepare_work_dir('_test', [])
     r = tool.run(['sh', '-c', 'echo Hello > "_test/file:0.txt"'])
     assert r.exit_code == 0
