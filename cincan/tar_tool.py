@@ -60,7 +60,7 @@ class TarTool:
             tar_content = self.__create_tar(upload_files, in_files)
         put_arc_start = timeit.default_timer()
         self.container.put_archive(path=self.work_dir, data=tar_content)
-        self.logger.debug("put_archive time %.4f ms", timeit.default_timer() - put_arc_start)
+        self.logger.debug("put_archive time %.4f s", timeit.default_timer() - put_arc_start)
 
     def __create_tar(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]) -> bytes:
         file_out = io.BytesIO()
@@ -255,7 +255,7 @@ class TarTool:
         for c in chunks:
             # self.logger.debug(f"chunk of {len(c)} bytes")
             tmp_tar.write(c)
-        self.logger.debug("get_archive time %.4f ms", timeit.default_timer() - get_arc_start)
+        self.logger.debug("get_archive time %.4f s", timeit.default_timer() - get_arc_start)
 
         tmp_tar.seek(0)
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")

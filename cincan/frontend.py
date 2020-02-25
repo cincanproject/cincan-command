@@ -10,14 +10,15 @@ import socket
 import struct
 import subprocess
 import sys
-import os
-import tty, termios
+import tty
+import termios
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
 
 import docker
 import docker.errors
+from .dockerapi_fixes import CustomContainerApiMixin
 
 from cincan import registry
 from cincan.command_inspector import CommandInspector
@@ -51,6 +52,8 @@ class ToolImage(CommandRunner):
                  rm: bool = True):
         self.config = Configuration()
         self.logger = logging.getLogger(name)
+        # FIXME dirty hack to override get_archive method. Get fixed in upstream??
+        docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
         self.loaded_image = False  # did we load the image?
         if path is not None:
@@ -83,7 +86,7 @@ class ToolImage(CommandRunner):
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
-        self.upload_stats: Dict[str, List] = {} # upload file stats
+        self.upload_stats: Dict[str, List] = {}  # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False # If set true, ignoring container specific rules from .cincanignore
 
@@ -91,10 +94,10 @@ class ToolImage(CommandRunner):
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
         self.cap_drop: List[str] = []  # docker run --cap-drop=<value>
-        self.runtime: Optional[str] = None # docker run --runtime=<value>
+        self.runtime: Optional[str] = None  # docker run --runtime=<value>
 
-        self.is_tty : bool = False
-        self.read_stdin : bool = False
+        self.is_tty: bool = False
+        self.read_stdin: bool = False
 
         # more test-oriented attributes...
         self.entrypoint: Optional[str] = None
@@ -397,6 +400,7 @@ def docker_connect_error():
           file=sys.stderr)
     sys.exit(1)
 
+
 def main():
     """Parse command line and run the tool"""
     m_parser = argparse.ArgumentParser()
@@ -505,7 +509,7 @@ def main():
         reg = registry.ToolRegistry()
         try:
             info = reg.fetch_manifest(name)
-        except OSError as e:
+        except OSError:
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
@@ -516,7 +520,7 @@ def main():
         reg = registry.ToolRegistry()
         try:
             tool_list = reg.list_tools()
-        except OSError as e:
+        except OSError:
             docker_connect_error()
         for tool in sorted(tool_list):
             lst = tool_list[tool]
@@ -526,9 +530,9 @@ def main():
 
         log_path = str(pathlib.Path.home() / '.cincan/shared')
 
-        #change working dir where logs lie. 
+        # change working dir where logs lie.
         os.chdir(log_path)
-           
+
         print("check if git exists in current directory")
 
         if os.path.exists('.git'):
