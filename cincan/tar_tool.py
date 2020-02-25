@@ -10,9 +10,13 @@ from logging import Logger
 from typing import Dict, Optional, List
 
 from docker.models.containers import Container
+from docker.errors import NotFound
 
 from cincan.command_log import FileLog, read_with_hash
 from cincan.file_tool import FileMatcher
+
+IGNORE_FILENAME = ".cincanignore"
+COMMENT_CHAR = "#"
 
 
 class TarTool:
@@ -110,7 +114,48 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def download_files(self, output_filters: List[FileMatcher] = None) -> List[FileLog]:
+    def __read_single_file(self, filepath: pathlib.Path, skip_comment: bool = False) -> List[str]:
+        """Method for reading contents single file from the container.
+        Return list of strings, where one index represents single line of the file.
+        """
+
+        file_lines = []
+        try:
+            chunks, stat = self.container.get_archive(str(filepath))
+            tmp_tar = tempfile.TemporaryFile()
+            # Write all chunks to construct tar
+            for chunk in chunks:
+                tmp_tar.write(chunk)
+            tmp_tar.seek(0)
+            open_tmp_tar = tarfile.open(fileobj=tmp_tar)
+            # Extract ignorefile to fileobject
+            f = open_tmp_tar.extractfile(filepath.name)
+            if skip_comment:
+                file_lines = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines() if
+                                                not line.decode("utf-8").lstrip().startswith(COMMENT_CHAR)]))
+            else:
+                file_lines = list(filter(None, [line.decode("utf-8") for line in f.read().splitlines()]))
+            tmp_tar.close()
+            f.close()
+        except NotFound as e:
+            self.logger.debug(
+                f"Excepted {filepath.name} file not found from path '{filepath}'.")
+            self.logger.debug(e)
+        return file_lines
+
+    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
+
+        # Sort by excluding and including filters
+        # Including filter has more power than excluding one!
+        output_filters_to_exclude = output_filters.copy() if output_filters else []
+        output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude)
+                                     if f.include] if output_filters else []
+
+        # Check if container has .cincanignore file - these are not downloaded by default
+        ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
+        ignore_paths = self.__read_single_file(ignore_file, skip_comment=True)
+        # Ignore the ignorefile itself..
+        ignore_paths.append(IGNORE_FILENAME)
         # check all modified (includes the ones we uploaded)
         candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
                             reverse=True)
@@ -129,11 +174,55 @@ class TarTool:
         candidates = list(filter(lambda s: s.startswith(self.work_dir), candidates))
         # nicely sorted
         candidates.sort()
-
         # filters?
-        for filth in output_filters or []:
-            # remove non-matching files
-            candidates = filth.filter_download_files(candidates, self.work_dir)
+        ignore_filters = []
+        if ignore_paths:
+            for file in ignore_paths:
+                if file.endswith("/"):
+                    file = file + "*"
+                    ignore_filters.append(FileMatcher(file, include=False))
+                    continue
+                if not file.endswith("*"):
+                    ignore_filters.append(FileMatcher(file, include=False))
+                    ignore_filters.append(FileMatcher(file + "/*", include=False))
+                    continue
+                ignore_filters.append(FileMatcher(file, include=False))
+
+        # If user has not defined output_filters, use .cincanignore from container if not set to be ignored
+        if not output_filters and ignore_paths and not no_defaults:
+            self.logger.debug("No user provided output filters - using .cincanignore")
+            for filth in ignore_filters or []:
+                candidates = filth.filter_download_files(candidates, self.work_dir)
+
+        elif output_filters and ignore_paths:
+
+            # Check if user has defined to not use container specific output filters
+            if no_defaults:
+                for filth in output_filters or []:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
+            elif output_filters_to_include:
+                # If we have some including filters, only those are applied
+                for filth in output_filters_to_include:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
+            else:
+                # Merge excluding/ignoring filters, no duplicates
+                combined_excluding_filters = set(output_filters_to_exclude)
+                if not output_filters_to_exclude:
+                    combined_excluding_filters = ignore_filters
+                else:
+                    for i_f in ignore_filters:
+                        for o_f in output_filters_to_exclude:
+                            if i_f.match_string == o_f.match_string:
+                                break
+                            else:
+                                combined_excluding_filters.add(i_f)
+                for filth in combined_excluding_filters or []:
+                    candidates = filth.filter_download_files(candidates, self.work_dir)
+
+        else:
+            for filth in output_filters or []:
+                # remove non-matching files
+                candidates = filth.filter_download_files(candidates, self.work_dir)
 
         # write to a tar?
         explicit_file = None
@@ -258,7 +347,7 @@ class TarTool:
                 # looks like timestamp not updated, but down_time is seconds and up_time has more precision
                 if up_time_s == time_now_s:
                     self.logger.debug(f"timestamps {host_file.as_posix()} now {down_time_s}, may or may not be updated")
-                    return True # edited, but actually we do not know
+                    return True  # edited, but actually we do not know
                 self.logger.debug(f"timestamp {host_file.as_posix()} not updated {down_time_s}")
                 return False  # not edited, we are sure
             self.logger.debug(f"timestamp {host_file.as_posix()} updated {up_time_s} -> {down_time_s}")

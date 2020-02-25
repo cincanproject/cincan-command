@@ -31,10 +31,10 @@ check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	grep -F "[`cat $(VERSION_LOCAL)`]" CHANGELOG.md
 
 unit-tests:
-	pytest
+	pytest --basetemp=".tmp/"
 
 unit-tests-with-coverage:
-	pytest --cov=cincan tests
+	pytest --cov=cincan tests --basetemp=".tmp/"
 
 $(VERSION_LOCAL): setup.py
 	mkdir -p $(dir $@)

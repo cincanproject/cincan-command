@@ -1,7 +1,5 @@
 import pathlib
-
 import pytest
-
 from cincan.file_tool import FileResolver, FileMatcher
 
 def test_upload_file_detection():
