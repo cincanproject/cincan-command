@@ -1,5 +1,10 @@
 # Change log
 
+## [0.2.8]
+
+
+- Bugfix: Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
+
 ## [0.2.7]
 
 - Bugfix: Accept filenames with whitespace(s) as arguments
