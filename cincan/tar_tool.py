@@ -339,7 +339,6 @@ class TarTool:
                 return True
 
         if up_stat and 'mtime' in stat:
-
             # MacOS need some timezone specifications
             if sys.platform == "darwin":
                 up_time = datetime.utcfromtimestamp(int(up_stat[1]))
