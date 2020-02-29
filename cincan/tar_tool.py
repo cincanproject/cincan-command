@@ -328,8 +328,8 @@ class TarTool:
 
     def __check_for_download(self, host_file: pathlib.Path, stat: Dict) -> bool:
         up_stat = self.upload_stats.get(host_file.as_posix())
-
         # NOTE: for directories (?) size from container is 4096 -> mismatch for directories!!!
+        
         if up_stat and 'size' in stat:
             down_size = int(stat['size'])
             up_size = up_stat[0]
@@ -339,8 +339,13 @@ class TarTool:
                 return True
 
         if up_stat and 'mtime' in stat:
+
+            # MacOS need some timezone specifications
+            if sys.platform == "darwin":
+                up_time = datetime.utcfromtimestamp(int(up_stat[1]))
+            else:
+                up_time = datetime.fromtimestamp(int(up_stat[1]))
             down_time_s = stat['mtime']  # seconds + timezone
-            up_time = datetime.fromtimestamp(int(up_stat[1]))
             up_time_s = up_time.strftime(self.time_format_seconds)  # seconds
             time_now_s = datetime.now().strftime(self.time_format_seconds)
             if down_time_s.startswith(up_time_s):
