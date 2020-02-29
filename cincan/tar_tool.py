@@ -327,9 +327,9 @@ class TarTool:
         return out_files
 
     def __check_for_download(self, host_file: pathlib.Path, stat: Dict) -> bool:
+        """Check if file should be downloaded from the container"""
         up_stat = self.upload_stats.get(host_file.as_posix())
         # NOTE: for directories (?) size from container is 4096 -> mismatch for directories!!!
-        
         if up_stat and 'size' in stat:
             down_size = int(stat['size'])
             up_size = up_stat[0]
