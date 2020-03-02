@@ -5,7 +5,7 @@ import pathlib
 import requests
 import json
 import datetime
-import time
+import timeit
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Iterable
@@ -193,7 +193,8 @@ class ToolRegistry:
 
     async def list_tools_registry(self) -> Dict[str, ToolInfo]:
         """List tools from registry with help of local cache"""
-        MAX_WORKERS = 100
+        MAX_WORKERS = 30
+        get_fetch_start = timeit.default_timer()
         fresh_resp = None
         with requests.Session() as session:
             adapter = requests.adapters.HTTPAdapter(pool_connections=MAX_WORKERS, pool_maxsize=MAX_WORKERS)
@@ -240,6 +241,7 @@ class ToolRegistry:
                         self.logger.debug("saving tool cache %s", self.tool_cache)
                         json.dump(tools_to_json(tool_list.values()), f)
             # read saved tools and return
+            self.logger.debug(f"Remote update time: {timeit.default_timer() - get_fetch_start} s")
             return self.read_tool_cache()
 
     def read_tool_cache(self) -> Dict[str, ToolInfo]:
