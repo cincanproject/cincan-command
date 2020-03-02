@@ -212,12 +212,10 @@ class ToolImage(CommandRunner):
         exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=self.read_stdin, tty=self.is_tty)
         exec_id = exec['Id']
         c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
-        c_socket_sock = c_socket._sock  # NOTE: c_socket itself is not writeable???, but this is :O
-
         buffer_size = 1024 * 1024
 
         self.logger.debug("enter stdin/container io loop...")
-        active_streams = [c_socket_sock]  # prefer socket to limit the amount of data in the container (?)
+        active_streams = [c_socket._sock]  # prefer socket to limit the amount of data in the container (?)
         if self.read_stdin:
             active_streams.append(sys.stdin)
         c_socket_open = True
@@ -239,17 +237,17 @@ class ToolImage(CommandRunner):
                         if not s_data:
                             self.logger.debug(f"received eof from stdin")
                             active_streams.remove(sel)
-                            c_socket_sock.shutdown(socket.SHUT_WR)
+                            c_socket._sock.shutdown(socket.SHUT_WR)
                         else:
                             self.logger.debug(f"received {len(s_data)} bytes from stdin")
                             stdin_s.update(s_data)
 
                             out_off = 0
                             while out_off < len(s_data):
-                                out_off += c_socket_sock.send(s_data[out_off:])
+                                out_off += c_socket._sock.send(s_data[out_off:])
                                 self.logger.debug(f"wrote ...{out_off} bytes to container stdin")
 
-                    elif sel == c_socket_sock:
+                    elif sel == c_socket._sock:
                         s_type, s_data = self.__unpack_container_stream(c_socket)
                         if not s_data:
                             self.logger.debug(f"received eof from container")
