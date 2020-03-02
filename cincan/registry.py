@@ -80,11 +80,10 @@ class ToolRegistry:
 
     def list_tools(self) -> Dict[str, ToolInfo]:
         """List all tools"""
-        local_tools = self.list_tools_local_images()
-        # Get remote tools in parallel to increase performance
+        # Get remote and local tools in parallel to increase performance
         loop = asyncio.get_event_loop()
-        future = asyncio.ensure_future(self.list_tools_registry())
-        remote_tools = loop.run_until_complete(future)
+        tasks = [self.list_tools_local_images(), self.list_tools_registry()]
+        local_tools, remote_tools = loop.run_until_complete(asyncio.gather(*tasks))
         use_tools = {}
         for i in set().union(local_tools.keys(), remote_tools.keys()):
             if i not in local_tools:
@@ -109,7 +108,7 @@ class ToolRegistry:
                 use_tools[i].description = remote_tools[i].description
         return use_tools
 
-    def list_tools_local_images(self) -> Dict[str, ToolInfo]:
+    async def list_tools_local_images(self) -> Dict[str, ToolInfo]:
         """List tools from the locally available docker images"""
         images = self.client.images.list(filters={'label': 'io.cincan.input'})
         # images oldest first (tags are listed in proper order)
@@ -197,7 +196,7 @@ class ToolRegistry:
         get_fetch_start = timeit.default_timer()
         fresh_resp = None
         with requests.Session() as session:
-            adapter = requests.adapters.HTTPAdapter(pool_connections=MAX_WORKERS, pool_maxsize=MAX_WORKERS)
+            adapter = requests.adapters.HTTPAdapter(pool_maxsize=MAX_WORKERS)
             session.mount("https://", adapter)
             # Get fresh list of tools from remote registry
             try:
