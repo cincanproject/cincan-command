@@ -273,4 +273,3 @@ class ToolRegistry:
         # uri_path
         # url
         # user-agent
-        
