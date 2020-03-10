@@ -4,6 +4,7 @@
 
 - Bugfix: Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
 - Added: Feature for filtering downloadable files from container, based on '.cincanignore' file which is stored inside container.
+- Changed: Sub command 'list' now fetches data in parallel for speed
 
 ## [0.2.7]
 
