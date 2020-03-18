@@ -5,6 +5,9 @@ import pathlib
 import requests
 import json
 import datetime
+import timeit
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Iterable
 
 
@@ -77,8 +80,10 @@ class ToolRegistry:
 
     def list_tools(self) -> Dict[str, ToolInfo]:
         """List all tools"""
-        local_tools = self.list_tools_local_images()
-        remote_tools = self.list_tools_registry()
+        # Get remote and local tools in parallel to increase performance
+        loop = asyncio.get_event_loop()
+        tasks = [self.list_tools_local_images(), self.list_tools_registry()]
+        local_tools, remote_tools = loop.run_until_complete(asyncio.gather(*tasks))
         use_tools = {}
         for i in set().union(local_tools.keys(), remote_tools.keys()):
             if i not in local_tools:
@@ -103,7 +108,7 @@ class ToolRegistry:
                 use_tools[i].description = remote_tools[i].description
         return use_tools
 
-    def list_tools_local_images(self) -> Dict[str, ToolInfo]:
+    async def list_tools_local_images(self) -> Dict[str, ToolInfo]:
         """List tools from the locally available docker images"""
         images = self.client.images.list(filters={'label': 'io.cincan.input'})
         # images oldest first (tags are listed in proper order)
@@ -123,10 +128,10 @@ class ToolRegistry:
                 self.logger.debug("%s input: %s output: %s", name, input, output)
         return ret
 
-    def fetch_remote_data(self, tool: ToolInfo) -> Dict[str, Any]:
+    def fetch_remote_data(self, session: requests.Session, tool: ToolInfo) -> Dict[str, Any]:
         """Fetch remote data to update a tool info"""
         self.logger.info("fetch %s...", tool.name)
-        manifest = self.fetch_manifest(tool.name)
+        manifest = self.fetch_manifest(session, tool.name)
         v1_comp_string = manifest.get('history', [{}])[0].get('v1Compatibility')
         if v1_comp_string is None:
             return {}
@@ -138,12 +143,12 @@ class ToolRegistry:
         tool.tags = manifest.get('sorted_tags', None)  # Note: not part of manifest in Docker API
         return manifest
 
-    def fetch_manifest(self, tool_tag: str) -> Dict[str, Any]:
+    def fetch_manifest(self, session: requests.Session, tool_tag: str) -> Dict[str, Any]:
         """Fetch docker image tag and manifest information"""
         tool_name, tool_version = split_tool_tag(tool_tag)
 
         # Get tags for the tool
-        tags_req = requests.get(self.hub_url + "/repositories/" + tool_name + "/tags?page_size=1000")
+        tags_req = session.get(self.hub_url + "/repositories/" + tool_name + "/tags?page_size=1000")
         if tags_req.status_code != 200:
             self.logger.error(
                 "Error getting tags for tool {}, code: {}".format(tool_name, tags_req.status_code))
@@ -156,7 +161,7 @@ class ToolRegistry:
             tool_version = tag_names[0]  # tool version not given, pick newest
 
         # Get bearer token for the image
-        token_req = requests.get(self.auth_url + "?service=registry.docker.io&scope=repository:"
+        token_req = session.get(self.auth_url + "?service=registry.docker.io&scope=repository:"
                                  + tool_name + ':pull')
         if token_req.status_code != 200:
             self.logger.error("Error getting token for tool {}, code: {}".format(tool_name, token_req.status_code))
@@ -166,10 +171,10 @@ class ToolRegistry:
 
         # Get manifest of the image
         # Note, must not request 'v2' metadata as that does not contain what is now in 'v1Compatibility' :O
-        manifest_req = requests.get(self.registry_url + "/" + tool_name + "/manifests/" + tool_version,
-                                    headers={'Authorization': ('Bearer ' + token),
-                                             # 'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
-                                             })
+        manifest_req = session.get(self.registry_url + "/" + tool_name + "/manifests/" + tool_version,
+                                   headers={'Authorization': ('Bearer ' + token),
+                                            # 'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
+                                            })
         if manifest_req.status_code != 200:
             self.logger.error(
                 "Error getting manifest for tool {}, code: {}".format(tool_name, manifest_req.status_code))
@@ -185,44 +190,58 @@ class ToolRegistry:
         # curl - sSL "https://auth.docker.io/token?service=registry.docker.io&scope=repository:raulik/test-test-tool:pull" | jq - r.token > bearer - token
         # curl - s H "Authorization: Bearer `cat bearer-token`" "https://registry.hub.docker.com/v2/raulik/test-test-tool/manifests/latest" | python - m json.tool
 
-    def list_tools_registry(self) -> Dict[str, ToolInfo]:
+    async def list_tools_registry(self) -> Dict[str, ToolInfo]:
         """List tools from registry with help of local cache"""
-
-        # Get fresh list of tools from remote registry
+        MAX_WORKERS = 30
+        get_fetch_start = timeit.default_timer()
         fresh_resp = None
-        try:
-            fresh_resp = requests.get(self.registry_url + "/repositories/cincan/?page_size=1000")
-        except requests.ConnectionError as e:
-            self.logger.warning(e)
+        with requests.Session() as session:
+            adapter = requests.adapters.HTTPAdapter(pool_maxsize=MAX_WORKERS)
+            session.mount("https://", adapter)
+            # Get fresh list of tools from remote registry
+            try:
+                fresh_resp = session.get(self.registry_url + "/repositories/cincan/?page_size=1000")
+            except requests.ConnectionError as e:
+                self.logger.warning(e)
 
-        if fresh_resp and fresh_resp.status_code != 200:
-            self.logger.error("Error getting list of remote tools, code: {}".format(fresh_resp.status_code))
-        elif fresh_resp:
-            # get a images JSON, form new tool list
-            fresh_json = json.loads(fresh_resp.content)
-            tool_list = {}
-            for t in fresh_json['results']:
-                name = "{}/{}".format(t['user'], t['name'])
-                tool_list[name] = ToolInfo(name, updated=parse_json_time(t['last_updated']),
-                                           description=t.get('description', ''))
-            # update tool info, when required
-            old_tools = self.read_tool_cache()
-            updated = 0
-            for t in tool_list.values():
-                if t.name not in old_tools or t.updated > old_tools[t.name].updated:
-                    self.fetch_remote_data(t)
-                    updated += 1
-                else:
-                    tool_list[t.name] = old_tools[t.name]
-                    self.logger.debug("no updates for %s", t.name)
-            # save the tool list
-            if updated > 0:
-                self.tool_cache.parent.mkdir(parents=True, exist_ok=True)
-                with self.tool_cache.open("w") as f:
-                    self.logger.debug("saving tool cache %s", self.tool_cache)
-                    json.dump(tools_to_json(tool_list.values()), f)
-        # read saved tools and return
-        return self.read_tool_cache()
+            if fresh_resp and fresh_resp.status_code != 200:
+                self.logger.error("Error getting list of remote tools, code: {}".format(fresh_resp.status_code))
+            elif fresh_resp:
+                # get a images JSON, form new tool list
+                fresh_json = json.loads(fresh_resp.content)
+                tool_list = {}
+                for t in fresh_json['results']:
+                    name = "{}/{}".format(t['user'], t['name'])
+                    tool_list[name] = ToolInfo(name, updated=parse_json_time(t['last_updated']),
+                                               description=t.get('description', ''))
+                # update tool info, when required
+                old_tools = self.read_tool_cache()
+                updated = 0
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    loop = asyncio.get_event_loop()
+                    tasks = []
+                    for t in tool_list.values():
+                        if t.name not in old_tools or t.updated > old_tools[t.name].updated:
+                            tasks.append(loop.run_in_executor(executor,
+                                                              self.fetch_remote_data,
+                                                              *(session, t)
+                                                              ))
+                            updated += 1
+                        else:
+                            tool_list[t.name] = old_tools[t.name]
+                            self.logger.debug("no updates for %s", t.name)
+                    for response in await asyncio.gather(*tasks):
+                        pass
+
+                # save the tool list
+                if updated > 0:
+                    self.tool_cache.parent.mkdir(parents=True, exist_ok=True)
+                    with self.tool_cache.open("w") as f:
+                        self.logger.debug("saving tool cache %s", self.tool_cache)
+                        json.dump(tools_to_json(tool_list.values()), f)
+            # read saved tools and return
+            self.logger.debug(f"Remote update time: {timeit.default_timer() - get_fetch_start} s")
+            return self.read_tool_cache()
 
     def read_tool_cache(self) -> Dict[str, ToolInfo]:
         """Read the local tool cache file"""
@@ -253,4 +272,3 @@ class ToolRegistry:
         # uri_path
         # url
         # user-agent
-        
