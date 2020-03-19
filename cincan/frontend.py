@@ -28,6 +28,8 @@ from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 
+DEFAULT_IMAGE_FILTER_TAG = "latest-stable"
+
 
 class ToolStream:
     """Handle stream to or from the container"""
@@ -427,8 +429,11 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = subparsers.add_parser('list')
-    list_parser.add_argument('-t', '--tags', action='store_true', help='Show tags')
+    list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    list_exclusive_group = list_parser.add_mutually_exclusive_group()
+    list_exclusive_group.add_argument('-t', '--tag', default=DEFAULT_IMAGE_FILTER_TAG, help='Filter images by tag name.')
+    list_exclusive_group.add_argument('-a', '--all', action='store_true', help='List all images from the registry.')
+    list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of selected images.')
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -528,14 +533,16 @@ def main():
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
         format_str = "{0:<25}"
-        if args.tags:
-            format_str += " {4:<20}"
+        if args.with_tags:
+            format_str += " {4:<30}"
         format_str += " {1}"
         reg = registry.ToolRegistry()
         try:
-            tool_list = reg.list_tools()
+            tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
         except OSError:
             docker_connect_error()
+        if not args.all and tool_list:
+            print(f"\n  Listing all tools with tag '{args.tag}':\n")
         for tool in sorted(tool_list):
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
