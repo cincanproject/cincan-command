@@ -414,7 +414,8 @@ def main():
     image_default_args(test_parser)
 
     list_parser = subparsers.add_parser('list')
-    list_parser.add_argument('-t', '--tags', action='store_true', help='Show tags')
+    list_parser.add_argument('-t', '--tag', default='latest-stable', help='Filter images by tag name.')
+    list_parser.add_argument('-a', '--all-tags', action='store_true', help='List all tags of each image')
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -512,12 +513,12 @@ def main():
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
         format_str = "{0:<25}"
-        if args.tags:
+        if args.all_tags:
             format_str += " {4:<20}"
         format_str += " {1}"
         reg = registry.ToolRegistry()
         try:
-            tool_list = reg.list_tools()
+            tool_list = reg.list_tools(default_tag=args.tag)
         except OSError:
             docker_connect_error()
         for tool in sorted(tool_list):
