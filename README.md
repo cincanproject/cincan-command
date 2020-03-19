@@ -36,7 +36,7 @@ You can check that all works as follows:
 If all goes well you get a list of the tools dockerized in the 'CinCan' project.
 However, you can use any dockerized tools as long as they meet the
 requirements listed in the end of this document.
-First time running this will might take a while as it must fetch information of the tools
+First time running this might take a while as it must fetch information of the tools
 and cache it locally.
 
 By default, `cincan list` is showing all tools which are tagged with `latest-stable` tag in Dockerhub under 'CinCan'. However, if you want to include development images as well, you can include `--tag` (or `-t`) to explicitly filter images by tag name as:
