@@ -414,8 +414,10 @@ def main():
     image_default_args(test_parser)
 
     list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    list_parser.add_argument('-t', '--tag', default='latest-stable', help='Filter images by tag name.')
-    list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of each image.')
+    list_exclusive_group = list_parser.add_mutually_exclusive_group()
+    list_exclusive_group.add_argument('-t', '--tag', default='latest-stable', help='Filter images by tag name.')
+    list_exclusive_group.add_argument('-a', '--all', action='store_true', help='List all images from the registry.')
+    list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of selected images.')
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -518,7 +520,7 @@ def main():
         format_str += " {1}"
         reg = registry.ToolRegistry()
         try:
-            tool_list = reg.list_tools(defined_tag=args.tag)
+            tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
         except OSError:
             docker_connect_error()
         for tool in sorted(tool_list):
