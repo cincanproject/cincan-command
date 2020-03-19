@@ -78,7 +78,7 @@ class ToolRegistry:
         self.auth_url = "https://auth.docker.io/token"
         self.registry_url = "https://registry.hub.docker.com/v2"
 
-    def list_tools(self, default_tag: str = None) -> Dict[str, ToolInfo]:
+    def list_tools(self, defined_tag: str = None) -> Dict[str, ToolInfo]:
         """List all tools"""
         # Get remote and local tools in parallel to increase performance
         loop = asyncio.get_event_loop()
@@ -86,12 +86,11 @@ class ToolRegistry:
         local_tools, remote_tools = loop.run_until_complete(asyncio.gather(*tasks))
         use_tools = {}
         for i in set().union(local_tools.keys(), remote_tools.keys()):
-            if not default_tag:
+            if not defined_tag or defined_tag in remote_tools[i].tags or defined_tag in remote_tools[i].tags:
                 pass
-            elif default_tag not in remote_tools[i].tags or default_tag not in remote_tools[i].tags:
-                continue
             else:
-                self.logger.debug(f"Provided tag '{default_tag}' not found for image {i}.")
+                self.logger.debug(f"Provided tag '{defined_tag}' not found for image {i}.")
+                continue
             if i not in local_tools:
                 use_tools[i] = remote_tools[i]
                 self.logger.debug("using remote image for %s", use_tools[i].name)
