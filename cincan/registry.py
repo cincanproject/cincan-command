@@ -86,7 +86,7 @@ class ToolRegistry:
         local_tools, remote_tools = loop.run_until_complete(asyncio.gather(*tasks))
         use_tools = {}
         for i in set().union(local_tools.keys(), remote_tools.keys()):
-            if not defined_tag or defined_tag in remote_tools[i].tags or defined_tag in remote_tools[i].tags:
+            if not defined_tag or defined_tag in {**local_tools, **remote_tools}[i].tags:
                 pass
             else:
                 self.logger.debug(f"Provided tag '{defined_tag}' not found for image {i}.")
