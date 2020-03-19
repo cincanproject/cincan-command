@@ -15,7 +15,7 @@ import termios
 from datetime import datetime
 from io import IOBase
 from typing import List, Set, Dict, Optional, Tuple
-
+import pkg_resources
 import docker
 import docker.errors
 from .dockerapi_fixes import CustomContainerApiMixin
@@ -399,12 +399,26 @@ def docker_connect_error():
     sys.exit(1)
 
 
+def get_version_information():
+    """Return version of currently installed 'cincan-command' tool."""
+    pkg_name = "cincan-command"
+    version_filename = "VERSION"
+    try:
+        version = pkg_resources.require(pkg_name)[0]
+    except pkg_resources.DistributionNotFound:
+        print(f"Tool not installed. Showing version from file '{version_filename}':")
+        with open(pathlib.Path(__file__).parent.parent / version_filename) as f:
+            version = " ".join([pkg_name, f.read().strip()])
+    return version
+
+
 def main():
     """Parse command line and run the tool"""
     m_parser = argparse.ArgumentParser()
     m_parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                           help="Set the logging level", default=None)
     m_parser.add_argument('-q', '--quiet', action='store_true', help='Be quite quiet')
+    m_parser.add_argument('-v', '--version', action='store_true', help='Shows currently installed version of the tool.')
     subparsers = m_parser.add_subparsers(dest='sub_command')
 
     run_parser = subparsers.add_parser('run')
@@ -435,7 +449,9 @@ def main():
         args = m_parser.parse_args(args=sys.argv[1:])
     else:
         args = m_parser.parse_args(args=['help'])
-
+    if args.version:
+        print(get_version_information())
+        sys.exit(0)
     log_level = args.log_level if args.log_level else ('WARNING' if args.quiet else 'INFO')
     if log_level not in {'DEBUG'}:
         sys.tracebacklimit = 0  # avoid track traces unless debugging

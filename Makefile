@@ -12,7 +12,7 @@
 # Note, we check that version has been upgraded from one in PyPI
 #
 
-VERSION_LOCAL = build/version-local
+VERSION_LOCAL = VERSION
 
 VERSION_IN_PYPI = build/version-in-pip
 
@@ -35,11 +35,6 @@ unit-tests:
 
 unit-tests-with-coverage:
 	pytest --cov=cincan tests --basetemp=".tmp/"
-
-$(VERSION_LOCAL): setup.py
-	mkdir -p $(dir $@)
-	grep "version.*=" setup.py |  grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" > $@
-	cat $@
 
 always-refresh:
 
