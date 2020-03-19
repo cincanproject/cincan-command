@@ -5,6 +5,7 @@
 - Bugfix: Files are now downloaded properly in MacOS
 - Bugfix: Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
 - Added: Feature for filtering downloadable files from container, based on '.cincanignore' file which is stored inside container.
+- Added: Ability to filter `cincan list` by Docker image tag names
 - Changed: Sub command 'list' now fetches data in parallel for speed
 
 ## [0.2.7]
