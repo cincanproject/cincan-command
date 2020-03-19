@@ -28,6 +28,8 @@ from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 
+DEFAULT_IMAGE_FILTER_TAG = "latest-stable"
+
 
 class ToolStream:
     """Handle stream to or from the container"""
@@ -415,7 +417,7 @@ def main():
 
     list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     list_exclusive_group = list_parser.add_mutually_exclusive_group()
-    list_exclusive_group.add_argument('-t', '--tag', default='latest-stable', help='Filter images by tag name.')
+    list_exclusive_group.add_argument('-t', '--tag', default=DEFAULT_IMAGE_FILTER_TAG, help='Filter images by tag name.')
     list_exclusive_group.add_argument('-a', '--all', action='store_true', help='List all images from the registry.')
     list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of selected images.')
 
@@ -523,6 +525,8 @@ def main():
             tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
         except OSError:
             docker_connect_error()
+        if not args.all:
+            print(f"\n  Listing all tools with tag '{args.tag}':\n")
         for tool in sorted(tool_list):
             lst = tool_list[tool]
             print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),

@@ -111,6 +111,8 @@ class ToolRegistry:
                 use_tools[i].tags = use_tags
                 # description only in registry, not locally
                 use_tools[i].description = remote_tools[i].description
+        if not use_tools:
+            self.logger.info(f"No single tool found with tag `{defined_tag}`.")
         return use_tools
 
     async def list_tools_local_images(self) -> Dict[str, ToolInfo]:

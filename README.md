@@ -39,7 +39,7 @@ requirements listed in the end of this document.
 First time running this might take a while as it must fetch information of the tools
 and cache it locally.
 
-By default, `cincan list` is showing all tools which are tagged with `latest-stable` tag in Dockerhub under 'CinCan'. However, if you want to include development images as well, you can include `--tag` (or `-t`) to explicitly filter images by tag name as:
+By default, `cincan list` is showing all tools which are tagged with `latest-stable` tag in Dockerhub under 'CinCan'. They are expected to be production-ready.  However, if you want to include development images as well, you can include `--tag` (or `-t`) to explicitly filter images by tag name as:
 
 ```
 % cincan list --tag dev
