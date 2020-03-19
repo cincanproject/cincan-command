@@ -78,7 +78,7 @@ class ToolRegistry:
         self.auth_url = "https://auth.docker.io/token"
         self.registry_url = "https://registry.hub.docker.com/v2"
 
-    def list_tools(self, default_tag=None) -> Dict[str, ToolInfo]:
+    def list_tools(self, default_tag: str = None) -> Dict[str, ToolInfo]:
         """List all tools"""
         # Get remote and local tools in parallel to increase performance
         loop = asyncio.get_event_loop()

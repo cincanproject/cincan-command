@@ -413,7 +413,7 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = subparsers.add_parser('list')
+    list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     list_parser.add_argument('-t', '--tag', default='latest-stable', help='Filter images by tag name.')
     list_parser.add_argument('-a', '--all-tags', action='store_true', help='List all tags of each image')
 
