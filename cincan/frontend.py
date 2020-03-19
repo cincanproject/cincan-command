@@ -525,7 +525,7 @@ def main():
             tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
         except OSError:
             docker_connect_error()
-        if not args.all:
+        if not args.all and tool_list:
             print(f"\n  Listing all tools with tag '{args.tag}':\n")
         for tool in sorted(tool_list):
             lst = tool_list[tool]
