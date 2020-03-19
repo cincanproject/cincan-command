@@ -3,9 +3,12 @@ from setuptools import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open("VERSION", "r") as ver:
+    version_info = ver.read().strip()
+
 setup(
     name='cincan-command',
-    version='0.2.7',
+    version=version_info,
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@gmail.com",
     description='Cincan wrapper for dockerized command-line tools',
