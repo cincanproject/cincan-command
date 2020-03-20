@@ -36,7 +36,7 @@ To activate changes:
 source ~/.bashrc
 ```
 
-If you invoke the pip installation with `sudo` and without `--user` flag (if you are OK with that) the command `cincan` should be added to your path automatically and installed in system wide.
+**If you invoke the pip installation with `sudo` and without `--user` flag (if you are OK with that) the command `cincan` should be added to your path automatically and installed in system wide.**
 
 NOTE: You may want to install the tool into `virtualenv` to avoid conflicts with
 other Python applications you may have. Please consult appropriate documentation.
