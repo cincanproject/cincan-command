@@ -10,8 +10,9 @@ use of the native command-line tools provided as docker images.
 ## Supported platforms
 
 The `cincan` tool should run on fairly modern Linux distributions.
-It is not tested on MacOS, but there should be no blocking issues in principle.
-On Windows `cincan` **noes not work**, unfortunately.
+Entry level support for macOS is available - tested to work with macOS Catalina
+
+On Windows `cincan` **does not work**, unfortunately.
 
 ## Installation
 
@@ -21,10 +22,21 @@ Consult your system documentation how to install them.
 
 The command program is then installed using pip for Python 3:
 
-    % sudo pip install cincan-command
+    % pip install cincan-command --user
 
-If you invoke the pip installation with `sudo` the command `cincan` should be added to your path.
-Otherwise, you may need to do that yourself.
+This will install package for current user. However, it is possible that these packages are not in path. You can add user-specific binaries into path for current session with:
+
+```
+export PATH=$PATH:$HOME/.local/bin
+```
+Or to add permanently, by appending it into `~/.bashrc`  file with your favorite text editor. Note that this can depend on what kind of shell you are using.
+
+To activate changes:
+```
+source ~/.bashrc
+```
+
+If you invoke the pip installation with `sudo` and without `--user` flag (if you are OK with that) the command `cincan` should be added to your path automatically and installed in system wide.
 
 NOTE: You may want to install the tool into `virtualenv` to avoid conflicts with
 other Python applications you may have. Please consult appropriate documentation.
