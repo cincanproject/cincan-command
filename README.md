@@ -10,7 +10,7 @@ use of the native command-line tools provided as docker images.
 ## Supported platforms
 
 The `cincan` tool should run on fairly modern Linux distributions.
-Entry level support for macOS is available - tested to work with macOS Catalina
+Entry level support for macOS is available - tested to work with macOS Catalina.
 
 On Windows `cincan` **does not work**, unfortunately.
 
@@ -29,7 +29,7 @@ This will install package for current user. However, it is possible that these p
 ```
 export PATH=$PATH:$HOME/.local/bin
 ```
-Or to add permanently, by appending it into `~/.bashrc`  file with your favorite text editor. Note that this can depend on what kind of shell you are using.
+To add it permanently,  append it into `~/.bashrc`  file with your favorite text editor. Note that this can depend on what kind of shell you are using.
 
 To activate changes:
 ```
