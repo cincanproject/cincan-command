@@ -18,9 +18,10 @@ from typing import List, Set, Dict, Optional, Tuple
 import pkg_resources
 import docker
 import docker.errors
+import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
 
-from cincanregistry import list_handler, create_argparse
+from cincanregistry import list_handler, create_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
@@ -56,6 +57,7 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
+        self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
             self.name = name or path
@@ -119,10 +121,39 @@ class ToolImage(CommandRunner):
 
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
+        name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
         if pull:
-            name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
-            self.client.images.pull(name_tag[0], tag=name_tag[1])
-        self.image = self.client.images.get(image)
+            try: 
+                self.client.images.pull(name_tag[0], tag=name_tag[1])
+            except docker.errors.NotFound:
+                self.logger.debug("Image 'latest-stable' not found. Trying 'latest' instead.")
+                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
+                self.client.images.pull(name_tag[0], tag=name_tag[1])
+        self.image = self.client.images.get(":".join(name_tag))
+        self.__check_version(self.image, name_tag)
+
+    def __check_version(self, image: docker.models.images.Image, name_tag:str):
+        reg = ToolRegistry()
+        current_ver = reg.get_version_by_image_id(image.id)
+        loop = asyncio.get_event_loop()
+        version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+        if version_info:
+            remote_ver = version_info.get("versions").get("remote").get("version")
+            tags = version_info.get("versions").get("local").get("tags")
+            if not version_info.get("updates").get("local") and name_tag[1] in tags:
+                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
+            else:
+                self.logger.info(f"Unable to compare versions: ({current_ver} vs. {remote_ver})")
+
+            if version_info.get("updates").get("remote"):
+                try:
+                    origin_ver = version_info.get("versions").get("origin").get("version")
+                    provider = version_info.get("versions").get("origin").get("details").get("provider")
+                    self.logger.info(f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
+                except AttributeError:
+                    self.logger.warning("Something went wrong when checking origin version information.")
+        else:
+            self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}")
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
