@@ -21,7 +21,8 @@ import docker.errors
 import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
 
-from cincanregistry import list_handler, create_argparse, ToolRegistry
+from cincanregistry import list_handler, create_list_argparse, ToolRegistry
+# from cincanregistry import logging as registrylog
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
@@ -72,15 +73,12 @@ class ToolImage(CommandRunner):
             self.loaded_image = True
             if pull:
                 # pull first
-                self.logger.info(f"pulling image...")
                 self.__get_image(image, pull=True)
             else:
                 # just get the image
                 try:
                     self.__get_image(image, pull=False)
                 except docker.errors.ImageNotFound:
-                    # image not found, try to pull it
-                    self.logger.info(f"pulling image...")
                     self.__get_image(image, pull=True)
             self.context = '.'  # not really correct, but will do
         else:
@@ -123,10 +121,14 @@ class ToolImage(CommandRunner):
         """Get Docker image, possibly pulling it first"""
         name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
         if pull:
+            self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
             try: 
                 self.client.images.pull(name_tag[0], tag=name_tag[1])
+            except docker.errors.ImageNotFound:
+                self.logger.error("Image not found or no access to repository. Is it typed correctly?")
+                sys.exit(1)
             except docker.errors.NotFound:
-                self.logger.debug("Image 'latest-stable' not found. Trying 'latest' instead.")
+                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
                 name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
                 self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(":".join(name_tag))
@@ -136,7 +138,11 @@ class ToolImage(CommandRunner):
         reg = ToolRegistry()
         current_ver = reg.get_version_by_image_id(image.id)
         loop = asyncio.get_event_loop()
-        version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+        try:
+            version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+        except  FileNotFoundError as e:
+            self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
+            return
         if version_info:
             remote_ver = version_info.get("versions").get("remote").get("version")
             tags = version_info.get("versions").get("local").get("tags")
@@ -153,8 +159,7 @@ class ToolImage(CommandRunner):
                 except AttributeError:
                     self.logger.warning("Something went wrong when checking origin version information.")
         else:
-            self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}")
-
+            self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
 
@@ -459,7 +464,7 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=[create_argparse(as_module=True)])
+    list_parser = create_list_argparse(subparsers)
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -493,6 +498,8 @@ def main():
         m_parser.print_help()
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
+        # We do not want version logs here
+        logging.getLogger('versions').setLevel(logging.WARNING)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
@@ -558,6 +565,9 @@ def main():
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
+        loggers = [logging.getLogger()]  # get the root logger
+        loggers = loggers + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        print(loggers)
         list_handler(args)
     elif sub_command == 'commit':
 
