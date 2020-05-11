@@ -568,9 +568,6 @@ def main():
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
-        loggers = [logging.getLogger()]  # get the root logger
-        loggers = loggers + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-        print(loggers)
         list_handler(args)
     elif sub_command == 'commit':
 
