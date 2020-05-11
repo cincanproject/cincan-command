@@ -136,11 +136,13 @@ class ToolImage(CommandRunner):
             self.__check_version(self.image, name_tag)
 
     def __check_version(self, image: docker.models.images.Image, name_tag:str):
-        reg = ToolRegistry()
-        current_ver = reg.get_version_by_image_id(image.id)
+        """
+        Get version status of image from remote and origin and compare to current version.
+        """
+        current_ver = self.registry.get_version_by_image_id(image.id)
         loop = asyncio.get_event_loop()
         try:
-            version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+            version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=True))
         except  FileNotFoundError as e:
             self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
             return
@@ -157,8 +159,8 @@ class ToolImage(CommandRunner):
                     origin_ver = version_info.get("versions").get("origin").get("version")
                     provider = version_info.get("versions").get("origin").get("details").get("provider")
                     self.logger.info(f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
-                except AttributeError:
-                    self.logger.warning("Something went wrong when checking origin version information.")
+                except AttributeError as e:
+                    self.logger.warning(f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
         else:
             self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
