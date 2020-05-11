@@ -18,9 +18,12 @@ from typing import List, Set, Dict, Optional, Tuple
 import pkg_resources
 import docker
 import docker.errors
+# import docker.api.image.ImageApiMixin.pull as docker_pull
+import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
-
-from cincan import registry
+from cincanregistry import list_handler, create_list_argparse, ToolRegistry
+# from cincanregistry import logging as registrylog
+from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
 from cincan.configuration import Configuration
@@ -29,6 +32,35 @@ from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 
 DEFAULT_IMAGE_FILTER_TAG = "latest-stable"
+
+
+class NavigateCursor:
+
+    def __init__(self):
+        # hide cursor
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+
+    def __del__(self):
+        # show cursor
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+
+    def up(self, n: int = 1):
+        sys.stdout.write(f'\u001b[{n}A')
+        sys.stdout.flush()
+
+    def down(self, n: int = 1):
+        sys.stdout.write(f'\u001b[{n}B')
+        sys.stdout.flush()
+
+    def right(self, n: int = 1):
+        sys.stdout.write(f'\u001b[{n}C')
+        sys.stdout.flush()
+
+    def left(self, n: int = 1):
+        sys.stdout.write(f'\u001b[{n}D')
+        sys.stdout.flush()
 
 
 class ToolStream:
@@ -57,6 +89,12 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
+        if pathlib.Path("/var/run/docker.sock").is_socket():
+            self.lowl_client = docker.APIClient(base_url='unix://var/run/docker.sock')
+        else:
+            self.logger.debug("Path '/var/run/docker.sock' not found, base_url for lower level API need to be configured manually.")
+            self.lowl_client = None
+        self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
             self.name = name or path
@@ -118,12 +156,80 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return registry.parse_json_time(self.image.attrs['Created'])
 
+    def __pull_image(self, repository:str, tag:str):
+        if self.lowl_client:
+            self.__pull_image_with_progress(repository, tag)
+        else:
+            # No fancy progress bar
+            self.client.images.pull(repository, tag)
+
+    def __pull_image_with_progress(self, repository:str, tag:str):
+        position = NavigateCursor()
+
+        first_time = True
+        loc = 0
+        cur_loc = 0
+        locations = {}
+        for status in self.lowl_client.pull(repository, tag, stream=True, decode=True):
+            s_id = status.get("id", "")
+            if s_id and not first_time:
+                position.up(cur_loc)
+                cur_loc = 0
+            elif not s_id:
+                # Last responses do not contain id
+                 print(f'{status.get("status"):<{12}}')
+                 continue
+            if not locations.get(s_id):
+                loc +=1
+                locations[s_id] = {}
+                locations[s_id]["state"] = status
+                locations[s_id]["loc"] = loc
+                cur_loc +=1
+                print(f'{s_id:<{12}}: {locations[s_id]["state"].get("status") if locations[s_id]["state"].get("status") else "":<{20}} {locations[s_id]["state"].get("progress") if locations[s_id]["state"].get("progress") else "" :<{40}}')
+            else:
+                if first_time:
+                    position.up(cur_loc)
+                    cur_loc = 0
+                first_time = False
+                locations[s_id]["state"] = status
+
+                for _id in sorted(locations, key=lambda item: locations[item].get("loc")):
+                    print(f'{_id:<{12}}: {locations[_id]["state"].get("status") if locations[_id]["state"].get("status") else "":<{20}} {locations[_id]["state"].get("progress") if locations[_id]["state"].get("progress") else "" :<{40}}')
+                    cur_loc +=1
+
+
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
         if pull:
-            name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
-            self.client.images.pull(name_tag[0], tag=name_tag[1])
-        self.image = self.client.images.get(image)
+            self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
+            try: 
+                self.__pull_image(name_tag[0], tag=name_tag[1])
+            except docker.errors.ImageNotFound:
+                self.logger.error("Image not found or no access to repository. Is it typed correctly?")
+                sys.exit(1)
+            except docker.errors.NotFound:
+                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
+                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
+                self.__pull_image(name_tag[0], tag=name_tag[1])
+        self.image = self.client.images.get(":".join(name_tag))
+        self.__check_version(self.image, name_tag)
+
+    def __check_version(self, image: docker.models.images.Image, name_tag:str):
+        reg = ToolRegistry()
+        current_ver = reg.get_version_by_image_id(image.id)
+        loop = asyncio.get_event_loop()
+        try:
+            version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+        except  FileNotFoundError as e:
+            self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
+            return
+        if version_info:
+            remote_ver = version_info.get("versions").get("remote").get("version")
+            tags = version_info.get("versions").get("local").get("tags")
+            if not version_info.get("updates").get("local") and name_tag[1] in tags:
+                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
+            else:
+                self.logger.info(f"Unable to compare versions: ({current_ver} vs. {remote_ver})")
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
