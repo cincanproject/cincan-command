@@ -117,7 +117,7 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __get_image(self, image: str, pull: bool = False):
+    def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
         """Get Docker image, possibly pulling it first"""
         name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
         if pull:
@@ -129,10 +129,11 @@ class ToolImage(CommandRunner):
                 sys.exit(1)
             except docker.errors.NotFound:
                 self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
+                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']            
                 self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(":".join(name_tag))
-        self.__check_version(self.image, name_tag)
+        if version_check:
+            self.__check_version(self.image, name_tag)
 
     def __check_version(self, image: docker.models.images.Image, name_tag:str):
         reg = ToolRegistry()
