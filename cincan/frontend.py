@@ -18,9 +18,9 @@ from typing import List, Set, Dict, Optional, Tuple
 import pkg_resources
 import docker
 import docker.errors
-# import docker.api.image.ImageApiMixin.pull as docker_pull
 import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
+
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 # from cincanregistry import logging as registrylog
 from cincanregistry.utils import parse_file_time, format_time
@@ -31,8 +31,6 @@ from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 
-DEFAULT_IMAGE_FILTER_TAG = "latest-stable"
-
 
 class NavigateCursor:
 
@@ -42,7 +40,7 @@ class NavigateCursor:
         sys.stdout.flush()
 
     def __del__(self):
-        # show cursor
+        # return visibilty of cursor in all cases
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
@@ -90,7 +88,7 @@ class ToolImage(CommandRunner):
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
         if pathlib.Path("/var/run/docker.sock").is_socket():
-            self.lowl_client = docker.APIClient(base_url='unix://var/run/docker.sock')
+            self.lowl_client = docker.APIClient(base_url='unix://var/run/docker.sock', version="auto")
         else:
             self.logger.debug("Path '/var/run/docker.sock' not found, base_url for lower level API need to be configured manually.")
             self.lowl_client = None
@@ -109,15 +107,12 @@ class ToolImage(CommandRunner):
             self.loaded_image = True
             if pull:
                 # pull first
-                self.logger.info(f"pulling image...")
                 self.__get_image(image, pull=True)
             else:
                 # just get the image
                 try:
                     self.__get_image(image, pull=False)
                 except docker.errors.ImageNotFound:
-                    # image not found, try to pull it
-                    self.logger.info(f"pulling image...")
                     self.__get_image(image, pull=True)
             self.context = '.'  # not really correct, but will do
         else:
@@ -154,19 +149,37 @@ class ToolImage(CommandRunner):
 
     def get_creation_time(self) -> datetime:
         """Get image creation time"""
-        return registry.parse_json_time(self.image.attrs['Created'])
+        return parse_file_time(self.image.attrs['Created'])
 
-    def __pull_image(self, repository:str, tag:str):
-        if self.lowl_client:
-            self.__pull_image_with_progress(repository, tag)
-        else:
-            # No fancy progress bar
-            self.client.images.pull(repository, tag)
+    def __pull_image(self, repository: str, tag: str):
+        """Pull image. If lower API is available and logging level low enough, show progress bar."""
+        try:
+            if self.lowl_client and self.logger.getEffectiveLevel() < 30:
+                self.__pull_image_with_progress(repository, tag)
+            else:
+                # No fancy progress bar
+                self.client.images.pull(repository, tag)
+        except KeyboardInterrupt:
+            self.logger.info("\nKeyboard interrupt detected. Closing...")
+            sys.exit(0)
 
-    def __pull_image_with_progress(self, repository:str, tag:str):
+    def __pull_image_with_progress(self, repository: str, tag: str):
+        """Pulls image while logging in real time the progress"""
+
+        def log_row(data : dict):
+            """Log single row of data"""
+            __id = data.get("id", "")
+            if __id:
+                _id = f'{__id:<12}: '
+            else:
+                _id = __id
+            status = data.get("status", "")
+            progress = data.get("progress", "")
+            self.logger.info(f'{_id}{status:<{20}} {progress}')
+
         position = NavigateCursor()
-
         first_time = True
+        # Locations means the location of data row in terminal output
         loc = 0
         cur_loc = 0
         locations = {}
@@ -177,29 +190,31 @@ class ToolImage(CommandRunner):
                 cur_loc = 0
             elif not s_id:
                 # Last responses do not contain id
-                 print(f'{status.get("status"):<{12}}')
+                 log_row(status)
                  continue
+            # Get status of each layer once at first
             if not locations.get(s_id):
                 loc +=1
                 locations[s_id] = {}
                 locations[s_id]["state"] = status
                 locations[s_id]["loc"] = loc
                 cur_loc +=1
-                print(f'{s_id:<{12}}: {locations[s_id]["state"].get("status") if locations[s_id]["state"].get("status") else "":<{20}} {locations[s_id]["state"].get("progress") if locations[s_id]["state"].get("progress") else "" :<{40}}')
+                log_row(locations[s_id].get("state"))
+                first_time = True
             else:
                 if first_time:
                     position.up(cur_loc)
                     cur_loc = 0
                 first_time = False
                 locations[s_id]["state"] = status
-
                 for _id in sorted(locations, key=lambda item: locations[item].get("loc")):
-                    print(f'{_id:<{12}}: {locations[_id]["state"].get("status") if locations[_id]["state"].get("status") else "":<{20}} {locations[_id]["state"].get("progress") if locations[_id]["state"].get("progress") else "" :<{40}}')
+                    log_row(locations[_id].get("state"))
                     cur_loc +=1
 
 
-    def __get_image(self, image: str, pull: bool = False):
+    def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
         """Get Docker image, possibly pulling it first"""
+        name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
         if pull:
             self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
             try: 
@@ -209,17 +224,20 @@ class ToolImage(CommandRunner):
                 sys.exit(1)
             except docker.errors.NotFound:
                 self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
-                self.__pull_image(name_tag[0], tag=name_tag[1])
+                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']            
+                self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(":".join(name_tag))
-        self.__check_version(self.image, name_tag)
+        if version_check:
+            self.__check_version(self.image, name_tag)
 
     def __check_version(self, image: docker.models.images.Image, name_tag:str):
-        reg = ToolRegistry()
-        current_ver = reg.get_version_by_image_id(image.id)
+        """
+        Get version status of image from remote and origin and compare to current version.
+        """
+        current_ver = self.registry.get_version_by_image_id(image.id)
         loop = asyncio.get_event_loop()
         try:
-            version_info = loop.run_until_complete(reg.list_versions(name_tag[0], only_updates=True))
+            version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=True))
         except  FileNotFoundError as e:
             self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
             return
@@ -231,6 +249,15 @@ class ToolImage(CommandRunner):
             else:
                 self.logger.info(f"Unable to compare versions: ({current_ver} vs. {remote_ver})")
 
+            if version_info.get("updates").get("remote"):
+                try:
+                    origin_ver = version_info.get("versions").get("origin").get("version")
+                    provider = version_info.get("versions").get("origin").get("details").get("provider")
+                    self.logger.info(f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
+                except AttributeError as e:
+                    self.logger.warning(f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
+        else:
+            self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
 
@@ -535,11 +562,7 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    list_exclusive_group = list_parser.add_mutually_exclusive_group()
-    list_exclusive_group.add_argument('-t', '--tag', default=DEFAULT_IMAGE_FILTER_TAG, help='Filter images by tag name.')
-    list_exclusive_group.add_argument('-a', '--all', action='store_true', help='List all images from the registry.')
-    list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of selected images.')
+    list_parser = create_list_argparse(subparsers)
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -573,6 +596,8 @@ def main():
         m_parser.print_help()
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
+        # We do not want version logs here
+        logging.getLogger('versions').setLevel(logging.WARNING)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
@@ -604,7 +629,7 @@ def main():
         all_args = args.tool[1:]
         if sub_command == 'test':
             check = ContainerCheck(tool)
-            tool.logger.info("# {} {}".format(','.join(tool.get_tags()), registry.format_time(tool.get_creation_time())))
+            tool.logger.info("# {} {}".format(','.join(tool.get_tags()), format_time(tool.get_creation_time())))
             log = check.run(all_args)
         else:
             log = tool.run(all_args)
@@ -638,21 +663,10 @@ def main():
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
-        format_str = "{0:<25}"
-        if args.with_tags:
-            format_str += " {4:<30}"
-        format_str += " {1}"
-        reg = registry.ToolRegistry()
-        try:
-            tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
-        except OSError:
-            docker_connect_error()
-        if not args.all and tool_list:
-            print(f"\n  Listing all tools with tag '{args.tag}':\n")
-        for tool in sorted(tool_list):
-            lst = tool_list[tool]
-            print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
-                                    ",".join(lst.tags)))
+        loggers = [logging.getLogger()]  # get the root logger
+        loggers = loggers + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        print(loggers)
+        list_handler(args)
     elif sub_command == 'commit':
 
         log_path = str(pathlib.Path.home() / '.cincan/shared')
