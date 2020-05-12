@@ -166,7 +166,7 @@ class ToolImage(CommandRunner):
     def __pull_image_with_progress(self, repository: str, tag: str):
         """Pulls image while logging in real time the progress"""
 
-        def log_row(data : dict):
+        def log_row(data: dict):
             """Log single row of data"""
             __id = data.get("id", "")
             if __id:
@@ -190,15 +190,15 @@ class ToolImage(CommandRunner):
                 cur_loc = 0
             elif not s_id:
                 # Last responses do not contain id
-                 log_row(status)
-                 continue
+                log_row(status)
+                continue
             # Get status of each layer once at first
             if not locations.get(s_id):
-                loc +=1
+                loc += 1
                 locations[s_id] = {}
                 locations[s_id]["state"] = status
                 locations[s_id]["loc"] = loc
-                cur_loc +=1
+                cur_loc += 1
                 log_row(locations[s_id].get("state"))
                 first_time = True
             else:
@@ -209,8 +209,7 @@ class ToolImage(CommandRunner):
                 locations[s_id]["state"] = status
                 for _id in sorted(locations, key=lambda item: locations[item].get("loc")):
                     log_row(locations[_id].get("state"))
-                    cur_loc +=1
-
+                    cur_loc += 1
 
     def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
         """Get Docker image, possibly pulling it first"""
@@ -230,7 +229,7 @@ class ToolImage(CommandRunner):
         if version_check:
             self.__check_version(self.image, name_tag)
 
-    def __check_version(self, image: docker.models.images.Image, name_tag:str):
+    def __check_version(self, image: docker.models.images.Image, name_tag: str):
         """
         Get version status of image from remote and origin and compare to current version.
         """
@@ -238,7 +237,7 @@ class ToolImage(CommandRunner):
         loop = asyncio.get_event_loop()
         try:
             version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=True))
-        except  FileNotFoundError as e:
+        except FileNotFoundError as e:
             self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
             return
         if version_info:
@@ -258,6 +257,7 @@ class ToolImage(CommandRunner):
                     self.logger.warning(f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
         else:
             self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
+
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
 
