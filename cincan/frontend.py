@@ -30,35 +30,7 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
-
-
-class NavigateCursor:
-
-    def __init__(self):
-        # hide cursor
-        sys.stdout.write("\033[?25l")
-        sys.stdout.flush()
-
-    def __del__(self):
-        # return visibilty of cursor in all cases
-        sys.stdout.write("\033[?25h")
-        sys.stdout.flush()
-
-    def up(self, n: int = 1):
-        sys.stdout.write(f'\u001b[{n}A')
-        sys.stdout.flush()
-
-    def down(self, n: int = 1):
-        sys.stdout.write(f'\u001b[{n}B')
-        sys.stdout.flush()
-
-    def right(self, n: int = 1):
-        sys.stdout.write(f'\u001b[{n}C')
-        sys.stdout.flush()
-
-    def left(self, n: int = 1):
-        sys.stdout.write(f'\u001b[{n}D')
-        sys.stdout.flush()
+from cincan.utils import NavigateCursor
 
 
 class ToolStream:
@@ -152,9 +124,12 @@ class ToolImage(CommandRunner):
         return parse_file_time(self.image.attrs['Created'])
 
     def __pull_image(self, repository: str, tag: str):
-        """Pull image. If lower API is available and logging level low enough, show progress bar."""
+        """
+        Pull image. If lower API is available and logging level low enough, show progress bar.
+        Progress bar is disabled, if input or output is not for 'tty'.
+        """
         try:
-            if self.lowl_client and self.logger.getEffectiveLevel() < 30:
+            if sys.stdin.isatty() and sys.stdout.isatty() and self.lowl_client and self.logger.getEffectiveLevel() < 30:
                 self.__pull_image_with_progress(repository, tag)
             else:
                 # No fancy progress bar
