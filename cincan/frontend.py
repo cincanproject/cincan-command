@@ -34,6 +34,7 @@ from cincan.tar_tool import TarTool
 
 class ToolStream:
     """Handle stream to or from the container"""
+
     def __init__(self, stream: IOBase):
         self.data_length = 0
         self.hash = hashlib.sha256()
@@ -89,7 +90,7 @@ class ToolImage(CommandRunner):
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
         self.upload_stats: Dict[str, List] = {}  # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
-        self.no_defaults: bool = False # If set true, ignoring container specific rules from .cincanignore
+        self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
@@ -122,20 +123,21 @@ class ToolImage(CommandRunner):
         name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
         if pull:
             self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
-            try: 
+            try:
                 self.client.images.pull(name_tag[0], tag=name_tag[1])
             except docker.errors.ImageNotFound:
                 self.logger.error("Image not found or no access to repository. Is it typed correctly?")
                 sys.exit(1)
             except docker.errors.NotFound:
                 self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']            
+                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
                 self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(":".join(name_tag))
-        if version_check:
+        # Version check enabled only for 'cincan' tools
+        if version_check and name_tag[0].startswith('cincan/'):
             self.__check_version(self.image, name_tag)
 
-    def __check_version(self, image: docker.models.images.Image, name_tag:str):
+    def __check_version(self, image: docker.models.images.Image, name_tag: str):
         """
         Get version status of image from remote and origin and compare to current version.
         """
@@ -143,7 +145,7 @@ class ToolImage(CommandRunner):
         loop = asyncio.get_event_loop()
         try:
             version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=True))
-        except  FileNotFoundError as e:
+        except FileNotFoundError as e:
             self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
             return
         if version_info:
@@ -151,18 +153,24 @@ class ToolImage(CommandRunner):
             tags = version_info.get("versions").get("local").get("tags")
             if not version_info.get("updates").get("local") and name_tag[1] in tags:
                 self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
-            else:
-                self.logger.info(f"Unable to compare versions: ({current_ver} vs. {remote_ver})")
+            elif not version_info.get("updates").get("local"):
+                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). ")
 
+            elif version_info.get("updates").get("local"):
+                self.logger.info(
+                    f"Update available in remote: ({current_ver} vs {remote_ver})\nUse 'docker pull' to upd    ate.")
             if version_info.get("updates").get("remote"):
                 try:
                     origin_ver = version_info.get("versions").get("origin").get("version")
                     provider = version_info.get("versions").get("origin").get("details").get("provider")
-                    self.logger.info(f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
+                    self.logger.info(
+                        f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
                 except AttributeError as e:
-                    self.logger.warning(f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
+                    self.logger.warning(
+                        f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
         else:
             self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
+
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
 
