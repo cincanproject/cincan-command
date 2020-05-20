@@ -154,7 +154,7 @@ class ToolImage(CommandRunner):
             if not version_info.get("updates").get("local") and name_tag[1] in tags:
                 self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
             elif not version_info.get("updates").get("local"):
-                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). ")
+                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). Unable to compare tags. Custom build?")
 
             elif version_info.get("updates").get("local"):
                 self.logger.info(
