@@ -10,6 +10,7 @@ from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
 from .conftest import prepare_work_dir
 from unittest import mock
+import cincanregistry
 
 
 def test_run_get_string(tool):
@@ -234,33 +235,3 @@ def test_image_pull(caplog):
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
 
-
-def test_image_version(caplog):
-    caplog.set_level(logging.INFO)
-    version_data = {"name": "cincan/test",
-                    "versions": {
-                        "local": {
-                            "version": "1.0",
-                            "tags": ["cincan/test:latest", ]
-                        },
-                        "remote": {
-                            "version": "1.0",
-                            "tags": ["latest"]
-                        },
-                        "origin": {
-                            "version": "1.0",
-                            "details": {
-                                "provider": "cincan"
-                            }
-                        }
-                    },
-                    "other": [],
-                    "updates": {
-                        "local": False,
-                        "remote": False
-                    }
-                    }
-    tool = ToolImage(image="cincan/test", rm=False)
-    tool.run([])
-    logs = [l.message for l in caplog.records]
-    print(logs)
