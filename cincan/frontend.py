@@ -29,6 +29,7 @@ from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 from cincan.utils import NavigateCursor
+from docker.utils import kwargs_from_env
 
 DEFAULT_TAG = "latest-stable"
 
@@ -60,13 +61,13 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
-        from pprint import pprint
-        pprint(os.environ)
-        if pathlib.Path("/var/run/docker.sock").is_socket():
-            self.lowl_client = docker.APIClient(version="auto")
-        else:
-            self.logger.debug(
-                "Path '/var/run/docker.sock' not found, base_url for lower level API need to be configured manually.")
+        try:
+            # Attempt to configure automatically
+            kwargs = kwargs_from_env()
+            self.lowl_client = docker.APIClient(version="auto", **kwargs)
+        except:
+            self.logger.warning(
+                "Unable to configure low-level API automatically. Some properties disabled.")
             self.lowl_client = None
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?

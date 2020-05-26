@@ -34,7 +34,7 @@ unit-tests:
 	pytest --basetemp=".tmp/"
 
 unit-tests-with-coverage:
-	pytest -sv --cov=cincan tests --basetemp=".tmp/"
+	pytest --cov=cincan tests --basetemp=".tmp/"
 
 always-refresh:
 
