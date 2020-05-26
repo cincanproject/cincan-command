@@ -174,15 +174,11 @@ class ToolImage(CommandRunner):
                                  f" Latest is available with tags '{','.join(local_tags)}'")
             remote_ver = version_info.get("versions").get("remote").get("version")
             remote_tags = version_info.get("versions").get("remote").get("tags")
-            if not version_info.get("updates").get("local") and name_tag[1] in remote_tags:
+            if not version_info.get("updates").get("local"):
                 if current_ver != latest_local:
                     self.logger.info(f"Latest local tool is up-to-date with remote. ({latest_local} vs. {remote_ver})")
                 else:
                     self.logger.info(f"Your tool is up-to-date with remote. Current version: {current_ver}\n")
-            elif not version_info.get("updates").get("local"):
-                self.logger.info(
-                    f"Latest local tool is up-to-date with remote. ({latest_local} vs. {remote_ver}) "
-                    f"Unable to compare tags. Custom image?")
             else:
                 if DEFAULT_TAG in remote_tags:
                     self.logger.info(
@@ -202,7 +198,7 @@ class ToolImage(CommandRunner):
                     self.logger.warning(
                         f"Unable to compare version information against origin: {e}")
         else:
-            self.logger.debug(f"No version information available for {name_tag}\n")
+            self.logger.info(f"No version information available for {':'.join(name_tag)}\n")
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""

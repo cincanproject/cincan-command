@@ -47,18 +47,16 @@ def test_image_version_up_to_date(caplog):
     assert logs == pull_msgs
 
 
-def test_image_version_up_to_date_different_tag(caplog):
+def test_image_version_no_info(caplog):
     caplog.set_level(logging.INFO)
-    # Local tool is up to date
     with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0") as mock_ver_id:
-        with mock.patch("cincanregistry.ToolRegistry.list_versions", return_value=VERSION_DATA) as mock_list:
+        with mock.patch("cincanregistry.ToolRegistry.list_versions", return_value={}) as mock_list:
             tool = ToolImage(image="cincan/test:latest", pull=True, rm=False)
             mock_ver_id.assert_called()
             mock_list.assert_called_with("cincan/test", only_updates=False)
     pull_msgs = [
         "pulling image with tag 'latest'...",
-        "Latest local tool is up-to-date with remote. (1.0 vs. 1.0)"
-        f" Unable to compare tags. Custom image?"
+        "No version information available for cincan/test:latest\n"
     ]
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
@@ -74,7 +72,7 @@ def test_image_version_local_old_tag(caplog):
         "pulling image with tag 'latest'...",
         "You are not using latest locally available version: (0.9 vs 1.0) Latest is "
         "available with tags 'cincan/test:latest-stable'",
-        "Latest local tool is up-to-date with remote. (1.0 vs. 1.0) Unable to compare tags. Custom image?"
+        "Latest local tool is up-to-date with remote. (1.0 vs. 1.0)"
     ]
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
