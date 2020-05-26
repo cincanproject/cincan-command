@@ -11,6 +11,7 @@ class Configuration:
                 self.values = json.load(f)
         else:
             self.values = {}
+        self.show_updates = self.values.get("show_updates", True)
 
     def is_command_log(self) -> bool:
         return self.values.get('command_log', False)

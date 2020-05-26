@@ -60,11 +60,7 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
-        # if pathlib.Path("/var/run/docker.sock").is_socket():
         self.lowl_client = docker.APIClient(version="auto")
-        # else:
-        #     self.logger.debug("Path '/var/run/docker.sock' not found, base_url for lower level API need to be configured manually.")
-        #     self.lowl_client = None
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
@@ -187,7 +183,7 @@ class ToolImage(CommandRunner):
                     log_row(locations[_id].get("state"))
                     cur_loc += 1
 
-    def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
+    def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
 
         # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
@@ -221,7 +217,7 @@ class ToolImage(CommandRunner):
 
         self.image = self.client.images.get(":".join(name_tag))
         # Version check enabled only for 'cincan' tools
-        if version_check and name_tag[0].startswith('cincan/'):
+        if self.config.show_updates and name_tag[0].startswith('cincan/'):
             self.__check_version(self.image, name_tag)
 
     def __check_version(self, image: docker.models.images.Image, name_tag: List[str]):
@@ -231,34 +227,44 @@ class ToolImage(CommandRunner):
         current_ver = self.registry.get_version_by_image_id(image.id)
         loop = asyncio.get_event_loop()
         try:
-            version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=True))
+            version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=False))
         except FileNotFoundError as e:
             self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
             return
         if version_info:
+            latest_local = version_info.get("versions").get("local").get("version")
+            local_tags = version_info.get("versions").get("local").get("tags")
+            if current_ver != latest_local:
+                self.logger.info(
+                    f"You are not using latest locally available version: ({current_ver} vs {latest_local})"
+                    f" Latest is available with tags '{','.join(local_tags)}'")
             remote_ver = version_info.get("versions").get("remote").get("version")
-            tags = version_info.get("versions").get("local").get("tags")
-            if not version_info.get("updates").get("local") and name_tag[1] in tags:
-                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
-            elif not version_info.get("updates").get("local"):
-                self.logger.info(
-                    f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). Unable to compare tags. "
-                    f"Custom image?")
-            elif version_info.get("updates").get("local"):
-                self.logger.info(
-                    f"Update available in remote: ({current_ver} vs {remote_ver})\nUse 'docker pull {name_tag[0]}' to "
-                    f"update.")
+            remote_tags = version_info.get("versions").get("remote").get("tags")
+            if not version_info.get("updates").get("local"):
+                if current_ver != latest_local:
+                    self.logger.info(f"Latest local tool is up-to-date with remote. ({latest_local} vs. {remote_ver})")
+                else:
+                    self.logger.info(f"Your tool is up-to-date with remote. Current version: {current_ver}\n")
+            else:
+                if DEFAULT_TAG in remote_tags:
+                    self.logger.info(
+                        f"Update available in remote: ({latest_local} vs. {remote_ver})"
+                        f"\nUse 'docker pull {name_tag[0]}:{DEFAULT_TAG}' to update.")
+                else:
+                    self.logger.info(f"Newer development version available in remote: "
+                                     f"{remote_ver} with tags '{','.join(remote_tags)}'")
+
             if version_info.get("updates").get("remote"):
                 try:
                     origin_ver = version_info.get("versions").get("origin").get("version")
                     provider = version_info.get("versions").get("origin").get("details").get("provider")
                     self.logger.info(
-                        f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
+                        f"Remote is not up-to-date with origin ({remote_ver} vs. {origin_ver}) in '{provider}'")
                 except AttributeError as e:
                     self.logger.warning(
                         f"Unable to compare version information against origin: {e}")
         else:
-            self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
+            self.logger.info(f"No version information available for {':'.join(name_tag)}\n")
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
