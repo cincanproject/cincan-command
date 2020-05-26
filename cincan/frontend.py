@@ -20,9 +20,7 @@ import docker
 import docker.errors
 import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
-
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
-# from cincanregistry import logging as registrylog
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
@@ -31,6 +29,8 @@ from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
 from cincan.utils import NavigateCursor
+
+DEFAULT_TAG = "latest-stable"
 
 
 class ToolStream:
@@ -189,24 +189,42 @@ class ToolImage(CommandRunner):
 
     def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
         """Get Docker image, possibly pulling it first"""
-        name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest-stable']
+
+        # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
+        name_tag = image.rsplit(':', 1) if ':' in image else (
+            [image, DEFAULT_TAG] if image.startswith("cincan/") else [image, "latest"])
+        initial_tag = name_tag[1]
         if pull:
             self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
             try:
                 self.__pull_image(name_tag[0], tag=name_tag[1])
             except docker.errors.ImageNotFound:
-                self.logger.error("Image not found or no access to repository. Is it typed correctly?")
+                self.logger.error("Repository not found or no access into it. Is it typed correctly?")
                 sys.exit(1)
             except docker.errors.NotFound:
+                if initial_tag != DEFAULT_TAG:
+                    self.logger.error(f"Tag '{name_tag[1]}' not found. Is it typed correctly?")
+                    sys.exit(1)
+                # Attempt to run 'cincan' tools with 'latest' tag as well if no default tag found
                 self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
-                self.client.images.pull(name_tag[0], tag=name_tag[1])
+                name_tag[1] = "latest"
+                try:
+                    # Attempt latest image without pull at first
+                    self.image = self.client.images.get(":".join(name_tag))
+                except docker.errors.ImageNotFound:
+                    try:
+                        self.client.images.pull(name_tag[0], tag=name_tag[1])
+                    except docker.errors.NotFound:
+                        self.logger.error(
+                            f"'{initial_tag}' or 'latest' tag not found for image {name_tag[0]} locally or remotely.")
+                        sys.exit(1)
+
         self.image = self.client.images.get(":".join(name_tag))
         # Version check enabled only for 'cincan' tools
         if version_check and name_tag[0].startswith('cincan/'):
             self.__check_version(self.image, name_tag)
 
-    def __check_version(self, image: docker.models.images.Image, name_tag: str):
+    def __check_version(self, image: docker.models.images.Image, name_tag: List[str]):
         """
         Get version status of image from remote and origin and compare to current version.
         """
@@ -223,11 +241,13 @@ class ToolImage(CommandRunner):
             if not version_info.get("updates").get("local") and name_tag[1] in tags:
                 self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver})")
             elif not version_info.get("updates").get("local"):
-                self.logger.info(f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). ")
-
+                self.logger.info(
+                    f"Your tool is up-to-date with remote. ({current_ver} vs. {remote_ver}). Unable to compare tags. "
+                    f"Custom image?")
             elif version_info.get("updates").get("local"):
                 self.logger.info(
-                    f"Update available in remote: ({current_ver} vs {remote_ver})\nUse 'docker pull' to upd    ate.")
+                    f"Update available in remote: ({current_ver} vs {remote_ver})\nUse 'docker pull {name_tag[0]}' to "
+                    f"update.")
             if version_info.get("updates").get("remote"):
                 try:
                     origin_ver = version_info.get("versions").get("origin").get("version")
@@ -236,7 +256,7 @@ class ToolImage(CommandRunner):
                         f"Remote is not up to date with origin ({remote_ver} vs. {origin_ver} in {provider})")
                 except AttributeError as e:
                     self.logger.warning(
-                        f"Something went wrong when checking origin version information. JSON response structure probably incorrect.: {e}")
+                        f"Unable to compare version information against origin: {e}")
         else:
             self.logger.info(f"Your tool is up-to-date. Current version: {current_ver}\n")
 
@@ -638,9 +658,10 @@ def main():
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
-        reg = registry.ToolRegistry()
+        reg = ToolRegistry()
         try:
-            info = reg.fetch_manifest(name)
+            name, tag = name.rsplit(":", 1) if ":" in name else [name, DEFAULT_TAG]
+            info = reg.fetch_manifest(name, tag)
         except OSError:
             docker_connect_error()
         print(json.dumps(info, indent=2))
@@ -662,7 +683,7 @@ def main():
             subprocess.call(["git", "add", "."])
             subprocess.call(["git", "status"])
             subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
-            subprocess.call(["git", "push"])      
+            subprocess.call(["git", "push"])
         else:
             print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
             print("type 'git init' and attach folder to remote repository for sharing logs")

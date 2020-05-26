@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import tarfile
 import time
@@ -8,6 +9,7 @@ import subprocess
 from cincan.file_tool import FileMatcher
 from cincan.frontend import ToolImage
 from .conftest import prepare_work_dir
+from unittest import mock
 
 
 def test_run_get_string(tool):
@@ -164,7 +166,101 @@ def test_interactive_mode():
     Test interactive support with very simple commands by using subprocess
     It seems to impossible to test code by just by using functions, should split it more
     """
-    process = subprocess.Popen(['python3', '-m', 'cincan', '-q', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(['python3', '-m', 'cincan', '-q', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = process.communicate(b'echo Hello, World!\n')
     assert outs == b"Hello, World!\n"
     assert errs == b""
+
+
+def test_image_pull(caplog):
+    caplog.set_level(logging.INFO)
+    # cincan/test image has only 'latest' tag
+    tool = ToolImage(image="cincan/test", pull=True, rm=False)
+    logs = [l.message for l in caplog.records]
+    pull_msgs = [
+        "pulling image with tag 'latest-stable'...",
+        "Tag 'latest-stable' not found. Trying 'latest' instead."
+    ]
+    # Ignore version check messages, get two first
+    assert logs[:len(pull_msgs)] == pull_msgs
+    caplog.clear()
+
+    # Busybox is not 'cincan' image, pulling normally
+    tool = ToolImage(image="busybox", pull=True, rm=False)
+    pull_msgs = [
+        "pulling image with tag 'latest'...",
+    ]
+    logs = [l.message for l in caplog.records]
+    assert logs == pull_msgs
+    caplog.clear()
+
+    # Pulling non-existing tag
+    with pytest.raises(SystemExit) as ex:
+        tool = ToolImage(image="cincan/test:not_found", pull=True, rm=False)
+    assert ex.type == SystemExit
+    assert ex.value.code == 1
+    pull_msgs = [
+        "pulling image with tag 'not_found'...",
+        "Tag 'not_found' not found. Is it typed correctly?"
+    ]
+    logs = [l.message for l in caplog.records]
+    assert logs[:len(pull_msgs)] == pull_msgs
+    caplog.clear()
+
+    # Pulling from non-existing repository 'cincann'
+    with pytest.raises(SystemExit) as ex:
+        tool = ToolImage(image="cincann/test_not_found", pull=True, rm=False)
+    assert ex.type == SystemExit
+    assert ex.value.code == 1
+    pull_msgs = [
+        "pulling image with tag 'latest'...",
+        "Repository not found or no access into it. Is it typed correctly?"
+    ]
+    logs = [l.message for l in caplog.records]
+    assert logs == pull_msgs
+    caplog.clear()
+
+    # Pulling 'cincan' image without 'latest-stable' or 'latest' tag
+    with pytest.raises(SystemExit) as ex:
+        tool = ToolImage(image="cincan/test_not_found", pull=True, rm=False)
+    assert ex.type == SystemExit
+    assert ex.value.code == 1
+    pull_msgs = [
+        "pulling image with tag 'latest-stable'...",
+        "Tag 'latest-stable' not found. Trying 'latest' instead.",
+        "'latest-stable' or 'latest' tag not found for image cincan/test_not_found locally or remotely."
+    ]
+    logs = [l.message for l in caplog.records]
+    assert logs == pull_msgs
+
+
+def test_image_version(caplog):
+    caplog.set_level(logging.INFO)
+    version_data = {"name": "cincan/test",
+                    "versions": {
+                        "local": {
+                            "version": "1.0",
+                            "tags": ["cincan/test:latest", ]
+                        },
+                        "remote": {
+                            "version": "1.0",
+                            "tags": ["latest"]
+                        },
+                        "origin": {
+                            "version": "1.0",
+                            "details": {
+                                "provider": "cincan"
+                            }
+                        }
+                    },
+                    "other": [],
+                    "updates": {
+                        "local": False,
+                        "remote": False
+                    }
+                    }
+    tool = ToolImage(image="cincan/test", rm=False)
+    tool.run([])
+    logs = [l.message for l in caplog.records]
+    print(logs)
