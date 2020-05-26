@@ -118,7 +118,7 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __get_image(self, image: str, pull: bool = False, version_check: bool = True):
+    def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
 
         # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
@@ -152,7 +152,7 @@ class ToolImage(CommandRunner):
 
         self.image = self.client.images.get(":".join(name_tag))
         # Version check enabled only for 'cincan' tools
-        if version_check and name_tag[0].startswith('cincan/'):
+        if self.config.show_updates and name_tag[0].startswith('cincan/'):
             self.__check_version(self.image, name_tag)
 
     def __check_version(self, image: docker.models.images.Image, name_tag: List[str]):
@@ -170,8 +170,9 @@ class ToolImage(CommandRunner):
             latest_local = version_info.get("versions").get("local").get("version")
             local_tags = version_info.get("versions").get("local").get("tags")
             if current_ver != latest_local:
-                self.logger.info(f"You are not using latest locally available version: ({current_ver} vs {latest_local})"
-                                 f" Latest is available with tags '{','.join(local_tags)}'")
+                self.logger.info(
+                    f"You are not using latest locally available version: ({current_ver} vs {latest_local})"
+                    f" Latest is available with tags '{','.join(local_tags)}'")
             remote_ver = version_info.get("versions").get("remote").get("version")
             remote_tags = version_info.get("versions").get("remote").get("tags")
             if not version_info.get("updates").get("local"):
