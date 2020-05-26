@@ -60,7 +60,12 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
-        self.lowl_client = docker.APIClient(version="auto")
+        if pathlib.Path("/var/run/docker.sock").is_socket():
+            self.lowl_client = docker.APIClient(version="auto")
+        else:
+            self.logger.debug(
+                "Path '/var/run/docker.sock' not found, base_url for lower level API need to be configured manually.")
+            self.lowl_client = None
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
