@@ -1,14 +1,15 @@
 stages:
   - test
 
-services:
-  - docker:dind
   
 unittests:
   stage: test
+  services:
+    - docker:dind
   image: python:3.6-alpine
   before_script:
     - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make docker
+    - docker info
     - pip3 install .
     - pip3 install -r test-requirements.txt
   script:
