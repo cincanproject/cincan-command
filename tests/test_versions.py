@@ -101,7 +101,7 @@ def test_image_version_local_old_tag(caplog):
 
 
 def test_image_version_local_outdated(caplog):
-    """Remote image outdated"""
+    """Comment image outdated"""
     caplog.set_level(logging.INFO)
 
     def coro_func():
