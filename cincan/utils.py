@@ -28,3 +28,6 @@ class NavigateCursor:
     def left(self, n: int = 1):
         sys.stdout.write(f'\u001b[{n}D')
         sys.stdout.flush()
+
+    def clear_line(self):
+        sys.stdout.write("\33[2K")

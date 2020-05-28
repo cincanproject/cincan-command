@@ -20,6 +20,7 @@ import docker
 import docker.errors
 import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
+from shutil import get_terminal_size
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
@@ -153,9 +154,15 @@ class ToolImage(CommandRunner):
                 _id = f'{__id:<12}: '
             else:
                 _id = __id
-            status = data.get("status", "")
+            status_s = data.get("status", "")
             progress = data.get("progress", "")
-            self.logger.info(f'{_id}{status:<{20}} {progress}')
+            t_width = get_terminal_size().columns
+            line = f'{_id}{status_s:<{20}} {progress}'
+            if len(f"{repository}: {line}") + 1 > t_width:
+                diff = len(f"{repository}: {line}") - t_width + 1
+                self.logger.info(line[:-diff])
+                return
+            self.logger.info(line)
 
         position = NavigateCursor()
         first_time = True
