@@ -4,9 +4,11 @@ stages:
   
 unittests:
   stage: test
-  services:
-    - docker:dind
   image: python:3.6-alpine
+  service:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
   before_script:
     - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make docker
     - docker info
