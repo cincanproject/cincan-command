@@ -29,10 +29,9 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
+from cincan.image_fetcher import ImageFetcher
 from cincan.utils import NavigateCursor
 from docker.utils import kwargs_from_env
-
-DEFAULT_TAG = "latest-stable"
 
 
 class ToolStream:
@@ -65,11 +64,11 @@ class ToolImage(CommandRunner):
         try:
             # Attempt to configure automatically
             kwargs = kwargs_from_env()
-            self.lowl_client = docker.APIClient(version="auto", **kwargs)
+            self.low_level_client = docker.APIClient(version="auto", **kwargs)
         except:
             self.logger.warning(
                 "Unable to configure low-level API automatically. Some properties disabled.")
-            self.lowl_client = None
+            self.low_level_client = None
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
@@ -83,15 +82,12 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            if pull:
-                # pull first
-                self.__get_image(image, pull=True)
-            else:
-                # just get the image
-                try:
-                    self.__get_image(image, pull=False)
-                except docker.errors.ImageNotFound:
-                    self.__get_image(image, pull=True)
+            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger)
+            self.image = fetcher.get_image(image, pull)
+            # # Version check enabled only for 'cincan' tools
+            # if self.config.show_updates and name_tag[0].startswith('cincan/'):
+            #     self.__check_version(self.image, name_tag)
+            # self.__get_image(image, pull=True)
             self.context = '.'  # not really correct, but will do
         else:
             sys.exit("No file nor image specified")
@@ -129,112 +125,6 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __pull_image(self, repository: str, tag: str):
-        """
-        Pull image. If lower API is available and logging level low enough, show progress bar.
-        Progress bar is disabled, if input or output is not for 'tty'.
-        """
-        try:
-            if sys.stdin.isatty() and sys.stdout.isatty() and self.lowl_client and self.logger.getEffectiveLevel() < 30:
-                self.__pull_image_with_progress(repository, tag)
-            else:
-                # No fancy progress bar
-                self.client.images.pull(repository, tag)
-        except KeyboardInterrupt:
-            self.logger.info("\nKeyboard interrupt detected. Closing...")
-            sys.exit(0)
-
-    def __pull_image_with_progress(self, repository: str, tag: str):
-        """Pulls image while logging in real time the progress"""
-
-        def log_row(data: dict):
-            """Log single row of data"""
-            __id = data.get("id", "")
-            if __id:
-                _id = f'{__id:<12}: '
-            else:
-                _id = __id
-            status_s = data.get("status", "")
-            progress = data.get("progress", "")
-            t_width = get_terminal_size().columns
-            line = f'{_id}{status_s:<{20}} {progress}'
-            if len(f"{repository}: {line}") + 1 > t_width:
-                diff = len(f"{repository}: {line}") - t_width + 1
-                self.logger.info(line[:-diff])
-                return
-            self.logger.info(line)
-
-        position = NavigateCursor()
-        first_time = True
-        # Locations means the location of data row in terminal output
-        loc = 0
-        cur_loc = 0
-        locations = {}
-        for status in self.lowl_client.pull(repository, tag, stream=True, decode=True):
-            s_id = status.get("id", "")
-            if s_id and not first_time:
-                position.up(cur_loc)
-                cur_loc = 0
-            elif not s_id:
-                # Last responses do not contain id
-                log_row(status)
-                continue
-            # Get status of each layer once at first
-            if not locations.get(s_id):
-                loc += 1
-                locations[s_id] = {}
-                locations[s_id]["state"] = status
-                locations[s_id]["loc"] = loc
-                cur_loc += 1
-                log_row(locations[s_id].get("state"))
-                first_time = True
-            else:
-                if first_time:
-                    position.up(cur_loc)
-                    cur_loc = 0
-                first_time = False
-                locations[s_id]["state"] = status
-                for _id in sorted(locations, key=lambda item: locations[item].get("loc")):
-                    log_row(locations[_id].get("state"))
-                    cur_loc += 1
-
-    def __get_image(self, image: str, pull: bool = False):
-        """Get Docker image, possibly pulling it first"""
-
-        # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
-        name_tag = image.rsplit(':', 1) if ':' in image else (
-            [image, DEFAULT_TAG] if image.startswith("cincan/") else [image, "latest"])
-        initial_tag = name_tag[1]
-        if pull:
-            self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
-            try:
-                self.__pull_image(name_tag[0], tag=name_tag[1])
-            except docker.errors.ImageNotFound:
-                self.logger.error("Repository not found or no access into it. Is it typed correctly?")
-                sys.exit(1)
-            except docker.errors.NotFound:
-                if initial_tag != DEFAULT_TAG:
-                    self.logger.error(f"Tag '{name_tag[1]}' not found. Is it typed correctly?")
-                    sys.exit(1)
-                # Attempt to run 'cincan' tools with 'latest' tag as well if no default tag found
-                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag[1] = "latest"
-                try:
-                    # Attempt latest image without pull at first
-                    self.image = self.client.images.get(":".join(name_tag))
-                except docker.errors.ImageNotFound:
-                    try:
-                        self.client.images.pull(name_tag[0], tag=name_tag[1])
-                    except docker.errors.NotFound:
-                        self.logger.error(
-                            f"'{initial_tag}' or 'latest' tag not found for image {name_tag[0]} locally or remotely.")
-                        sys.exit(1)
-
-        self.image = self.client.images.get(":".join(name_tag))
-        # Version check enabled only for 'cincan' tools
-        if self.config.show_updates and name_tag[0].startswith('cincan/'):
-            self.__check_version(self.image, name_tag)
-
     def __check_version(self, image: docker.models.images.Image, name_tag: List[str]):
         """
         Get version status of image from remote and origin and compare to current version.
@@ -261,10 +151,10 @@ class ToolImage(CommandRunner):
                 else:
                     self.logger.info(f"Your tool is up-to-date with remote. Current version: {current_ver}\n")
             else:
-                if DEFAULT_TAG in remote_tags:
+                if self.config.default_tag in remote_tags:
                     self.logger.info(
                         f"Update available in remote: ({latest_local} vs. {remote_ver})"
-                        f"\nUse 'docker pull {name_tag[0]}:{DEFAULT_TAG}' to update.")
+                        f"\nUse 'docker pull {name_tag[0]}:{self.config.default_tag}' to update.")
                 else:
                     self.logger.info(f"Newer development version available in remote: "
                                      f"{remote_ver} with tags '{','.join(remote_tags)}'")
