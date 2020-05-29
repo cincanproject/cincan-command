@@ -32,9 +32,6 @@ class VersionHandler:
         Get version status of image from remote and origin,
         including local current version
         """
-        if not self.tool_name.startswith('cincan/'):
-            self.logger.debug("Version checking enabled only for 'cincan' tools.")
-            return
         self.current_version = self.registry.get_version_by_image_id(self.image.id)
         loop = asyncio.get_event_loop()
         try:
@@ -67,6 +64,9 @@ class VersionHandler:
         """
         Compare version information, log details
         """
+        if not self.tool_name.startswith('cincan/'):
+            self.logger.debug("Version checking enabled only for 'cincan' tools.")
+            return
         self._get_version_information()
         if self.data_available:
             if self.current_version != self.latest_local:
