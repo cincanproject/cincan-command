@@ -18,7 +18,6 @@ from typing import List, Set, Dict, Optional, Tuple
 import pkg_resources
 import docker
 import docker.errors
-import asyncio
 from .dockerapi_fixes import CustomContainerApiMixin
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
@@ -28,8 +27,7 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
-
-DEFAULT_TAG = "latest-stable"
+from cincan.version_handler import VersionHandler
 
 
 class ToolStream:
@@ -74,16 +72,23 @@ class ToolImage(CommandRunner):
             self.loaded_image = True
             if pull:
                 # pull first
+                self.logger.info(f"pulling image...")
                 self.__get_image(image, pull=True)
             else:
                 # just get the image
                 try:
                     self.__get_image(image, pull=False)
                 except docker.errors.ImageNotFound:
+                    # image not found, try to pull it
+                    self.logger.info(f"pulling image...")
                     self.__get_image(image, pull=True)
             self.context = '.'  # not really correct, but will do
         else:
             sys.exit("No file nor image specified")
+        self.version_handler = VersionHandler(self.config, self.registry, self.image,
+                                              self.name.rsplit(":", 1)[0], self.logger)
+        if self.config.show_updates:
+            self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
@@ -107,6 +112,12 @@ class ToolImage(CommandRunner):
         self.download_files: List[str] = []
         self.buffer_output = False
 
+    def get_name_with_tag(self, image: str) -> List[str]:
+        # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
+        name_tag = image.rsplit(':', 1) if ':' in image else (
+            [image, self.config.default_tag] if image.startswith("cincan/") else [image, "latest"])
+        return name_tag
+
     def get_tags(self) -> List[str]:
         """List image tags"""
         return self.image.tags
@@ -120,86 +131,10 @@ class ToolImage(CommandRunner):
 
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
-
-        # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
-        name_tag = image.rsplit(':', 1) if ':' in image else (
-            [image, DEFAULT_TAG] if image.startswith("cincan/") else [image, "latest"])
-        initial_tag = name_tag[1]
         if pull:
-            self.logger.info(f"pulling image with tag '{name_tag[1]}'...")
-            try:
-                self.client.images.pull(name_tag[0], tag=name_tag[1])
-            except docker.errors.ImageNotFound:
-                self.logger.error("Repository not found or no access into it. Is it typed correctly?")
-                sys.exit(1)
-            except docker.errors.NotFound:
-                if initial_tag != DEFAULT_TAG:
-                    self.logger.error(f"Tag '{name_tag[1]}' not found. Is it typed correctly?")
-                    sys.exit(1)
-                # Attempt to run 'cincan' tools with 'latest' tag as well if no default tag found
-                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag[1] = "latest"
-                try:
-                    # Attempt latest image without pull at first
-                    self.image = self.client.images.get(":".join(name_tag))
-                except docker.errors.ImageNotFound:
-                    try:
-                        self.client.images.pull(name_tag[0], tag=name_tag[1])
-                    except docker.errors.NotFound:
-                        self.logger.error(
-                            f"'{initial_tag}' or 'latest' tag not found for image {name_tag[0]} locally or remotely.")
-                        sys.exit(1)
-
-        self.image = self.client.images.get(":".join(name_tag))
-        # Version check enabled only for 'cincan' tools
-        if self.config.show_updates and name_tag[0].startswith('cincan/'):
-            self.__check_version(self.image, name_tag)
-
-    def __check_version(self, image: docker.models.images.Image, name_tag: List[str]):
-        """
-        Get version status of image from remote and origin and compare to current version.
-        """
-        current_ver = self.registry.get_version_by_image_id(image.id)
-        loop = asyncio.get_event_loop()
-        try:
-            version_info = loop.run_until_complete(self.registry.list_versions(name_tag[0], only_updates=False))
-        except FileNotFoundError as e:
-            self.logger.debug(f"Version check failed for {name_tag[0]}: {e}")
-            return
-        if version_info:
-            latest_local = version_info.get("versions").get("local").get("version")
-            local_tags = version_info.get("versions").get("local").get("tags")
-            if current_ver != latest_local:
-                self.logger.info(
-                    f"You are not using latest locally available version: ({current_ver} vs {latest_local})"
-                    f" Latest is available with tags '{','.join(local_tags)}'")
-            remote_ver = version_info.get("versions").get("remote").get("version")
-            remote_tags = version_info.get("versions").get("remote").get("tags")
-            if not version_info.get("updates").get("local"):
-                if current_ver != latest_local:
-                    self.logger.info(f"Latest local tool is up-to-date with remote. ({latest_local} vs. {remote_ver})")
-                else:
-                    self.logger.info(f"Your tool is up-to-date with remote. Current version: {current_ver}\n")
-            else:
-                if DEFAULT_TAG in remote_tags:
-                    self.logger.info(
-                        f"Update available in remote: ({latest_local} vs. {remote_ver})"
-                        f"\nUse 'docker pull {name_tag[0]}:{DEFAULT_TAG}' to update.")
-                else:
-                    self.logger.info(f"Newer development version available in remote: "
-                                     f"{remote_ver} with tags '{','.join(remote_tags)}'")
-
-            if version_info.get("updates").get("remote"):
-                try:
-                    origin_ver = version_info.get("versions").get("origin").get("version")
-                    provider = version_info.get("versions").get("origin").get("details").get("provider")
-                    self.logger.info(
-                        f"Remote is not up-to-date with origin ({remote_ver} vs. {origin_ver}) in '{provider}'")
-                except AttributeError as e:
-                    self.logger.warning(
-                        f"Unable to compare version information against origin: {e}")
-        else:
-            self.logger.info(f"No version information available for {':'.join(name_tag)}\n")
+            name_tag = self.get_name_with_tag(image)
+            self.client.images.pull(name_tag[0], tag=name_tag[1])
+        self.image = self.client.images.get(image)
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
@@ -600,8 +535,9 @@ def main():
             sys.exit('Missing tool name argument')
         name = args.tool[0]
         reg = ToolRegistry()
+        conf = Configuration()
         try:
-            name, tag = name.rsplit(":", 1) if ":" in name else [name, DEFAULT_TAG]
+            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_tag]
             info = reg.fetch_manifest(name, tag)
         except OSError:
             docker_connect_error()
