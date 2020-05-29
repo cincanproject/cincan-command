@@ -3,7 +3,6 @@ import logging
 from docker.models.images import Image
 from docker.client import DockerClient, APIClient
 from docker.errors import ImageNotFound, NotFound
-from typing import Union
 from shutil import get_terminal_size
 from .utils import NavigateCursor
 from .configuration import Configuration
