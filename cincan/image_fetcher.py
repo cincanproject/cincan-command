@@ -3,6 +3,7 @@ import logging
 from docker.models.images import Image
 from docker.client import DockerClient, APIClient
 from docker.errors import ImageNotFound, NotFound
+from typing import Dict
 from shutil import get_terminal_size
 from .utils import NavigateCursor
 from .configuration import Configuration
@@ -15,7 +16,7 @@ class ImageFetcher:
         self.config = config
         self.logger = logger
         self.client = client
-        self.low_level_client = low_level_client or None
+        self.low_level_client = low_level_client
 
     def get_image(self, image: str, pull: bool = False) -> Image:
 
@@ -76,7 +77,7 @@ class ImageFetcher:
     def __pull_image_with_progress(self, repository: str, tag: str):
         """Pulls image while logging in real time the progress"""
 
-        def log_row(data: dict):
+        def log_row(data: Dict):
             """Log single row of data"""
             layer_id = data.get("id", "")
             if layer_id:

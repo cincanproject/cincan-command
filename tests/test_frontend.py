@@ -1,16 +1,8 @@
-import logging
 import pathlib
 import tarfile
 import time
-from typing import List
-import io
-import pytest
 import subprocess
-from cincan.file_tool import FileMatcher
-from cincan.frontend import ToolImage
 from .conftest import prepare_work_dir
-from unittest import mock
-import cincanregistry
 
 
 def test_run_get_string(tool):
