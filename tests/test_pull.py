@@ -3,7 +3,7 @@ import pytest
 from cincan.frontend import ToolImage
 
 
-def test_image_pull_no_latest(caplog):
+def test_image_pull_no_default_tag(caplog):
     caplog.set_level(logging.INFO)
     # cincan/test image has only 'latest' tag
     tool = ToolImage(image="cincan/test", pull=True, rm=False)
@@ -27,7 +27,7 @@ def test_pull_not_cincan(caplog):
     assert logs == pull_msgs
 
 
-def test_pull_not_tag_not_found(caplog):
+def test_pull_tag_not_found(caplog):
     caplog.set_level(logging.INFO)
     # Pulling non-existing tag
     with pytest.raises(SystemExit) as ex:
