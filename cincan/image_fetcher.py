@@ -10,6 +10,7 @@ from .configuration import Configuration
 
 
 class ImageFetcher:
+    """Class for getting the correct tool image, possibly pulling it from remote"""
 
     def __init__(self, config: Configuration, client: DockerClient, low_level_client: APIClient,
                  logger: logging.Logger):
