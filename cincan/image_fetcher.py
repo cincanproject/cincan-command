@@ -23,7 +23,7 @@ class ImageFetcher:
 
         # Use defined default tag if tag not set
         name_tag = image.rsplit(':', 1) if ':' in image else (
-            [image, self.config.default_tag] if image.startswith("cincan/") else [image, "latest"])
+            [image, self.config.default_stable_tag] if image.startswith("cincan/") else [image, "latest"])
         initial_tag = name_tag[1]
 
         if pull:
@@ -34,14 +34,16 @@ class ImageFetcher:
                 self.logger.error("Repository not found or no access into it. Is it typed correctly?")
                 sys.exit(1)
             except NotFound:
-                if initial_tag != self.config.default_tag:
+                # Tag was initially set to custom, do not attempt other tag
+                if initial_tag != self.config.default_stable_tag or not image.startswith("cincan/"):
                     self.logger.error(f"Tag '{name_tag[1]}' not found. Is it typed correctly?")
                     sys.exit(1)
-                # Attempt to run 'cincan' tools with 'latest' tag as well if no default tag found
-                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying 'latest' instead.")
-                name_tag[1] = "latest"
+                # Attempt to run 'cincan' tools with dev tag as well if no stable tag found
+                self.logger.info(f"Tag '{name_tag[1]}' not found. Trying development tag "
+                                 f"'{self.config.default_dev_tag}' instead.")
+                name_tag[1] = self.config.default_dev_tag
                 try:
-                    # Attempt to use latest image without pull at first
+                    # Attempt to use dev image without pull at first
                     image_obj = self.client.images.get(":".join(name_tag))
                     return image_obj
                 except ImageNotFound:
@@ -49,7 +51,8 @@ class ImageFetcher:
                         self.client.images.pull(name_tag[0], tag=name_tag[1])
                     except NotFound:
                         self.logger.error(
-                            f"'{initial_tag}' or 'latest' tag not found for image {name_tag[0]} locally or remotely.")
+                            f"'{initial_tag}' or '{self.config.default_dev_tag}' tag not found for image "
+                            f"{name_tag[0]} locally or remotely.")
                         sys.exit(1)
         try:
             image_obj = self.client.images.get(":".join(name_tag))
