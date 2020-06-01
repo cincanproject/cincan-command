@@ -470,7 +470,7 @@ def main():
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
         # We do not want informative version logs here unless DEBUG mode
-        if 10 < logging.getLogger().getEffectiveLevel() < 50:
+        if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
             logging.getLogger('versions').setLevel(logging.ERROR)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
