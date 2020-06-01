@@ -81,10 +81,10 @@ class VersionHandler:
                 else:
                     self.logger.info(f"Your tool is up-to-date with remote. Current version: {self.current_version}\n")
             else:
-                if self.config.default_tag in self.remote_tags:
+                if self.config.default_stable_tag in self.remote_tags:
                     self.logger.info(
                         f"Update available in remote: ({self.latest_local} vs. {self.latest_remote})"
-                        f"\nUse 'docker pull {self.tool_name}:{self.config.default_tag}' to update.")
+                        f"\nUse 'docker pull {self.tool_name}:{self.config.default_stable_tag}' to update.")
                 else:
                     self.logger.info(f"Newer development version available in remote: "
                                      f"{self.latest_remote} with tags '{','.join(self.remote_tags)}'")

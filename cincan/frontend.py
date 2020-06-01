@@ -524,7 +524,7 @@ def main():
         reg = ToolRegistry()
         conf = Configuration()
         try:
-            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_tag]
+            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
             info = reg.fetch_manifest(name, tag)
         except OSError:
             docker_connect_error()
