@@ -1,9 +1,11 @@
 import logging
 import pytest
+from unittest import mock
 from cincan.frontend import ToolImage
+from cincan.configuration import Configuration
 
-DEFAULT_STABLE_TAG = "latest"
-DEFAULT_DEV_TAG = "dev"
+DEFAULT_STABLE_TAG = Configuration().default_stable_tag
+DEFAULT_DEV_TAG = Configuration().default_dev_tag
 
 
 def test_image_pull_no_default_tag(caplog):
@@ -77,19 +79,27 @@ def test_pull_repository_not_found(caplog):
     assert logs == pull_msgs
 
 
-def test_pull_no_defaul_tags(caplog):
+def test_pull_no_default_tags_no_credentials(caplog):
+    """
+    Test for pulling non-existing 'cincan' image
+    Method behaves differently whether credentials for 'cincan' is found
+    (if Docker Hub credentials are found, it attempts to pull both tags)
+    """
+    # Mock contents of ~/.docker/config.json to have no credentials
+    read_data = "{}"
+    mock_open = mock.mock_open(read_data=read_data)
     caplog.set_level(logging.INFO)
-    # CI has probably different Docker version, not working similarly compared to local
-    # Pulling 'cincan' image without 'latest-stable' or 'latest' tag
-    with pytest.raises(SystemExit) as ex:
-        tool = ToolImage(image="cincan/test_not_found", pull=True, rm=False)
+
+    # Mock with no credentials/custom config
+    with mock.patch("builtins.open", mock_open):
+        # Pulling 'cincan' image without default development or stable tag
+        with pytest.raises(SystemExit) as ex:
+            tool = ToolImage(image="cincan/test_not_found", pull=True, rm=False)
     assert ex.type == SystemExit
     assert ex.value.code == 1
     pull_msgs = [
         f"pulling image with tag '{DEFAULT_STABLE_TAG}'...",
-        f"Tag '{DEFAULT_STABLE_TAG}' not found. Trying development tag '{DEFAULT_DEV_TAG}' instead.",
-        f"'{DEFAULT_STABLE_TAG}' or '{DEFAULT_DEV_TAG}' tag not found for image "
-        f"cincan/test_not_found locally or remotely."
+        f"Repository not found or no access into it. Is it typed correctly?"
     ]
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
