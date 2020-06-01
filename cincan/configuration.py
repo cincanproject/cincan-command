@@ -13,7 +13,8 @@ class Configuration:
         else:
             self.values = {}
         self.show_updates = self.values.get("show_updates", True)
-        self.default_tag = self.values.get("default_tag", "latest-stable")
+        self.default_stable_tag = self.values.get("stable_tag", "latest")
+        self.default_dev_tag = self.values.get("dev_tag", "dev")
 
     def is_command_log(self) -> bool:
         return self.values.get('command_log', False)

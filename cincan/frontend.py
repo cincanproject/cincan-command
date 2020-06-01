@@ -112,12 +112,6 @@ class ToolImage(CommandRunner):
         self.download_files: List[str] = []
         self.buffer_output = False
 
-    def get_name_with_tag(self, image: str) -> List[str]:
-        # Default tag for 'cincan' tools is 'latest-stable', else 'latest'.
-        name_tag = image.rsplit(':', 1) if ':' in image else (
-            [image, self.config.default_tag] if image.startswith("cincan/") else [image, "latest"])
-        return name_tag
-
     def get_tags(self) -> List[str]:
         """List image tags"""
         return self.image.tags
@@ -132,7 +126,8 @@ class ToolImage(CommandRunner):
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
         if pull:
-            name_tag = self.get_name_with_tag(image)
+            name_tag = image.rsplit(':', 1) if ':' in image else (
+                [image, self.config.default_stable_tag] if image.startswith("cincan/") else [image, "latest"])
             self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(image)
 
@@ -537,7 +532,7 @@ def main():
         reg = ToolRegistry()
         conf = Configuration()
         try:
-            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_tag]
+            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
             info = reg.fetch_manifest(name, tag)
         except OSError:
             docker_connect_error()
