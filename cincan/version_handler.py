@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Union
+from typing import List
 from docker.models.images import Image
 from cincan.configuration import Configuration
 from cincanregistry import ToolRegistry
