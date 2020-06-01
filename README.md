@@ -44,8 +44,6 @@ You can check that all works as follows:
     % cincan list
 
 If all goes well you get a list of the latest stable tools dockerized in the 'CinCan' project.
-However, you can use any dockerized tools as long as they meet the
-requirements listed in the end of this document.
 First time running this might take a while as it must fetch information of the tools
 and cache it locally.
 
