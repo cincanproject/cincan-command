@@ -469,8 +469,9 @@ def main():
         m_parser.print_help()
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
-        # We do not want version logs here
-        logging.getLogger('versions').setLevel(logging.WARNING)
+        # We do not want informative version logs here unless DEBUG mode
+        if 10 < logging.getLogger().getEffectiveLevel() < 50:
+            logging.getLogger('versions').setLevel(logging.ERROR)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
