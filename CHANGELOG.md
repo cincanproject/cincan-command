@@ -1,5 +1,12 @@
 # Change log
 
+## [0.2.9]
+
+- Changed: Default runtime tag is now 'latest-stable', error check improved with image usage
+- Changed: registry reworked - lives in separate module cincan-registry
+- Added: With change of registry module, list subcommand has many new features, such as listing image sizes, versions and more
+- Added: With change of registry module, feature for tool version check on runtime enabled
+
 ## [0.2.8]
 
 - Bugfix: Files are now downloaded properly in MacOS

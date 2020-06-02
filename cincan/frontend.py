@@ -19,20 +19,20 @@ import pkg_resources
 import docker
 import docker.errors
 from .dockerapi_fixes import CustomContainerApiMixin
-
-from cincan import registry
+from cincanregistry import list_handler, create_list_argparse, ToolRegistry
+from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
 from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
-
-DEFAULT_IMAGE_FILTER_TAG = "latest-stable"
+from cincan.version_handler import VersionHandler
 
 
 class ToolStream:
     """Handle stream to or from the container"""
+
     def __init__(self, stream: IOBase):
         self.data_length = 0
         self.hash = hashlib.sha256()
@@ -57,6 +57,7 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
+        self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
             self.name = name or path
@@ -84,13 +85,17 @@ class ToolImage(CommandRunner):
             self.context = '.'  # not really correct, but will do
         else:
             sys.exit("No file nor image specified")
+        self.version_handler = VersionHandler(self.config, self.registry, self.image,
+                                              self.name.rsplit(":", 1)[0], self.logger)
+        if self.config.show_updates:
+            self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
         self.upload_stats: Dict[str, List] = {}  # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
-        self.no_defaults: bool = False # If set true, ignoring container specific rules from .cincanignore
+        self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
@@ -116,12 +121,13 @@ class ToolImage(CommandRunner):
 
     def get_creation_time(self) -> datetime:
         """Get image creation time"""
-        return registry.parse_json_time(self.image.attrs['Created'])
+        return parse_file_time(self.image.attrs['Created'])
 
     def __get_image(self, image: str, pull: bool = False):
         """Get Docker image, possibly pulling it first"""
         if pull:
-            name_tag = image.rsplit(':', 1) if ':' in image else [image, 'latest']
+            name_tag = image.rsplit(':', 1) if ':' in image else (
+                [image, self.config.default_stable_tag] if image.startswith("cincan/") else [image, "latest"])
             self.client.images.pull(name_tag[0], tag=name_tag[1])
         self.image = self.client.images.get(image)
 
@@ -429,11 +435,7 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = subparsers.add_parser('list', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    list_exclusive_group = list_parser.add_mutually_exclusive_group()
-    list_exclusive_group.add_argument('-t', '--tag', default=DEFAULT_IMAGE_FILTER_TAG, help='Filter images by tag name.')
-    list_exclusive_group.add_argument('-a', '--all', action='store_true', help='List all images from the registry.')
-    list_parser.add_argument('-w', '--with-tags', action='store_true', help='Show all tags of selected images.')
+    list_parser = create_list_argparse(subparsers)
 
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
@@ -467,6 +469,9 @@ def main():
         m_parser.print_help()
         sys.exit(1)
     elif sub_command in {'run', 'test'}:
+        # We do not want informative version logs here unless DEBUG mode
+        if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
+            logging.getLogger('versions').setLevel(logging.ERROR)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
@@ -498,7 +503,7 @@ def main():
         all_args = args.tool[1:]
         if sub_command == 'test':
             check = ContainerCheck(tool)
-            tool.logger.info("# {} {}".format(','.join(tool.get_tags()), registry.format_time(tool.get_creation_time())))
+            tool.logger.info("# {} {}".format(','.join(tool.get_tags()), format_time(tool.get_creation_time())))
             log = check.run(all_args)
         else:
             log = tool.run(all_args)
@@ -525,28 +530,16 @@ def main():
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
-        reg = registry.ToolRegistry()
+        reg = ToolRegistry()
+        conf = Configuration()
         try:
-            info = reg.fetch_manifest(name)
+            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
+            info = reg.fetch_manifest(name, tag)
         except OSError:
             docker_connect_error()
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
-        format_str = "{0:<25}"
-        if args.with_tags:
-            format_str += " {4:<30}"
-        format_str += " {1}"
-        reg = registry.ToolRegistry()
-        try:
-            tool_list = reg.list_tools(defined_tag=args.tag if not args.all else None)
-        except OSError:
-            docker_connect_error()
-        if not args.all and tool_list:
-            print(f"\n  Listing all tools with tag '{args.tag}':\n")
-        for tool in sorted(tool_list):
-            lst = tool_list[tool]
-            print(format_str.format(lst.name, lst.description, ",".join(lst.input), ",".join(lst.output),
-                                    ",".join(lst.tags)))
+        list_handler(args)
     elif sub_command == 'commit':
 
         log_path = str(pathlib.Path.home() / '.cincan/shared')
@@ -563,7 +556,7 @@ def main():
             subprocess.call(["git", "add", "."])
             subprocess.call(["git", "status"])
             subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
-            subprocess.call(["git", "push"])      
+            subprocess.call(["git", "push"])
         else:
             print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
             print("type 'git init' and attach folder to remote repository for sharing logs")

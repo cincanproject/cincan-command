@@ -5,12 +5,10 @@
 The tool `cincan` command provide for a convenient
 use of the native command-line tools provided as docker images.
 
-:warning: Currently the tool is a proof-of-concept under construction.
-
 ## Supported platforms
 
 The `cincan` tool should run on fairly modern Linux distributions.
-Entry level support for macOS is available - tested to work with macOS Catalina.
+Partial support for macOS is available - tested to work with macOS Catalina.
 
 On Windows `cincan` **does not work**, unfortunately.
 
@@ -45,19 +43,11 @@ You can check that all works as follows:
 
     % cincan list
 
-If all goes well you get a list of the tools dockerized in the 'CinCan' project.
-However, you can use any dockerized tools as long as they meet the
-requirements listed in the end of this document.
+If all goes well you get a list of the latest stable tools dockerized in the 'CinCan' project.
 First time running this might take a while as it must fetch information of the tools
 and cache it locally.
 
-By default, `cincan list` is showing all tools which are tagged with `latest-stable` tag in Dockerhub under 'CinCan'. They are expected to be production-ready.  However, if you want to include development images as well, you can include `--tag` (or `-t`) to explicitly filter images by tag name as:
-
-```
-% cincan list --tag dev
-```
-
-See `cincan list --help` for all options.
+`cincan list` is using list command from module [cincan-registry](https://gitlab.com/CinCan/cincan-registry) Please, consult documentation in there for all available options.
 
 ## Running tools with cincan
 
@@ -78,6 +68,13 @@ Many tools give you help information, if you invoke them without arguments, for 
     % cincan run cincan/tshark
 
 More help is available with options like `-h` or `--help`, depending on the tool.
+
+### Version checks of tools
+
+By default, every time tool is used, it's version status is showed. Is it up-to-date compared to Docker Hub, or maybe upstream has later version which is not ended up into our Docker Hub yet? This feature is available only for `cincan` tools, for those which are configured correctly.
+
+If you want to disable it, modify/add file `~/.cincan/config.json` to contain attribute `show_updates` and set it as `false`.
+
 
 ### Input and output files
 

@@ -16,7 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://gitlab.com/cincan/cincan-command",
     packages=['cincan'],
-    install_requires=['docker>=4.1'],
+    install_requires=['docker>=4.1', 'cincan-registry'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

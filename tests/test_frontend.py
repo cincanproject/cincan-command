@@ -1,12 +1,7 @@
 import pathlib
 import tarfile
 import time
-from typing import List
-import io
-import pytest
 import subprocess
-from cincan.file_tool import FileMatcher
-from cincan.frontend import ToolImage
 from .conftest import prepare_work_dir
 
 
@@ -164,7 +159,8 @@ def test_interactive_mode():
     Test interactive support with very simple commands by using subprocess
     It seems to impossible to test code by just by using functions, should split it more
     """
-    process = subprocess.Popen(['python3', '-m', 'cincan', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(['python3', '-m', 'cincan', '-q', 'run', '-i', 'busybox', 'sh'], stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = process.communicate(b'echo Hello, World!\n')
     assert outs == b"Hello, World!\n"
     assert errs == b""
