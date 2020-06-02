@@ -27,6 +27,8 @@ from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
 from cincan.tar_tool import TarTool
+from cincan.image_fetcher import ImageFetcher
+from docker.utils import kwargs_from_env
 from cincan.version_handler import VersionHandler
 
 
@@ -57,6 +59,14 @@ class ToolImage(CommandRunner):
         # FIXME dirty hack to override get_archive method. Get fixed in upstream??
         docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
+        try:
+            # Attempt to configure automatically
+            kwargs = kwargs_from_env()
+            self.low_level_client = docker.APIClient(version="auto", **kwargs)
+        except:
+            self.logger.warning(
+                "Unable to configure low-level API automatically. Some properties disabled.")
+            self.low_level_client = None
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
@@ -70,18 +80,8 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            if pull:
-                # pull first
-                self.logger.info(f"pulling image...")
-                self.__get_image(image, pull=True)
-            else:
-                # just get the image
-                try:
-                    self.__get_image(image, pull=False)
-                except docker.errors.ImageNotFound:
-                    # image not found, try to pull it
-                    self.logger.info(f"pulling image...")
-                    self.__get_image(image, pull=True)
+            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger)
+            self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
             sys.exit("No file nor image specified")
@@ -122,14 +122,6 @@ class ToolImage(CommandRunner):
     def get_creation_time(self) -> datetime:
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
-
-    def __get_image(self, image: str, pull: bool = False):
-        """Get Docker image, possibly pulling it first"""
-        if pull:
-            name_tag = image.rsplit(':', 1) if ':' in image else (
-                [image, self.config.default_stable_tag] if image.startswith("cincan/") else [image, "latest"])
-            self.client.images.pull(name_tag[0], tag=name_tag[1])
-        self.image = self.client.images.get(image)
 
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
         """Create a container from the image here"""
