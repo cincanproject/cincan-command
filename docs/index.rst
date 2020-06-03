@@ -41,7 +41,7 @@ Consult your system documentation how to install them.
 
 Tool can be found from `Python Package Index (PyPi) <https://pypi.org/project/cincan-command/>`_ and can be installed in the most of the cases as:
 
-.. code-block:: console
+.. code-block:: shell
 
    pip install cincan-command
 

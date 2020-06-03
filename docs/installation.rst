@@ -12,33 +12,35 @@ Installation
 As prerequisite you must install ``Docker`` **18.09+** for running the tools,
 and ``Python`` **3.6** and ``pip`` Python package management program for the command program.
 
+*Docker below 18.09 version has not been tested,* so there might be hope that it works.
+
 --------------
-Install Docker
+Install Docker (>=18.09)
 --------------
 
 If you are running Ubuntu 18.04 or Debian 10, you can install Docker from the package repositories:
 
-.. code-block:: console
+.. code-block:: shell
 
    sudo apt-get docker.io
 
 One liner for installing the Docker for almost any system, if you don't have Debian:
 
-.. code-block:: console
+.. code-block:: shell
 
    curl -fsSL https://get.docker.com/ | sh
 
 
 Add yourself to the `docker` group to communicate with the local installation of Docker:
 
-.. code-block:: console
+.. code-block:: shell
 
    sudo usermod -aG docker $USER
    newgrp docker
 
 Optionally, you can then test your installation running the Docker `hello-world` container:
 
-.. code-block:: console
+.. code-block:: shell
 
     docker run hello-world
 
@@ -58,7 +60,7 @@ Global installation
 
 The ``cincan`` command program can be installed globally using pip for Python 3:
 
-.. code-block:: console
+.. code-block:: shell
 
    sudo pip3 install cincan-command
 
@@ -71,14 +73,14 @@ User installation
 
 If you don't want to install packages globally, you can install the package for the current user:
 
-.. code-block:: console
+.. code-block:: shell
 
    pip3 install cincan-command --user
 
 This will install package for current user. However, it is possible that these packages are not in path.
 You can add user-specific binaries into path for current session with:
 
-.. code-block:: console
+.. code-block:: shell
 
    export PATH=$PATH:$HOME/.local/bin
 
@@ -90,7 +92,7 @@ virtualenv
 
 You can also use `virtualenv` not to touch your system Python environment:
 
-.. code-block:: console
+.. code-block:: shell
 
     sudo apt-get install virtualenv
     virtualenv -p /usr/bin/python3 --system-site-packages cincan-env
@@ -100,7 +102,7 @@ You can also use `virtualenv` not to touch your system Python environment:
 On later Python versions, ``venv`` module should be automatically included and is easier to use:
 
 
-.. code-block:: console
+.. code-block:: shell
 
     python3 -m venv cincan-env
     source cincan-env/bin/activate
