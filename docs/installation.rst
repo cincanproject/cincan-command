@@ -6,13 +6,13 @@ Installation
 
 .. toctree::
    :caption: Table of Contents
-   :maxdepth: 4
+   :maxdepth: 3
 
 	
 As prerequisite you must install ``Docker`` **18.09+** for running the tools,
 and ``Python`` **3.6** and ``pip`` Python package management program for the command program.
 
-*Docker below 18.09 version has not been tested,* so there might be hope that it works.
+*Docker below version 18.09 has not been tested,* so there might be hope that it works.
 
 --------------
 Install Docker (>=18.09)

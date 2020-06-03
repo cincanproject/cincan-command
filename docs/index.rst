@@ -8,7 +8,7 @@ Welcome to CinCan Command's documentation!
 ==========================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :hidden:
    :glob:
 
@@ -35,9 +35,8 @@ On Windows ``cincan`` **does not work**, unfortunately. `WSL 2 <https://docs.mic
 Getting started
 ---------------
 
-As prerequisite you must have installed ``Docker`` **18.09** for running the tools,
+As prerequisite you must have installed ``Docker`` **18.09+** for running the tools,
 and ``Python`` **3.6+** and ``pip`` Python package management program for the command program.
-Consult your system documentation how to install them.
 
 Tool can be found from `Python Package Index (PyPi) <https://pypi.org/project/cincan-command/>`_ and can be installed in the most of the cases as:
 
