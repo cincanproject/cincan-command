@@ -10,7 +10,7 @@ Installation
 
 	
 As prerequisite you must install ``Docker`` **18.09+** for running the tools,
-and ``Python`` **3.6** and ``pip`` Python package management program for the command program.
+and ``Python`` **3.6+** and ``pip`` Python package management program for the command program.
 
 *Docker below version 18.09 has not been tested,* so there might be hope that it works.
 
@@ -51,8 +51,22 @@ If you are encountering some problems, see the `official documentation for insta
 Install Python (>=3.6)
 ----------------------
 
-Newer distros should have python 3.6 or newer installed. If you are running something older (like Ubuntu 16.04),
-we suggest using `pyenv <https://github.com/pyenv/pyenv>`_ to manage newer versions of Python.
+Newer distributions should have Python 3.6 or newer installed. 
+If you are running something older (like Ubuntu 16.04 Xenial),
+we suggest using `pyenv <https://github.com/pyenv/pyenv>`_ to manage newer versions of Python. 
+Ubuntu 16.04 defaults to version 3.5 which is not enough.
+
+In Debian, Python3 and pip can be installed in the most cases as:
+
+.. code-block:: shell
+
+   sudo apt-get install python3 python3-pip
+
+On other platforms, consult your systems documentation to install Python.
+
+----------------------
+Install cincan-command
+----------------------
 
 """""""""""""""""""
 Global installation
@@ -64,8 +78,8 @@ The ``cincan`` command program can be installed globally using pip for Python 3:
 
    sudo pip3 install cincan-command
 
-**If you invoke the pip installation with `sudo` and without `--user` flag (if you are OK with that) the command `cincan`
-should be added to your path automatically and installed in system wide.**
+If you invoke the pip installation with ``sudo`` and without ``--user`` flag (if you are OK with that) the command ``cincan``
+should be added to your path automatically and installed in system wide.
 
 """""""""""""""""
 User installation
@@ -84,7 +98,8 @@ You can add user-specific binaries into path for current session with:
 
    export PATH=$PATH:$HOME/.local/bin
 
-To add it permanently, append it into `~/.bashrc`  file with your favorite text editor. Note that this can depend on what kind of shell you are using.
+To add it permanently, append it into ``~/.bashrc``  file with your favorite text editor. 
+Note that this can depend on what kind of shell you are using.
 
 """"""""""
 virtualenv
@@ -107,3 +122,15 @@ On later Python versions, ``venv`` module should be automatically included and i
     python3 -m venv cincan-env
     source cincan-env/bin/activate
     pip3 install cincan-command
+
+"""""""""""""
+Ready to Rock
+"""""""""""""
+
+Once we have successfully installed the required packages, we can start the usage!
+
+.. code-block:: shell
+
+   cincan list
+
+Should give a list for all stable **cincan** tools.

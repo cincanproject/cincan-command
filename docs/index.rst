@@ -12,17 +12,22 @@ Welcome to CinCan Command's documentation!
    :hidden:
    :glob:
 
-   *
-
-
+   installation 
 
 CinCan Command
 ==============
 
 The tool ``cincan`` command provided for a convenient
-use of the native command-line tools provided as Docker images. CinCan Command is build to be particularly used for tools packed in the CinCan project. The list of the tools can be found from the CinCan's `tool repository. <https://gitlab.com/CinCan/tools>`_ 
+use of the native command-line tools provided as Docker images. CinCan Command is build to be particularly used for security tools packed in the CinCan project. The list of the tools can be found from the CinCan's `tool repository. <https://gitlab.com/CinCan/tools>`_ 
 
 *However*, it should be usable for most of the other CLI based Docker images.
+
+Why?
+----
+
+Regular usage of Docker images introduces the problem of moving files safely from host machine into container. Usually this is achieved by using *volume mounts*, but this breaks the concept of isolation, as host machine is exposed into container. CinCan command attempts avoid usage of volumes while providing similar command line experience, as tool is naturally used.
+
+Some additional features such as tool version listing and tool command history are provided.
 
 Supported platforms  
 -------------------
@@ -47,8 +52,39 @@ Tool can be found from `Python Package Index (PyPi) <https://pypi.org/project/ci
 
 See more detailed installation steps in :ref:`installation` section.
 
-Quick Usage
------------
+--------------
+Invoking tools
+--------------
+
+The list of available **cincan** tools can be provided as:
+
+.. code-block:: shell
+
+   cincan list
+
+A tool can be invoked with cincan using 'run' sub-command like this:
+ 
+
+.. code-block:: shell
+
+   cincan run <tool> <parameters..>
+
+As you may remember you get the list of tools dockerized in 'CinCan' project
+with `cincan list`.
+For example the tool `cincan/pywhois`:
+
+.. code-block:: shell
+
+   cincan run cincan/pywhois 127.0.0.1
+
+Many tools give you help information, if you invoke them without arguments, for example:
+
+.. code-block:: shell
+
+   cincan run cincan/tshark
+
+More help is available with options like `-h` or `--help`, depending on the tool.
+
 
 .. Indices and tables
 .. ==================
