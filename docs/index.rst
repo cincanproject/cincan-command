@@ -8,22 +8,24 @@ Welcome to CinCan Command's documentation!
 ==========================================
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :hidden:
-   :glob:
 
-   installation 
+   installation
+   advanced_usage
+   symlinks/CHANGELOG
+
 
 CinCan Command
 ==============
 
 The tool ``cincan`` command provided for a convenient
-use of the native command-line tools provided as Docker images. CinCan Command is build to be particularly used for security tools packed in the CinCan project. The list of the tools can be found from the CinCan's `tool repository. <https://gitlab.com/CinCan/tools>`_ 
+use of the native command-line tools provided as Docker images. Build to be particularly used for security tools packed in the CinCan project. The list of the available tools can be found from the CinCan's `tool repository. <https://gitlab.com/CinCan/tools>`_ 
 
 *However*, it should be usable for most of the other CLI based Docker images.
 
-Why?
-----
+But Why?
+--------
 
 Regular usage of Docker images introduces the problem of moving files safely from host machine into container. Usually this is achieved by using *volume mounts*, but this breaks the concept of isolation, as host machine is exposed into container. CinCan command attempts avoid usage of volumes while providing similar command line experience, as tool is naturally used.
 
@@ -69,8 +71,8 @@ A tool can be invoked with cincan using 'run' sub-command like this:
 
    cincan run <tool> <parameters..>
 
-As you may remember you get the list of tools dockerized in 'CinCan' project
-with `cincan list`.
+As previously showed, you get the list of tools dockerized in 'CinCan' project
+with ``cincan list``.
 For example the tool `cincan/pywhois`:
 
 .. code-block:: shell

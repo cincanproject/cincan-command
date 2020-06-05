@@ -127,7 +127,7 @@ On later Python versions, ``venv`` module should be automatically included and i
 Ready to Rock
 """""""""""""
 
-Once we have successfully installed the required packages, we can start the usage!
+Once we have successfully installed all the required packages, we can start the usage!
 
 .. code-block:: shell
 

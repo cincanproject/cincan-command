@@ -1,11 +1,16 @@
 from datetime import datetime
-
+from recommonmark.transform import AutoStructify
 # -- Project information -----------------------------------------------------
+gitlab_doc_root = 'https://gitlab.com/CinCan/cincan-command/-/tree/docs/docs'
 
 project = u'CinCan Command'
 
 year = datetime.now().year
-copyright = f'{year} CinCan Project'
+project_name = "CinCan Project"
+href = f'<a href="https://cincan.io">{project_name}</a>'
+copyright = f"{year} {href}"
+
+
 # The full version, including alpha/beta/rc tags
 release = 'https://gitlab.com/cincan/cincan-command'
 
@@ -47,7 +52,9 @@ exclude_patterns = ['_build', ]
 html_theme = 'alabaster'
 html_sidebars = {
     '**': [
+        # 'navigation.html'
         'about.html',
+        'sourcelink.html',
         'navigation.html',
         'relations.html',
         'searchbox.html',
@@ -66,3 +73,10 @@ show_powered_by = False
 html_show_sphinx = False
 # Copyright
 html_show_copyright = True
+
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'url_resolver': lambda url: gitlab_doc_root + url,
+            'auto_toc_tree_section': 'Contents',
+            }, True)
+    app.add_transform(AutoStructify)
