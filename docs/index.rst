@@ -8,10 +8,14 @@ Welcome to CinCan Command's documentation!
 ==========================================
 
 .. toctree::
-   :maxdepth: 2
    :hidden:
 
    Home <self>
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
    installation
    advanced_usage
    symlinks/CHANGELOG

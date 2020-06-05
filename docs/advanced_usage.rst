@@ -1,4 +1,6 @@
 
+.. module:: samples
+
 ==============
 Advanced Usage
 ==============
@@ -156,3 +158,183 @@ explicitly creating `dump/` directory to the container this way:
     cincan/volatility: => dump/789.dmp
 
 You can provide the argument many times to create multiple directories.
+
+-------------------------------
+Input and output file filtering
+-------------------------------
+
+You can explicitly filter input files, which are copied to the container,
+and output files, which are copied from the container. The filtering is done
+by giving a glob-style pattern by run command arguments
+``--in-filter`` (or ``-I``) for input file filtering
+and  ``--out-filter`` (or ``-O``) for output file filtering.
+Negative filters for filtering-out files are prefixed with ^.
+
+
+
++-----------------------+----------------------------------------------------+
+| Argument              | Description                                        |
++=======================+====================================================+
+| --in-filter pattern   | Match files to upload by the pattern               |
++-----------------------+----------------------------------------------------+            
+| --in-filter ^pattern  | Filter out files to upload which match the pattern | 
++-----------------------+----------------------------------------------------+
+| --out-filter pattern  | Match files to download by the pattern             |
++-----------------------+----------------------------------------------------+
+| --out-filter ^pattern | Filter out files to upload which match the pattern |
++-----------------------+----------------------------------------------------+
+
+
+
+For example, consider the previous case with
+tool 'volatility'.
+An alternative approach would be to filter out 
+copying of files under ``dump/`` like this:
+
+.. code-block:: shell
+
+    cincan run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
+    cincan/volatility: <= image.raw
+    cincan/volatility: <= dump
+    cincan/volatility: => dump/789.dmp
+
+-----------------------------------------------------------
+Filtering by `.cincanignore` - file stored inside container
+-----------------------------------------------------------
+
+Downloadable files can be filtered by ``.cincanignore`` file as well, which should be stored inside tool container in build phase. 
+All files listed in that file are not downloaded from the container. 
+Paths are relative of the working directory of container.
+
+Ignore file supports ``#`` char as comment character.
+
+See example file from path ``samples/.cincanignore``: 
+
+.. literalinclude:: ../samples/.cincanignore
+
+
+This works with user supplied filters as well.
+
+Argument ``--no-defaults`` can be passed for ``run`` command to not use this file.
+
+--------------------------------
+Providing tool input as tar file
+--------------------------------
+
+Instead of letting the tool to figure out the input files from command-line, you
+can provide the input files directly as tar-file. When this is done,
+the tool does not try to apply any logic to upload files, so you
+have the full control. You cannot use input file filtering with this approach.
+
+The input tar file is specified with option `--in` and
+you can provide a file or use `-` to read from standard input. For example:
+
+.. code-block:: shell
+
+   tar c myfile.pcap | cincan run --in - cincan/tshark -r myfile.pcap
+
+-------------------------------
+Getting tool output as tar file
+-------------------------------
+
+You can also request the tool output files in a tar container.
+This is done with argument ``--out``. 
+You can provide for the argument either a file name or ``-``for standard output. 
+You can also apply output file filtering to limit the number of files copied into the output tar archive.
+
+For example, the following should write file ``output.tar``
+
+.. code-block:: shell
+
+    cincan run --out output.tar cincan/tshark -r myfile.pcap -w output.pcap
+
+-------------------------------------
+Running tool with interactive support
+-------------------------------------
+
+We are using `radare2 <https://gitlab.com/CinCan/tools/tree/master/radare2>`_ as example here. Tool with interactive mode requires `--interactive` (or `-i`) and --tty (or `-t`) switches. Start radare2 disassembler for local file `/bin/ls` by running command:
+
+.. code-block:: shell
+
+   cincan run -it cincan/radare2 r2 /bin/ls
+   cincan/radare2: <= /usr/bin/ls
+   -- We are surrounded by the enemy. - Excellent, we can attack in any direction!
+   [0x00005b10]> aaa
+   [x] Analyze all flags starting with sym. and entry0 (aa)
+   [x] Analyze function calls (aac)
+   [x] Analyze len bytes of instructions for references (aar)
+   [x] Check for objc references
+   [x] Check for vtables
+   [x] Type matching analysis for all functions (aaft)
+   [x] Propagate noreturn information
+   [x] Use -AA or aaaa to perform additional experimental analysis.
+   [0x00005b10]> 
+
+radare2 should open ``/bin/ls`` file, and this can be analysed by typing ``aaa`` and pressing enter.
+
+
+---------------
+All run options
+---------------
+
+The following table lists all command-line options available for the run -sub command:
+
+
+
+
+
+
+
+
+
+
+
++-------------------------+----+---------------------------------------------------------------+
+| Specific to ``cincan``  |    | Description                                                   |
++=========================+====+===============================================================+
+| --in tar-file           |    | Upload input to container in a tar                            |
++-------------------------+----+---------------------------------------------------------------+
+| --out tar-file          |    | Download output files from container to a tar                 |
++-------------------------+----+---------------------------------------------------------------+
+| --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter             |
++-------------------------+----+---------------------------------------------------------------+
+| --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter            |
++-------------------------+----+---------------------------------------------------------------+
+| --mkdir directory       | -d | Mark output directory, not uploaded as input                  |
++-------------------------+----+---------------------------------------------------------------+
+| --no-defaults           |    | Ignore all container specific output filters. (.cincanignore) |
++-------------------------+----+---------------------------------------------------------------+
+
+
++---------------------------+----+---------------------------------------------------------------+
+| Similar to ``docker run`` |    | Description                                                   |
++===========================+====+===============================================================+
+| --tty                     | -t | Allocate a pseudo-TTY                                         |
++---------------------------+----+---------------------------------------------------------------+
+| --interactive             | -i | Keep STDIN open even if not attached                          |
++---------------------------+----+---------------------------------------------------------------+
+| --network value           |    | Network to connect                                            |
++---------------------------+----+---------------------------------------------------------------+
+| --user name               |    | User to run with                                              |
++---------------------------+----+---------------------------------------------------------------+
+| --cap-add CAP             |    | Add kernel capability                                         |
++---------------------------+----+---------------------------------------------------------------+
+| --cap-drop CAP            |    | Drop kernel capability                                        |
++---------------------------+----+---------------------------------------------------------------+
+| --runtime                 |    | Container runtime                                             |
++---------------------------+----+---------------------------------------------------------------+
+
+Consult `Docker run documentation <(https://docs.docker.com/engine/reference/commandline/run/>`_ for more details.
+
+--------------------------------------
+Invoking tool without 'cincan' wrapper
+--------------------------------------
+
+Sometimes you cannot use the services provided by the 'cincan' frontend. 
+For example, as files are copied around you may ran out of disk space or
+experience long delays when working with large files. An another reason
+might be use of some 'docker' options which are not available in the
+'cincan' tool.
+
+Good luck with that! (seriously, no pun intended)
+Please consult Docker documentation for details.
