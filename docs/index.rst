@@ -11,6 +11,7 @@ Welcome to CinCan Command's documentation!
    :maxdepth: 2
    :hidden:
 
+   Home <self>
    installation
    advanced_usage
    symlinks/CHANGELOG
