@@ -1,5 +1,7 @@
 # Changelog
 
+Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
+
 ## [Unreleased]
 
 ### Added
@@ -17,7 +19,9 @@
 
   - Default tag 'latest-stable' on listing will be changed to 'latest'
 
-## [0.2.8] - 2020-03-20
+## [0.2.8] 
+
+2020-03-20
 
 ### Added
 
@@ -34,7 +38,9 @@
   - Files are now downloaded properly in MacOS
   - Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
 
-## [0.2.7] - 2020-02-13
+## [0.2.7] 
+
+2020-02-13
 
 ### Added
 
@@ -44,7 +50,9 @@
 
   - Accept filenames with whitespace(s) as arguments
 
-## [0.2.6] - 2020-01-24
+## [0.2.6] 
+
+2020-01-24
 
 ### Added
   - Support for interactive tools, enabled with  `--interactive` (or `-i`)
@@ -59,22 +67,30 @@
 
 - Bugfix: Piping input for tools should be working now
 
-## [0.2.5] - 2019-12-20
+## [0.2.5] 
+
+2019-12-20
 
 ### Fixed
   - Give uploaded input files world-writeable permissions (777). Otherwise containers with non-root users work only when host uid and container uid match.
 
-## [0.2.4] - 2019-12-16
+## [0.2.4] 
+
+2019-12-16
 
 ### Fixed
   - Do not load **all** versions of an image, use the 'default' tag if none given
 
-## [0.2.3] - 2019-12-11
+## [0.2.3] 
+
+2019-12-11
 
 ### Fixed
  - Colons ':' in output files made output download to fail
 
-## [0.2.2] - 2019-12-5
+## [0.2.2] 
+
+2019-12-5
 
 ### Added:
   - Say something about supported platforms
@@ -83,14 +99,18 @@
   -  Sometimes '/' in command line was stripped away
   - Output files prefixes to other output files not downloaded from container
 
-## [0.2.1] - 2019-11-30
+## [0.2.1] 
+
+2019-11-30
 
 ### Fixed
 
   - Tool output mixed stdout and stderr together
   - Documentation flaws
 
-## [0.2.0] - 2019-11-27
+## [0.2.0] 
+
+2019-11-27
 
 ### Added
   - Initial beta version
