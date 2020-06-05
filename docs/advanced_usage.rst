@@ -1,5 +1,5 @@
 
-.. module:: samples
+.. _advanced_usage:
 
 ==============
 Advanced Usage
@@ -172,17 +172,17 @@ Negative filters for filtering-out files are prefixed with ^.
 
 
 
-+-----------------------+----------------------------------------------------+
-| Argument              | Description                                        |
-+=======================+====================================================+
-| --in-filter pattern   | Match files to upload by the pattern               |
-+-----------------------+----------------------------------------------------+            
-| --in-filter ^pattern  | Filter out files to upload which match the pattern | 
-+-----------------------+----------------------------------------------------+
-| --out-filter pattern  | Match files to download by the pattern             |
-+-----------------------+----------------------------------------------------+
-| --out-filter ^pattern | Filter out files to upload which match the pattern |
-+-----------------------+----------------------------------------------------+
++-------------------------+----------------------------------------------------+
+| Argument                | Description                                        |
++=========================+====================================================+
+| --in-filter pattern     | Match files to upload by the pattern               |
++-------------------------+----------------------------------------------------+            
+| --in-filter ^pattern    | Filter out files to upload which match the pattern | 
++-------------------------+----------------------------------------------------+
+| --out-filter pattern    | Match files to download by the pattern             |
++-------------------------+----------------------------------------------------+
+| --out-filter ^pattern   | Filter out files to upload which match the pattern |
++-------------------------+----------------------------------------------------+
 
 
 
@@ -226,8 +226,8 @@ can provide the input files directly as tar-file. When this is done,
 the tool does not try to apply any logic to upload files, so you
 have the full control. You cannot use input file filtering with this approach.
 
-The input tar file is specified with option `--in` and
-you can provide a file or use `-` to read from standard input. For example:
+The input tar file is specified with option ``--in`` and
+you can provide a file or use ``-`` to read from standard input. For example:
 
 .. code-block:: shell
 
@@ -281,48 +281,42 @@ The following table lists all command-line options available for the run -sub co
 
 
 
++-------------------------+--------+---------------------------------------------------------------+
+| Specific to ``cincan``  |        | Description                                                   |
++=========================+========+===============================================================+
+| | --in tar-file         |        | Upload input to container in a tar                            |
++-------------------------+--------+---------------------------------------------------------------+
+| | --out tar-file        |        | Download output files from container to a tar                 |
++-------------------------+--------+---------------------------------------------------------------+
+| | --in-filter pattern   | | -I   | Filter input files, prefix ^ to negate the filter             |
++-------------------------+--------+---------------------------------------------------------------+
+| | --out-filter pattern  | | -O   | Filter output files, prefix ^ to negate the filter            |
++-------------------------+--------+---------------------------------------------------------------+
+| | --mkdir directory     | | -d   | Mark output directory, not uploaded as input                  |
++-------------------------+--------+---------------------------------------------------------------+
+| | --no-defaults         |        | Ignore all container specific output filters. (.cincanignore) |
++-------------------------+--------+---------------------------------------------------------------+
 
-
-
-
-
-
-
-
-+-------------------------+----+---------------------------------------------------------------+
-| Specific to ``cincan``  |    | Description                                                   |
-+=========================+====+===============================================================+
-| --in tar-file           |    | Upload input to container in a tar                            |
-+-------------------------+----+---------------------------------------------------------------+
-| --out tar-file          |    | Download output files from container to a tar                 |
-+-------------------------+----+---------------------------------------------------------------+
-| --in-filter pattern     | -I | Filter input files, prefix ^ to negate the filter             |
-+-------------------------+----+---------------------------------------------------------------+
-| --out-filter pattern    | -O | Filter output files, prefix ^ to negate the filter            |
-+-------------------------+----+---------------------------------------------------------------+
-| --mkdir directory       | -d | Mark output directory, not uploaded as input                  |
-+-------------------------+----+---------------------------------------------------------------+
-| --no-defaults           |    | Ignore all container specific output filters. (.cincanignore) |
-+-------------------------+----+---------------------------------------------------------------+
-
-
-+---------------------------+----+---------------------------------------------------------------+
-| Similar to ``docker run`` |    | Description                                                   |
-+===========================+====+===============================================================+
-| --tty                     | -t | Allocate a pseudo-TTY                                         |
-+---------------------------+----+---------------------------------------------------------------+
-| --interactive             | -i | Keep STDIN open even if not attached                          |
-+---------------------------+----+---------------------------------------------------------------+
-| --network value           |    | Network to connect                                            |
-+---------------------------+----+---------------------------------------------------------------+
-| --user name               |    | User to run with                                              |
-+---------------------------+----+---------------------------------------------------------------+
-| --cap-add CAP             |    | Add kernel capability                                         |
-+---------------------------+----+---------------------------------------------------------------+
-| --cap-drop CAP            |    | Drop kernel capability                                        |
-+---------------------------+----+---------------------------------------------------------------+
-| --runtime                 |    | Container runtime                                             |
-+---------------------------+----+---------------------------------------------------------------+
+""""""""""""""""""
+``run`` subcommand
+""""""""""""""""""
++---------------------------+------+---------------------------------------------------------------+
+| Similar to ``docker run`` |      | Description                                                   |
++===========================+======+===============================================================+
+| --tty                     | | -t | Allocate a pseudo-TTY                                         |
++---------------------------+------+---------------------------------------------------------------+
+| --interactive             | | -i | Keep STDIN open even if not attached                          |
++---------------------------+------+---------------------------------------------------------------+
+| --network value           |      | Network to connect                                            |
++---------------------------+------+---------------------------------------------------------------+
+| --user name               |      | User to run with                                              |
++---------------------------+------+---------------------------------------------------------------+
+| --cap-add CAP             |      | Add kernel capability                                         |
++---------------------------+------+---------------------------------------------------------------+
+| --cap-drop CAP            |      | Drop kernel capability                                        |
++---------------------------+------+---------------------------------------------------------------+
+| --runtime                 |      | Container runtime                                             |
++---------------------------+------+---------------------------------------------------------------+
 
 Consult `Docker run documentation <(https://docs.docker.com/engine/reference/commandline/run/>`_ for more details.
 
@@ -338,3 +332,14 @@ might be use of some 'docker' options which are not available in the
 
 Good luck with that! (seriously, no pun intended)
 Please consult Docker documentation for details.
+
+
+-----------------
+Table of Contents
+-----------------
+
+.. toctree::
+   :name: mastertoc
+   :maxdepth: 3
+
+   advanced_usage

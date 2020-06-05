@@ -93,6 +93,9 @@ Many tools give you help information, if you invoke them without arguments, for 
 More help is available with options like `-h` or `--help`, depending on the tool.
 
 
+See more in :ref:`advanced_usage` section.
+
+
 .. Indices and tables
 .. ==================
 
