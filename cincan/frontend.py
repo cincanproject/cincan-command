@@ -432,9 +432,6 @@ def main():
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
     help_parser = subparsers.add_parser('help')
-    commit_parser = subparsers.add_parser('commit')
-    image_default_args(commit_parser)
-
     if len(sys.argv) > 1:
         args = m_parser.parse_args(args=sys.argv[1:])
     else:
@@ -515,28 +512,5 @@ def main():
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
         list_handler(args)
-    elif sub_command == 'commit':
-
-        log_path = str(pathlib.Path.home() / '.cincan/shared')
-
-        # change working dir where logs lie.
-        os.chdir(log_path)
-
-        print("check if git exists in current directory")
-
-        if os.path.exists('.git'):
-            print("if git exists, pull repo")
-            subprocess.call(["git", "pull"])
-            print("Add, commit and push logs")
-            subprocess.call(["git", "add", "."])
-            subprocess.call(["git", "status"])
-            subprocess.call(["git", "commit", "-m", "added log files from shared folder with cincan commit -command"])
-            subprocess.call(["git", "push"])
-        else:
-            print("Git doesn't exist. If you want to share your logs: Go to .cincan/shared folder")
-            print("type 'git init' and attach folder to remote repository for sharing logs")
-            print("git remote add origin git@gitlab.com:CinCan/log-sharing.git")
-            print("git pull origin master")
-            print("git branch --set-upstream-to=origin/master master")
     else:
         sys.exit(f"Unexpected sub command '{sub_command}")
