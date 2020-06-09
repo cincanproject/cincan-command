@@ -19,6 +19,7 @@ import pkg_resources
 import docker
 import docker.errors
 from .dockerapi_fixes import CustomContainerApiMixin
+from requests.exceptions import ConnectionError
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_inspector import CommandInspector
@@ -67,6 +68,8 @@ class ToolImage(CommandRunner):
             self.logger.warning(
                 "Unable to configure low-level API automatically. Some properties disabled.")
             self.low_level_client = None
+        if not self._is_docker_running():
+            sys.exit(1)
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         if path is not None:
@@ -111,6 +114,15 @@ class ToolImage(CommandRunner):
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
         self.buffer_output = False
+
+    def _is_docker_running(self):
+        """Check if Docker is working properly"""
+        try:
+            self.client.ping()
+            return True
+        except ConnectionError:
+            self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
+            return False
 
     def get_tags(self) -> List[str]:
         """List image tags"""
@@ -393,12 +405,6 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
 
 
-def docker_connect_error():
-    print("Couldn't connect to Docker, is it running & user has perms to access socket?",
-          file=sys.stderr)
-    sys.exit(1)
-
-
 def get_version_information():
     """Return version of currently installed 'cincan-command' tool."""
     pkg_name = "cincan-command"
@@ -524,11 +530,8 @@ def main():
         name = args.tool[0]
         reg = ToolRegistry()
         conf = Configuration()
-        try:
-            name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
-            info = reg.fetch_manifest(name, tag)
-        except OSError:
-            docker_connect_error()
+        name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
+        info = reg.fetch_manifest(name, tag)
         print(json.dumps(info, indent=2))
     elif sub_command == 'list':
         list_handler(args)
