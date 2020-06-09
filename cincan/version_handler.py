@@ -87,9 +87,10 @@ class VersionHandler:
                         f"\nUse 'docker pull {self.tool_name}:{self.config.default_stable_tag}' to update.")
                 else:
                     self.logger.info(f"Newer development version available in remote: "
-                                     f"{self.latest_local} vs. {self.latest_remote} with tags '{','.join(self.remote_tags)}'")
+                                     f"'{self.latest_local}' vs. '{self.latest_remote}' with tags '{','.join(self.remote_tags)}'")
             if self.remote_updates:
                 self.logger.info(
-                    f"Remote is not up-to-date with origin ({self.origin_provider}) ({self.latest_remote} vs. {self.latest_origin})")
+                    f"Remote is not up-to-date with origin ({self.origin_provider}): "
+                    f"'{self.latest_remote}' vs. '{self.latest_origin}'")
         else:
             self.logger.info(f"No version information available for {self.tool_name}\n")

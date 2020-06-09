@@ -150,7 +150,7 @@ def test_image_version_remote_outdated(caplog):
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
         "Your tool is up-to-date with remote. Current version: 1.0",
-        "Remote is not up-to-date with origin (GitHub) (1.0 vs. 1.1)"
+        "Remote is not up-to-date with origin (GitHub): '1.0' vs. '1.1'"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
@@ -175,7 +175,7 @@ def test_image_version_new_dev_version(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=coroutine_func()) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
-        f"Newer development version available in remote: 1.0 vs. 1.1 with tags 'dev'"
+        f"Newer development version available in remote: '1.0' vs. '1.1' with tags 'dev'"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
