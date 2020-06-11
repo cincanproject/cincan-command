@@ -15,27 +15,12 @@ Using tools
 
 
 A tool can be invoked with cincan using 'run' sub-command like this:
- 
+
 
 .. code-block:: shell
 
    cincan run <tool> <parameters..
 
------------------------
-Version checks of tools
------------------------
-
-By default, every time tool is used, it's version status is showed. Is it up-to-date compared to Docker Hub, or maybe upstream has later version which is not ended up into our Docker Hub yet? This feature is available only for ``cincan`` tools, for those which are configured correctly.
-
-If you want to disable it, modify/add file ``~/.cincan/config.json`` to contain attribute ``show_updates`` and set it as ``false``.
-
-Example file could look like:
-
-.. code-block:: json
-
-   {
-   "show_updates": false
-   }
 
 
 ----------------------
@@ -332,3 +317,23 @@ might be use of some 'docker' options which are not available in the
 
 Good luck with that! (seriously, no pun intended)
 Please consult Docker documentation for details.
+
+-------------
+Configuration
+-------------
+
+"""""""""""""""""""""""
+Version checks of tools
+"""""""""""""""""""""""
+
+By default, every time a tool is used, its version status is shown. Version check will compare the local version of a tool with the version in Docker Hub and with the version in the tool's upstream repository in case the newer version has not ended up into our Docker Hub yet. This feature is available only for those CinCan tools which are configured correctly.
+
+If you want to disable it, modify/add file ``~/.cincan/config.json`` to contain attribute ``show_updates`` and set it as ``false``.
+
+Example file could look like:
+
+.. code-block:: json
+
+   {
+     "show_updates": false
+   }
