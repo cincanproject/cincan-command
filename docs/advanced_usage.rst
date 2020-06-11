@@ -13,15 +13,12 @@ Advanced Usage
 Using tools
 -----------
 
-
 A tool can be invoked with cincan using 'run' sub-command like this:
 
 
 .. code-block:: shell
 
    cincan run <tool> <parameters..
-
-
 
 ----------------------
 Input and output files
@@ -33,7 +30,6 @@ transferred into and out from the container.
 As default, this happens transparently as running the tools without docker.
 For example, if you have file ``myfile.pcap``,
 the following command should give you JSON-formatted output from 'tshark':
-
 
 .. code-block:: shell
 
@@ -51,7 +47,6 @@ container as you would expect, for example:
 
 Use argument ``-q`` to get rid of the log indicating which files are copied in or
 out, e.g.
-
 
 .. code-block:: shell
 
@@ -71,7 +66,6 @@ E.g. the following does not produce any output files to ``/tmp``.
 .. code-block:: shell
 
     cincan run cincan/tshark -r myfile.pcap -w /tmp/result.pcap
-
 
 However, depending on the WORKDIR value of the container, you may get
 unexpected files to current directory, such as `tmp/result.pcap`
@@ -106,7 +100,7 @@ it repeatedly copies also the output files from the previous runs to container.
 This may process may slow down your work and requires extra disk space.
 
 This is avoided by using run argument ``--mkdir`` (or ``-d``) to explicitly
-create output directory into container without copying over any possible 
+create output directory into container without copying over any possible
 content.
 
 For example, consider the tool 'volatility' which expects you to
@@ -155,25 +149,21 @@ by giving a glob-style pattern by run command arguments
 and  ``--out-filter`` (or ``-O``) for output file filtering.
 Negative filters for filtering-out files are prefixed with ^.
 
-
-
 +-------------------------+----------------------------------------------------+
 | Argument                | Description                                        |
 +=========================+====================================================+
 | --in-filter pattern     | Match files to upload by the pattern               |
-+-------------------------+----------------------------------------------------+            
-| --in-filter ^pattern    | Filter out files to upload which match the pattern | 
++-------------------------+----------------------------------------------------+
+| --in-filter ^pattern    | Filter out files to upload which match the pattern |
 +-------------------------+----------------------------------------------------+
 | --out-filter pattern    | Match files to download by the pattern             |
 +-------------------------+----------------------------------------------------+
 | --out-filter ^pattern   | Filter out files to upload which match the pattern |
 +-------------------------+----------------------------------------------------+
 
-
-
 For example, consider the previous case with
 tool 'volatility'.
-An alternative approach would be to filter out 
+An alternative approach would be to filter out
 copying of files under ``dump/`` like this:
 
 .. code-block:: shell
@@ -187,13 +177,13 @@ copying of files under ``dump/`` like this:
 Filtering by `.cincanignore` - file stored inside container
 -----------------------------------------------------------
 
-Downloadable files can be filtered by ``.cincanignore`` file as well, which should be stored inside tool container in build phase. 
-All files listed in that file are not downloaded from the container. 
+Downloadable files can be filtered by ``.cincanignore`` file as well, which should be stored inside tool container in build phase.
+All files listed in that file are not downloaded from the container.
 Paths are relative of the working directory of container.
 
 Ignore file supports ``#`` char as comment character.
 
-See example file from path ``samples/.cincanignore``: 
+See example file from path ``samples/.cincanignore``:
 
 .. literalinclude:: ../samples/.cincanignore
 
@@ -223,8 +213,8 @@ Getting tool output as tar file
 -------------------------------
 
 You can also request the tool output files in a tar container.
-This is done with argument ``--out``. 
-You can provide for the argument either a file name or ``-``for standard output. 
+This is done with argument ``--out``.
+You can provide for the argument either a file name or ``-``for standard output.
 You can also apply output file filtering to limit the number of files copied into the output tar archive.
 
 For example, the following should write file ``output.tar``
@@ -253,18 +243,15 @@ We are using `radare2 <https://gitlab.com/CinCan/tools/tree/master/radare2>`_ as
    [x] Type matching analysis for all functions (aaft)
    [x] Propagate noreturn information
    [x] Use -AA or aaaa to perform additional experimental analysis.
-   [0x00005b10]> 
+   [0x00005b10]>
 
 radare2 should open ``/bin/ls`` file, and this can be analysed by typing ``aaa`` and pressing enter.
-
 
 ---------------
 All run options
 ---------------
 
 The following table lists all command-line options available for the run -sub command:
-
-
 
 +-------------------------+--------+---------------------------------------------------------------+
 | Specific to ``cincan``  |        | Description                                                   |
@@ -309,7 +296,7 @@ Consult `Docker run documentation <(https://docs.docker.com/engine/reference/com
 Invoking tool without 'cincan' wrapper
 --------------------------------------
 
-Sometimes you cannot use the services provided by the 'cincan' frontend. 
+Sometimes you cannot use the services provided by the 'cincan' frontend.
 For example, as files are copied around you may ran out of disk space or
 experience long delays when working with large files. An another reason
 might be use of some 'docker' options which are not available in the
