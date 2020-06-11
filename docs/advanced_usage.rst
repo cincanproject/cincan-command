@@ -5,9 +5,10 @@
 Advanced Usage
 ==============
 
-.. toctree::
-   :maxdepth: 3
-   :hidden:
+.. contents:: Table of Contents
+   :local:
+   :depth: 1
+   :backlinks: none
 
 -----------
 Using tools
@@ -332,14 +333,3 @@ might be use of some 'docker' options which are not available in the
 
 Good luck with that! (seriously, no pun intended)
 Please consult Docker documentation for details.
-
-
------------------
-Table of Contents
------------------
-
-.. toctree::
-   :name: mastertoc
-   :maxdepth: 3
-
-   advanced_usage
