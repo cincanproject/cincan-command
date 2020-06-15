@@ -13,7 +13,7 @@ Advanced Usage
 Using tools
 -----------
 
-A tool can be invoked with cincan using 'run' sub-command like this:
+A tool can be invoked with ``cincan`` using 'run' sub-command like this:
 
 A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with 'run' sub-command like this:
 
@@ -56,9 +56,10 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 
    $ cincan -q run cincan/tshark -r myfile.pcap -w result.pcap
 
-*Note:* The argument ``-q`` is before the 'run' sub-command
+**Note**: The argument ``-q`` is before the 'run' sub-command
 
 .. topic:: Further reading: Limitations to input/output
+   :name: input_output_limitations
 
    a) Output files are only fetched to the current directory and to its subdirectories. This is a safety feature to block dockerized tools for overwriting arbitrary filesystem files. For example, the following does not produce any output files to ``/tmp``.
 
@@ -81,23 +82,15 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 
 |
 
------------------------------------------------
+.. _avoid_uploading_content_from_output_directories:
+
+"""""""""""""""""""""""""""""""""""""""""""""""
 Avoid uploading content from output directories
------------------------------------------------
+"""""""""""""""""""""""""""""""""""""""""""""""
 
-On many cases a tool writes files into an output directory and you may
-run the tool several times to produce many files to the output directory.
-However, as 'cincan' does not know which files are output and which are input,
-it repeatedly copies also the output files from the previous runs to container.
-This may process may slow down your work and requires extra disk space.
+In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using 'run' argument ``--mkdir`` (or ``-d``) to explicitly create output directory into the container without copying over any possible content.
 
-This is avoided by using run argument ``--mkdir`` (or ``-d``) to explicitly
-create output directory into container without copying over any possible
-content.
-
-For example, consider the tool 'volatility' which expects you to
-give an output dump directory when extracting process data, e.g.
-the following extracts the memory dump of process 123 to directory ``dump/``
+For example, consider the tool *cincan/volatility*, which expects you to give an output dump directory when extracting process data. The following extracts the memory dump of process 123 to a ``dump/`` directory:
 
 .. code-block:: shell
 
@@ -106,8 +99,7 @@ the following extracts the memory dump of process 123 to directory ``dump/``
     cincan/volatility: <= dump
     cincan/volatility: => dump/123.dmp
 
-However, if you extract again you notice that the already extracted file
-gets copied into the container as potential input file:
+If you run the same command again for a different process, you'll notice that the already extracted file gets copied into the container as a potential input file:
 
 .. code-block:: shell
 
@@ -117,9 +109,7 @@ gets copied into the container as potential input file:
     cincan/volatility: <= dump/123.dmp
     cincan/volatility: => dump/456.dmp
 
-This can easily slow down your analysis a lot when many process
-files are copied around unnecessarily. You can address this by
-explicitly creating `dump/` directory to the container this way:
+You can address this by explicitly creating a ``dump/`` directory to the container (and also likely make your analysis faster):
 
 .. code-block:: shell
 
@@ -128,37 +118,29 @@ explicitly creating `dump/` directory to the container this way:
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
 
-You can provide the argument many times to create multiple directories.
+**Tip**: The argument ``--mkdir`` (or ``-d``) can be provided many times to create multiple directories.
 
 |
 
--------------------------------
+"""""""""""""""""""""""""""""""
 Input and output file filtering
--------------------------------
+"""""""""""""""""""""""""""""""
 
-You can explicitly filter input files, which are copied to the container,
-and output files, which are copied from the container. The filtering is done
-by giving a glob-style pattern by run command arguments
-``--in-filter`` (or ``-I``) for input file filtering
-and  ``--out-filter`` (or ``-O``) for output file filtering.
-Negative filters for filtering-out files are prefixed with ^.
+You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by run command arguments: ``--in-filter`` (or ``-I``) for input file filtering and ``--out-filter`` (or ``-O``) for output file filtering. When the arguments are prefixed with ``^``, they are negative filters for filtering-out files.
 
-+-------------------------+----------------------------------------------------+
-| Argument                | Description                                        |
-+=========================+====================================================+
-| --in-filter pattern     | Match files to upload by the pattern               |
-+-------------------------+----------------------------------------------------+
-| --in-filter ^pattern    | Filter out files to upload which match the pattern |
-+-------------------------+----------------------------------------------------+
-| --out-filter pattern    | Match files to download by the pattern             |
-+-------------------------+----------------------------------------------------+
-| --out-filter ^pattern   | Filter out files to upload which match the pattern |
-+-------------------------+----------------------------------------------------+
++-----------------------------+----------------------------------------------------+
+| Argument                    | Description                                        |
++=============================+====================================================+
+| ``--in-filter [PATTERN]``   | Match files to upload by the pattern               |
++-----------------------------+----------------------------------------------------+
+| ``--in-filter ^[PATTERN]``  | Filter out files to upload which match the pattern |
++-----------------------------+----------------------------------------------------+
+| ``--out-filter [PATTERN]``  | Match files to download by the pattern             |
++-----------------------------+----------------------------------------------------+
+| ``--out-filter ^[PATTERN]`` | Filter out files to upload which match the pattern |
++-----------------------------+----------------------------------------------------+
 
-For example, consider the previous case with
-tool 'volatility'.
-An alternative approach would be to filter out
-copying of files under ``dump/`` like this:
+For example, consider `the previous case <avoid_uploading_content_from_output_directories_>`_ with the tool *cincan/volatility*. An alternative approach would be to filter out copying of files under ``dump/`` like this:
 
 .. code-block:: shell
 
