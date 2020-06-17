@@ -43,7 +43,7 @@ On Windows, ``cincan`` **does not work**, unfortunately. `WSL 2 <https://docs.mi
 Getting started
 ---------------
 
-As a prerequisite, you must have ``Docker`` **18.09+** installed for running the tools, and ``Python`` **3.6+** and ``pip`` Python package manager to install the ``cincan`` command. Make sure ``Docker`` is running when you use the ``cincan`` command.
+As a prerequisite, you must have ``Docker`` **18.09+** installed for running the tools, and ``Python`` **3.6+** and ``pip`` Python package manager to install the ``cincan`` command.
 
 The ``cincan`` command is in `Python Package Index (PyPi) <https://pypi.org/project/cincan-command/>`_ and can typically be installed by running:
 
@@ -82,6 +82,8 @@ Many tools will show you help documentation if you invoke them without arguments
    cincan run cincan/tshark
 
 More help is available with options like `-h` or `-–help`, depending on the tool.
+
+**Note**: Make sure ``Docker`` is running when you use the ``cincan`` command.
 
 See more examples in the :ref:`advanced_usage` section.
 

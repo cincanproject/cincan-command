@@ -9,7 +9,6 @@ Installation
    :maxdepth: 3
 
 As a prerequisite, you must have ``Docker`` **18.09+** installed for running the tools, and ``Python`` **3.6+** and ``pip`` Python package manager to install the ``cincan`` command.
-Make sure ``Docker`` is running when you use the ``cincan`` command.
 
 *Docker below version 18.09 has not been tested,* so there might be hope that it works.
 
@@ -132,5 +131,7 @@ Once we have successfully installed all the required packages, we can start the 
    cincan list
 
 Should give a list for all stable `tools <https://gitlab.com/CinCan/tools>`_ dockerized in the **CinCan** project.
+
+**Note**: Make sure ``Docker`` is running when you use the ``cincan`` command.
 
 See more examples in the :ref:`advanced_usage` section.
