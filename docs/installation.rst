@@ -10,7 +10,7 @@ Installation
 
 As a prerequisite, you must have ``Docker`` **18.09+** installed for running the tools, and ``Python`` **3.6+** and ``pip`` Python package manager to install the ``cincan`` command.
 
-*Docker below version 18.09 has not been tested,* so there might be hope that it works.
+**Note**: Docker below version 18.09 has not been tested, so there might be hope that it works.
 
 --------------
 Install Docker (>=18.09)
