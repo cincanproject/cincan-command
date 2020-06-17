@@ -27,6 +27,13 @@ For example, invoke the tool *cincan/pywhois* with:
 
    $ cincan run cincan/pywhois 127.0.0.1
 
+.. topic:: Further reading: Invoking tools without ``cincan`` command
+   :name: invoking_without_cincan
+
+   Sometimes you may be unable to use the tools with the ``cincan`` command. For example, as files are copied around you may run out of disk space or experience long delays when working with large files. Another reason might be the use of some ``docker`` options which are not available in the ``cincan`` command.
+
+   Good luck with that! (Seriously, no pun intended.) Please consult Docker documentation for details.
+
 |
 
 ----------------------
@@ -61,7 +68,7 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 .. topic:: Further reading: Limitations to input/output
    :name: input_output_limitations
 
-   a) Output files are only fetched to the current directory and to its subdirectories. This is a safety feature to block dockerized tools for overwriting arbitrary filesystem files. For example, the following does not produce any output files to ``/tmp``.
+   a) Output files are only fetched to the current directory and its subdirectories. This is a safety feature to block dockerized tools for overwriting arbitrary filesystem files. For example, the following does not produce any output files to ``/tmp``.
 
       .. code-block:: shell
 
@@ -126,7 +133,7 @@ You can address this by explicitly creating a ``dump/`` directory to the contain
 Input and output file filtering
 """""""""""""""""""""""""""""""
 
-You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by run command arguments: ``--in-filter`` (or ``-I``) for input file filtering and ``--out-filter`` (or ``-O``) for output file filtering. When the arguments are prefixed with ``^``, they are negative filters for filtering-out files.
+You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by 'run' arguments: ``--in-filter`` (or ``-I``) for input file filtering and ``--out-filter`` (or ``-O``) for output file filtering. When the arguments are prefixed with ``^``, they are negative filters for filtering-out files.
 
 +-----------------------------+----------------------------------------------------+
 | Argument                    | Description                                        |
@@ -151,52 +158,43 @@ For example, consider `the previous case <avoid_uploading_content_from_output_di
 
 |
 
------------------------------------------------------------
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Filtering by `.cincanignore` - file stored inside container
------------------------------------------------------------
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-Downloadable files can be filtered by ``.cincanignore`` file as well, which should be stored inside tool container in build phase.
-All files listed in that file are not downloaded from the container.
-Paths are relative of the working directory of container.
+Downloadable files can be filtered by the ``.cincanignore`` file as well, which should be stored inside a tool's container in the build phase. All files listed in the ``.cincanignore`` file are not downloaded from the container. Paths are relative to the working directory of the container.
 
-Ignore file supports ``#`` char as comment character.
-
-See example file from path ``samples/.cincanignore``:
+See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
 
 .. literalinclude:: ../samples/.cincanignore
    :caption: samples/.cincanignore
 
 
-This works with user supplied filters as well.
+This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
 
-Argument ``--no-defaults`` can be passed for ``run`` command to not use this file.
+**Tip**: Argument ``--no-defaults`` can be passed for 'run' sub-command to not use this file.
 
 |
 
---------------------------------
-Providing tool input as tar file
---------------------------------
+""""""""""""""""""""""""""""""""""
+Providing tool input as a tar file
+""""""""""""""""""""""""""""""""""
 
-Instead of letting the tool to figure out the input files from command-line, you
-can provide the input files directly as tar-file. When this is done,
-the tool does not try to apply any logic to upload files, so you
-have the full control. You cannot use input file filtering with this approach.
+Instead of letting the ``cincan`` command figure out the input files from the command-line (see: `Limitations to input/output <input_output_limitations_>`_), you can provide the input files directly as a tar file. When this is done, the ``cincan`` command does not try to apply any logic to upload files, so you have full control.
 
-The input tar file is specified with option ``--in`` and
-you can provide a file or use ``-`` to read from standard input. For example:
+The input tar file is specified with the 'run' argument ``--in`` and you can provide a file or use ``-`` to read from standard input. For example:
 
 .. code-block:: shell
 
    $ tar c myfile.pcap | cincan run --in - cincan/tshark -r myfile.pcap
 
--------------------------------
-Getting tool output as tar file
--------------------------------
+**Note**: You cannot use input file filtering with this approach.
 
-You can also request the tool output files in a tar container.
-This is done with argument ``--out``.
-You can provide for the argument either a file name or ``-``for standard output.
-You can also apply output file filtering to limit the number of files copied into the output tar archive.
+"""""""""""""""""""""""""""""""
+Getting tool output as a tar file
+"""""""""""""""""""""""""""""""
+
+The ``cincan`` command also supports creating a tar file from a tool's output files. This is done with 'run' argument ``--out``. You can provide for the argument either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
 
 For example, the following should write file ``output.tar``
 
@@ -206,15 +204,17 @@ For example, the following should write file ``output.tar``
 
 |
 
--------------------------------------
-Running tool with interactive support
--------------------------------------
+---------------------------------------
+Running a tool with interactive support
+---------------------------------------
 
-We are using `radare2 <https://gitlab.com/CinCan/tools/tree/master/radare2>`_ as example here. Tool with interactive mode requires `--interactive` (or `-i`) and --tty (or `-t`) switches. Start radare2 disassembler for local file `/bin/ls` by running command:
+Tools with interactive mode require ``--interactive`` (or ``-i``) and ``--tty`` (or ``-t``) 'run' arguments.
+
+We are using *cincan/radare2* as an example of a tool with an interactive mode here. Start *cincan/radare2* disassembler for local file ``/bin/ls`` by running:
 
 .. code-block:: shell
 
-   $ cincan run -it cincan/radare2 r2 /bin/ls
+   $ cincan run -i cincan/radare2 r2 /bin/ls
    cincan/radare2: <= /usr/bin/ls
    -- We are surrounded by the enemy. - Excellent, we can attack in any direction!
    [0x00005b10]> aaa
@@ -228,7 +228,7 @@ We are using `radare2 <https://gitlab.com/CinCan/tools/tree/master/radare2>`_ as
    [x] Use -AA or aaaa to perform additional experimental analysis.
    [0x00005b10]>
 
-radare2 should open ``/bin/ls`` file, and this can be analysed by typing ``aaa`` and pressing enter.
+You should see an interactive prompt like above where *cincan/radare2* has opened the ``/bin/ls`` file. Start the analysis by typing ``aaa`` and pressing enter. Type ``exit`` or press ``ctrl + d`` to quit the interactive prompt.
 
 |
 
@@ -279,21 +279,6 @@ The following table lists all command-line options available for the run -sub co
 +---------------------------+------+---------------------------------------------------------------+
 
 Consult `Docker run documentation <(https://docs.docker.com/engine/reference/commandline/run/>`_ for more details.
-
-|
-
---------------------------------------
-Invoking tool without 'cincan' wrapper
---------------------------------------
-
-Sometimes you cannot use the services provided by the 'cincan' frontend.
-For example, as files are copied around you may ran out of disk space or
-experience long delays when working with large files. An another reason
-might be use of some 'docker' options which are not available in the
-'cincan' tool.
-
-Good luck with that! (seriously, no pun intended)
-Please consult Docker documentation for details.
 
 |
 
