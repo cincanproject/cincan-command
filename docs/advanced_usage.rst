@@ -93,7 +93,7 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 Avoid uploading content from output directories
 """""""""""""""""""""""""""""""""""""""""""""""
 
-In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan run`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using 'run' argument ``--mkdir`` (or ``-d``) to explicitly create output directory into the container without copying over any possible content.
+In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan run`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using ``--mkdir`` (or ``-d``) option to explicitly create output directory into the container without copying over any possible content.
 
 For example, consider the tool *cincan/volatility*, which expects you to give an output dump directory when extracting process data. The following extracts the memory dump of process 123 to a ``dump/`` directory:
 
@@ -123,7 +123,7 @@ You can address this by explicitly creating a ``dump/`` directory to the contain
     cincan/volatility: <= dump
     cincan/volatility: => dump/789.dmp
 
-**Tip**: The argument ``--mkdir`` (or ``-d``) can be provided many times to create multiple directories.
+**Tip**: The ``--mkdir`` (or ``-d``) option can be provided many times to create multiple directories.
 
 |
 
@@ -131,10 +131,10 @@ You can address this by explicitly creating a ``dump/`` directory to the contain
 Input and output file filtering
 """""""""""""""""""""""""""""""
 
-You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by 'run' arguments: ``--in-filter`` (or ``-I``) for input file filtering and ``--out-filter`` (or ``-O``) for output file filtering. When the arguments are prefixed with ``^``, they are negative filters for filtering-out files.
+You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by: ``--in-filter`` (or ``-I``) option for input file filtering and ``--out-filter`` (or ``-O``) option for output file filtering. When the options are prefixed with ``^``, they are negative filters for filtering-out files.
 
 +-----------------------------+----------------------------------------------------+
-| Argument                    | Description                                        |
+| Option                      | Description                                        |
 +=============================+====================================================+
 | ``--in-filter [PATTERN]``   | Match files to upload by the pattern               |
 +-----------------------------+----------------------------------------------------+
@@ -170,7 +170,7 @@ See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/sample
 
 This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
 
-**Tip**: Argument ``--no-defaults`` can be passed for 'run' subcommand to not use this file.
+**Tip**: Option ``--no-defaults`` can be passed to not use this file.
 
 |
 
@@ -180,7 +180,7 @@ Providing tool input as a tar file
 
 Instead of letting the ``cincan run`` command figure out the input files from the command-line (see: `Limitations to input/output <input_output_limitations_>`_), you can provide the input files directly as a tar file. When this is done, the ``cincan run`` command does not try to apply any logic to upload files, so you have full control.
 
-The input tar file is specified with the 'run' argument ``--in`` and you can provide a file or use ``-`` to read from standard input. For example:
+The input tar file is specified with the ``--in`` option and you can provide a file or use ``-`` to read from standard input. For example:
 
 .. code-block:: shell
 
@@ -192,7 +192,7 @@ The input tar file is specified with the 'run' argument ``--in`` and you can pro
 Getting tool output as a tar file
 """""""""""""""""""""""""""""""
 
-The ``cincan run`` command also supports creating a tar file from a tool's output files. This is done with 'run' argument ``--out``. You can provide for the argument either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
+The ``cincan run`` command also supports creating a tar file from a tool's output files. This is done with ``--out`` option. You can provide for the option either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
 
 For example, the following should write file ``output.tar``
 
@@ -206,7 +206,7 @@ For example, the following should write file ``output.tar``
 Running a tool with interactive support
 ---------------------------------------
 
-Tools with interactive mode require ``--interactive`` (or ``-i``) and ``--tty`` (or ``-t``) 'run' arguments.
+Tools with interactive mode require ``--interactive`` (or ``-i``) and/or ``--tty`` (or ``-t``) options.
 
 We are using *cincan/radare2* as an example of a tool with an interactive mode here. Start *cincan/radare2* disassembler for local file ``/bin/ls`` by running:
 
