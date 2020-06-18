@@ -63,7 +63,7 @@ You can see the list of `available tools <https://gitlab.com/CinCan/tools>`_ doc
 
    cincan list
 
-A specific tool can be invoked with a 'run' sub-command like this:
+A specific tool can be invoked with ``cincan run`` like this:
 
 .. code-block:: shell
 

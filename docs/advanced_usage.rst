@@ -13,7 +13,7 @@ Advanced Usage
 Using tools
 -----------
 
-A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with 'run' sub-command like this:
+A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with ``cincan run`` command like this:
 
 .. code-block:: shell
 
@@ -192,7 +192,7 @@ The input tar file is specified with the 'run' argument ``--in`` and you can pro
 Getting tool output as a tar file
 """""""""""""""""""""""""""""""
 
-The ``cincan`` command also supports creating a tar file from a tool's output files. This is done with 'run' argument ``--out``. You can provide for the argument either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
+The ``cincan run`` command also supports creating a tar file from a tool's output files. This is done with 'run' argument ``--out``. You can provide for the argument either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
 
 For example, the following should write file ``output.tar``
 
@@ -234,7 +234,7 @@ You should see an interactive prompt like above where *cincan/radare2* has opene
 All run options
 ---------------
 
-The following table lists all command-line options available for the run -sub command:
+The following table lists all command-line options available for the ``docker run`` command:
 
 +-------------------------+--------+---------------------------------------------------------------+
 | Specific to ``cincan``  |        | Description                                                   |
