@@ -163,7 +163,7 @@ Downloadable files can be filtered by the ``.cincanignore`` file as well, which 
 
 See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
 
-.. literalinclude:: ../samples/.cincanignore
+.. literalinclude:: ../../samples/.cincanignore
    :caption: samples/.cincanignore
 
 
