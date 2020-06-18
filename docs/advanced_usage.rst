@@ -25,10 +25,10 @@ For example, invoke the tool *cincan/pywhois* with:
 
    $ cincan run cincan/pywhois 127.0.0.1
 
-.. topic:: Further reading: Invoking tools without ``cincan`` command
+.. topic:: Further reading: Invoking tools without ``cincan run`` command
    :name: invoking_without_cincan
 
-   Sometimes you may be unable to use the tools with the ``cincan`` command. For example, as files are copied around you may run out of disk space or experience long delays when working with large files. Another reason might be the use of some ``docker`` options which are not available in the ``cincan`` command.
+   Sometimes you may be unable to use the tools with the ``cincan run`` command. For example, as files are copied around you may run out of disk space or experience long delays when working with large files. Another reason might be the use of some ``docker`` options which are not available in the ``cincan run`` command.
 
    Good luck with that! (Seriously, no pun intended.) Please consult Docker documentation for details.
 
@@ -74,7 +74,7 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 
       However, depending on the ``WORKDIR`` value of the container, you may get unexpected files to the current directory, such as *tmp/result.pcap* with the above sample.
 
-   b) By default, the ``cincan`` command treats all existing files listed in command-line arguments as input files, so it may also upload output files if those already exists when a command is invoked. For example, when you run the following command several times, you will notice that the file ``result.pcap`` gets uploaded to the container only to be overwritten.
+   b) By default, the ``cincan run`` command treats all existing files listed in command-line arguments as input files, so it may also upload output files if those already exists when a command is invoked. For example, when you run the following command several times, you will notice that the file ``result.pcap`` gets uploaded to the container only to be overwritten.
 
       .. code-block:: shell
 
@@ -93,7 +93,7 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 Avoid uploading content from output directories
 """""""""""""""""""""""""""""""""""""""""""""""
 
-In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using 'run' argument ``--mkdir`` (or ``-d``) to explicitly create output directory into the container without copying over any possible content.
+In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan run`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using 'run' argument ``--mkdir`` (or ``-d``) to explicitly create output directory into the container without copying over any possible content.
 
 For example, consider the tool *cincan/volatility*, which expects you to give an output dump directory when extracting process data. The following extracts the memory dump of process 123 to a ``dump/`` directory:
 
@@ -178,7 +178,7 @@ This works for user-supplied filters as well. Ignore file supports ``#`` char as
 Providing tool input as a tar file
 """"""""""""""""""""""""""""""""""
 
-Instead of letting the ``cincan`` command figure out the input files from the command-line (see: `Limitations to input/output <input_output_limitations_>`_), you can provide the input files directly as a tar file. When this is done, the ``cincan`` command does not try to apply any logic to upload files, so you have full control.
+Instead of letting the ``cincan run`` command figure out the input files from the command-line (see: `Limitations to input/output <input_output_limitations_>`_), you can provide the input files directly as a tar file. When this is done, the ``cincan run`` command does not try to apply any logic to upload files, so you have full control.
 
 The input tar file is specified with the 'run' argument ``--in`` and you can provide a file or use ``-`` to read from standard input. For example:
 
