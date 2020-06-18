@@ -10,7 +10,7 @@ Welcome to CinCan Command's documentation!
 .. toctree::
    :hidden:
 
-   Home <self>
+   Quick Start <self>
 
 .. toctree::
    :maxdepth: 2
