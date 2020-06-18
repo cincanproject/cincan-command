@@ -1,9 +1,8 @@
+.. _cincan_run:
 
-.. _advanced_usage:
-
-==============
-Advanced Usage
-==============
+==========
+Cincan run
+==========
 
 .. contents:: Table of Contents
    :local:

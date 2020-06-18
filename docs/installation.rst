@@ -134,4 +134,4 @@ Should give a list for all stable `tools <https://gitlab.com/CinCan/tools>`_ doc
 
 **Note**: Make sure ``Docker`` is running when you use the ``cincan`` command.
 
-See more examples in the :ref:`advanced_usage` section.
+See more examples in the :ref:`commands` section.

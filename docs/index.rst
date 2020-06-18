@@ -17,7 +17,7 @@ Welcome to CinCan Command's documentation!
    :hidden:
 
    installation
-   advanced_usage
+   ./commands/index.rst
    symlinks/CHANGELOG
 
 
@@ -85,7 +85,7 @@ More help is available with options like `-h` or `-–help`, depending on the to
 
 **Note**: Make sure ``Docker`` is running when you use the ``cincan`` command.
 
-See more examples in the :ref:`advanced_usage` section.
+See more examples in the :ref:`commands` section.
 
 .. Indices and tables
 .. ==================
