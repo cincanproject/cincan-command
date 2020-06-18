@@ -17,7 +17,7 @@ A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with ``cinca
 
 .. code-block:: shell
 
-   cincan run <tool> <parameters..>
+   cincan run [OPTIONS] TOOL [ARG...]
 
 For example, invoke the tool *cincan/pywhois* with:
 
