@@ -18,6 +18,7 @@ Welcome to CinCan Command's documentation!
 
    installation
    ./commands/index.rst
+   configuration
    symlinks/CHANGELOG
 
 
