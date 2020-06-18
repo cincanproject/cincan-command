@@ -13,8 +13,6 @@ Advanced Usage
 Using tools
 -----------
 
-A tool can be invoked with ``cincan`` using 'run' sub-command like this:
-
 A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with 'run' sub-command like this:
 
 .. code-block:: shell
