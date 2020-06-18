@@ -61,7 +61,7 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 
    $ cincan -q run cincan/tshark -r myfile.pcap -w result.pcap
 
-**Note**: The argument ``-q`` is before the 'run' sub-command
+**Note**: The argument ``-q`` is before the 'run' subcommand
 
 .. topic:: Further reading: Limitations to input/output
    :name: input_output_limitations
@@ -170,7 +170,7 @@ See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/sample
 
 This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
 
-**Tip**: Argument ``--no-defaults`` can be passed for 'run' sub-command to not use this file.
+**Tip**: Argument ``--no-defaults`` can be passed for 'run' subcommand to not use this file.
 
 |
 
