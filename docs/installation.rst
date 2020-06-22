@@ -85,7 +85,7 @@ If you don't want to install packages globally, you can install the package for 
 
 .. code-block:: shell
 
-   pip3 install cincan-command --user
+   pip3 install --user cincan-command
 
 This will install the package for the current user. However, it is possible that these packages are not in path.
 You can add user-specific binaries into path for the current session with:
