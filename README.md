@@ -1,53 +1,33 @@
-[![pipeline status](https://gitlab.com/CinCan/cincan-command/badges/master/pipeline.svg)](https://gitlab.com/CinCan/cincan-command/commits/master) [![coverage report](https://gitlab.com/CinCan/cincan-command/badges/master/coverage.svg)](https://gitlab.com/CinCan/cincan-command/commits/master)
+[![pipeline status](https://gitlab.com/CinCan/cincan-command/badges/master/pipeline.svg)](https://gitlab.com/CinCan/cincan-command/commits/master)
+[![coverage report](https://gitlab.com/CinCan/cincan-command/badges/master/coverage.svg)](https://gitlab.com/CinCan/cincan-command/commits/master)
 
-# CinCan command
+# CinCan Command
 
-The tool `cincan` command provide for a convenient
-use of the native command-line tools provided as docker images.
+CinCan is a command-line interface for running security analysis tools conveniently in Docker containers.
+
+Complete documentation is available at [CinCan Documentation](https://cincan.gitlab.io/cincan-command/).
 
 ## Supported platforms
 
-The `cincan` tool should run on fairly modern Linux distributions.
-Partial support for macOS is available - tested to work with macOS Catalina.
-
-On Windows `cincan` **does not work**, unfortunately.
+The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows `cincan` **does not work**, unfortunately.
 
 ## Installation
 
-As prerequisite you must have installed `Docker` for running the tools,
-and `Python 3` and `pip` Python package management program for the command program.
-Consult your system documentation how to install them.
+As a prerequisite, you must have `Docker` **18.09+** installed for running the tools, and `Python` **3.6+** and `pip` Python package manager to install the `cincan` command.
 
-The command program is then installed using pip for Python 3:
+Install cincan via pip:
 
-    % pip install cincan-command --user
+    % pip install --user cincan-command
 
-This will install package for current user. However, it is possible that these packages are not in path. You can add user-specific binaries into path for current session with:
-
-```
-export PATH=$PATH:$HOME/.local/bin
-```
-To add it permanently,  append it into `~/.bashrc`  file with your favorite text editor. Note that this can depend on what kind of shell you are using.
-
-To activate changes:
-```
-source ~/.bashrc
-```
-
-**If you invoke the pip installation with `sudo` and without `--user` flag (if you are OK with that) the command `cincan` should be added to your path automatically and installed in system wide.**
-
-NOTE: You may want to install the tool into `virtualenv` to avoid conflicts with
-other Python applications you may have. Please consult appropriate documentation.
-
-You can check that all works as follows:
+You can verify that the installation works by running:
 
     % cincan list
 
-If all goes well you get a list of the latest stable tools dockerized in the 'CinCan' project.
-First time running this might take a while as it must fetch information of the tools
-and cache it locally.
+If all goes well, you should get a list of the latest stable tools dockerized in the 'CinCan' project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
 
-`cincan list` is using list command from module [cincan-registry](https://gitlab.com/CinCan/cincan-registry) Please, consult documentation in there for all available options.
+Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
+
+`cincan list` is using list command from module [cincan-registry](https://gitlab.com/CinCan/cincan-registry). Consult the module's documentation for all available options.
 
 ## Running tools with cincan
 
@@ -141,7 +121,7 @@ it repeatedly copies also the output files from the previous runs to container.
 This may process may slow down your work and requires extra disk space.
 
 This is avoided by using run argument `--mkdir` (or `-d`) to explicitly
-create output directory into container without copying over any possible 
+create output directory into container without copying over any possible
 content.
 
 For example, consider the tool 'volatility' which expects you to
@@ -191,7 +171,7 @@ Negative filters for filtering-out files are prefixed with ^.
 
 For example, consider the previous case with
 tool 'volatility'.
-An alternative approach would be to filter out 
+An alternative approach would be to filter out
 copying of files under `dump/` like this:
 
     % cincan run -I "^dump/*" cincan/volatility -f image.raw --dump-dir dump memdump -p 789
@@ -251,7 +231,7 @@ We are using [radare2](https://gitlab.com/CinCan/tools/tree/master/radare2) as e
 [x] Type matching analysis for all functions (aaft)
 [x] Propagate noreturn information
 [x] Use -AA or aaaa to perform additional experimental analysis.
-[0x00005b10]> 
+[0x00005b10]>
 ```
 
 radare2 should open `/bin/ls` file, and this can be analysed by typing `aaa` and pressing enter.
@@ -284,7 +264,7 @@ Consult [Docker run documentation](https://docs.docker.com/engine/reference/comm
 
 ## Invoking tool without 'cincan' wrapper
 
-Sometimes you cannot use the services provided by the 'cincan' frontend. 
+Sometimes you cannot use the services provided by the 'cincan' frontend.
 For example, as files are copied around you may ran out of disk space or
 experience long delays when working with large files. An another reason
 might be use of some 'docker' options which are not available in the
