@@ -4,6 +4,8 @@
 Cincan run
 ==========
 
+CinCan runs security analysis tools in Docker containers.
+
 .. contents:: Table of Contents
    :local:
    :backlinks: none
