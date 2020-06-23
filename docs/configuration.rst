@@ -4,6 +4,8 @@
 Configuration
 =============
 
+CinCan reads configuration from the ``~/.cincan/config.json`` file.
+
 -----------------------
 Version checks of tools
 -----------------------
