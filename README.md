@@ -23,7 +23,7 @@ You can verify that the installation works by running:
 
     % cincan list
 
-If all goes well, you should get a list of the latest stable tools dockerized in the 'CinCan' project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
+If all goes well, you should get a list of the [latest stable tools](https://gitlab.com/CinCan/tools) dockerized in the CinCan project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
 
 Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
 
