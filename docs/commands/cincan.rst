@@ -4,4 +4,4 @@
 Cincan (base command)
 =====================
 
-.. include:: cincan_page.rst
+.. include:: cincan_base.rst

@@ -12,4 +12,4 @@ Commands
    cincan_run
    cincan_list
 
-.. include:: cincan_page.rst
+.. include:: cincan_base.rst
