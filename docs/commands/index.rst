@@ -10,5 +10,6 @@ Commands
 
    cincan
    cincan_run
+   cincan_list
 
 .. include:: cincan_page.rst
