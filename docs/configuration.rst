@@ -22,3 +22,19 @@ Example file could look like:
    {
      "show_updates": false
    }
+
+---------------------
+Specify tag for tools
+---------------------
+
+When CinCan pulls a dockerized tool, it reads the image tag name from the ``stable_tag`` attribute which is "latest" by default. If CinCan can not pull image by ``stable_tag``, it reads development tag from the ``dev_tag`` attribute which is "dev" by default.
+
+An example file with default values:
+
+.. code-block:: json
+   :caption: ~/.cincan/config.json
+
+   {
+     "stable_tag": "stable",
+     "dev_tag": "dev"
+   }
