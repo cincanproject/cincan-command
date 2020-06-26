@@ -34,3 +34,15 @@ You can verify that the installation works by running:
 If all goes well, you should get a list of the [latest stable tools](https://gitlab.com/CinCan/tools) dockerized in the CinCan project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
 
 Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
+
+## Using tools
+
+A specific tool can be invoked with `cincan run` like this:
+
+    % cincan run [OPTIONS] TOOL[:TAG] [ARG...]
+
+For example, invoke the tool *cincan/pywhois* with:
+
+    % cincan run cincan/pywhois 127.0.0.1
+
+See more examples from [cincan run reference in the CinCan documentation](https://cincan.gitlab.io/cincan-command/commands/cincan_run.html).
