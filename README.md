@@ -7,9 +7,16 @@ CinCan is a command-line interface for running security analysis tools convenien
 
 Complete documentation is available at [CinCan Documentation](https://cincan.gitlab.io/cincan-command/).
 
+## Features
+ - Install and update security analysis tools without dependency hell
+ - Repeatable command-line experience
+ - Community support
+
+CinCan collects the best [security analysis tools](https://gitlab.com/CinCan/tools) around the web and provides them as containerized Docker images. You can use CinCan's tools as if they were installed locally because CinCan automates the process of installing and updating the tools and removes the need to manually maintain conflicting dependencies. Learn from [our blog](https://cincan.io/blog/) how CinCan improves the command-line experience by combining various tools for repeatable and high-quality security analysis. If you know a tool that is not available in CinCan, please [contribute](https://gitlab.com/CinCan/tools/-/blob/master/CONTRIBUTING.md) to the project!
+
 ## Supported platforms
 
-The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows `cincan` **does not work**, unfortunately.
+The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows, `cincan` **does not work**, unfortunately.
 
 ## Installation
 
