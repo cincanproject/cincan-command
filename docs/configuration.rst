@@ -23,6 +23,8 @@ Example file could look like:
      "show_updates": false
    }
 
+.. _conf_tool_tag:
+
 ---------------------
 Specify tag for tools
 ---------------------
@@ -38,3 +40,5 @@ An example file with default values:
      "stable_tag": "stable",
      "dev_tag": "dev"
    }
+
+**Tip**: To set the tag runtime, see :ref:`run_tool_tag`.

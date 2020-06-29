@@ -231,6 +231,22 @@ You should see an interactive prompt like above where *cincan/radare2* has opene
 
 |
 
+.. _run_tool_tag:
+
+----------
+Tool[:tag]
+----------
+
+If you need to modify default tag when CinCan pulls a dockerized tool, you can do it by explicitly adding ``tool[:tag]`` to the command, for example:
+
+.. code-block:: shell
+
+   $ cincan run cincan/pywhois:latest-stable 127.0.0.1
+
+**Tip**: To set the tag default, see :ref:`conf_tool_tag`.
+
+|
+
 -------------------
 All ``run`` options
 -------------------
