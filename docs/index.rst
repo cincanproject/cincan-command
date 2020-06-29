@@ -21,7 +21,6 @@ Welcome to CinCan Command's documentation!
    configuration
    symlinks/CHANGELOG
 
-
 Introduction
 ==============
 

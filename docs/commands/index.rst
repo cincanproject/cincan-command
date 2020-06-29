@@ -6,7 +6,7 @@ Commands
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
+   :maxdepth: 1
 
    cincan
    cincan_run
