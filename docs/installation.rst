@@ -12,9 +12,9 @@ As a prerequisite, you must have ``Docker`` **18.09+** installed for running the
 
 **Note**: Docker below version 18.09 has not been tested, so there might be hope that it works.
 
---------------
+------------------------
 Install Docker (>=18.09)
---------------
+------------------------
 
 If you are running Ubuntu 18.04 or Debian 10, you can install Docker from the package repositories:
 

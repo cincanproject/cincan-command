@@ -189,9 +189,9 @@ The input tar file is specified with the ``--in`` option and you can provide a f
 
 **Note**: You cannot use input file filtering with this approach.
 
-"""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Getting tool output as a tar file
-"""""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
 The ``cincan run`` command also supports creating a tar file from a tool's output files. This is done with ``--out`` option. You can provide for the option either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
 
