@@ -68,7 +68,7 @@ A specific tool can be invoked with ``cincan run`` like this:
 
 .. code-block:: shell
 
-   cincan run [OPTIONS] TOOL [ARG...]
+   cincan run [OPTIONS] TOOL[:TAG] [ARG...]
 
 For example, invoke the tool `cincan/pywhois` with:
 
