@@ -53,7 +53,7 @@ The ``cincan`` command is in `Python Package Index (PyPi) <https://pypi.org/proj
 
 .. code-block:: shell
 
-   pip install cincan-command
+   $ pip install cincan-command
 
 See more detailed installation steps in the :ref:`installation` section.
 
@@ -64,7 +64,7 @@ You can see the list of `available tools <https://gitlab.com/CinCan/tools>`_ doc
 
 .. code-block:: shell
 
-   cincan list
+   $ cincan list
 
 A specific tool can be invoked with ``cincan run`` like this:
 
@@ -76,13 +76,13 @@ For example, invoke the tool `cincan/pywhois` with:
 
 .. code-block:: shell
 
-   cincan run cincan/pywhois 127.0.0.1
+   $ cincan run cincan/pywhois 127.0.0.1
 
 Many tools will show you help documentation if you invoke them without arguments, for example:
 
 .. code-block:: shell
 
-   cincan run cincan/tshark
+   $ cincan run cincan/tshark
 
 More help is available with options like `-h` or `-–help`, depending on the tool.
 

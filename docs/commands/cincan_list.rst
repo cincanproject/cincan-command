@@ -14,12 +14,12 @@ You can see the list of available tools with:
 
 .. code-block:: shell
 
-   cincan list
+   $ cincan list
 
 Show your local tools with all tags:
 
 .. code-block:: shell
 
-   cincan list --local --all
+   $ cincan list --local --all
 
 **Note**: ``cincan list`` is using list command from module `cincan-registry <https://gitlab.com/CinCan/cincan-registry>`_. Consult the module's documentation for all available options.
