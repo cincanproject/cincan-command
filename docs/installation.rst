@@ -1,8 +1,8 @@
 .. _installation:
 
-============
+############
 Installation
-============
+############
 
 .. toctree::
    :caption: Table of Contents
@@ -12,9 +12,9 @@ As a prerequisite, you must have ``Docker`` **18.09+** installed for running the
 
 **Note**: Docker below version 18.09 has not been tested, so there might be hope that it works.
 
-------------------------
+************************
 Install Docker (>=18.09)
-------------------------
+************************
 
 If you are running Ubuntu 18.04 or Debian 10, you can install Docker from the package repositories:
 
@@ -43,9 +43,9 @@ Optionally, you can then test your installation running the Docker `hello-world`
 
 If you are encountering some problems, see the `official documentation for installing Docker <https://docs.docker.com/engine/install/>`_.
 
-----------------------
+**********************
 Install Python (>=3.6)
-----------------------
+**********************
 
 Newer distributions should have Python 3.6 or newer installed.
 If you are running something older (like Ubuntu 16.04 Xenial),
@@ -60,13 +60,12 @@ In Debian, Python3 and pip can be installed in most cases as:
 
 On other platforms, consult your system's documentation to install Python.
 
-----------------------
+**********************
 Install cincan-command
-----------------------
+**********************
 
-"""""""""""""""""""
 Global installation
-"""""""""""""""""""
+===================
 
 The ``cincan`` command can be installed globally using pip for Python 3:
 
@@ -77,9 +76,8 @@ The ``cincan`` command can be installed globally using pip for Python 3:
 If you invoke the pip installation with ``sudo`` and without ``--user`` flag (if you are OK with that),
 the ``cincan`` command should be added to your path automatically and installed system-wide.
 
-"""""""""""""""""
 User installation
-"""""""""""""""""
+=================
 
 If you don't want to install packages globally, you can install the package for the current user:
 
@@ -97,9 +95,8 @@ You can add user-specific binaries into path for the current session with:
 To add it permanently, append it into ``~/.bashrc`` file with your favorite text editor.
 Note that this can depend on what kind of shell you are using.
 
-""""""""""
 virtualenv
-""""""""""
+==========
 
 You can alternatively use `virtualenv` not to touch your system Python environment:
 

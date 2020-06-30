@@ -1,8 +1,8 @@
 .. _cincan_list:
 
-===========
+###########
 Cincan list
-===========
+###########
 
 Show `available tools <https://gitlab.com/CinCan/tools>`_ dockerized in CinCan project, their versions and possible updates with ``cincan list`` command like this:
 

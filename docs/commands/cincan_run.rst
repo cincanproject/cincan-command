@@ -1,8 +1,8 @@
 .. _cincan_run:
 
-==========
+##########
 Cincan run
-==========
+##########
 
 CinCan runs security analysis tools in Docker containers.
 
@@ -10,9 +10,9 @@ CinCan runs security analysis tools in Docker containers.
    :local:
    :backlinks: none
 
------------
+***********
 Using tools
------------
+***********
 
 A specific `tool <https://gitlab.com/CinCan/tools>`_ can be invoked with ``cincan run`` command like this:
 
@@ -35,9 +35,9 @@ For example, invoke the tool *cincan/pywhois* with:
 
 |
 
-----------------------
+**********************
 Input and output files
-----------------------
+**********************
 
 As the tools are run on Docker containers, possible input and output files must be transferred into and out from the container. Normally, this happens transparently as if running the tools without Docker.
 
@@ -90,9 +90,8 @@ Use argument ``-q`` to suppress the log indicating which files are copied in or 
 
 .. _avoid_uploading_content_from_output_directories:
 
-"""""""""""""""""""""""""""""""""""""""""""""""
 Avoid uploading content from output directories
-"""""""""""""""""""""""""""""""""""""""""""""""
+===============================================
 
 In many cases, you may want to run a tool several times producing multiple files to the output directory. Since the ``cincan run`` command does not know which files are output and which are input (see: `Limitations to input/output <input_output_limitations_>`_), it repeatedly copies also the output files from the previous runs to the container. This process may slow down your work and requires extra disk space. You can avoid this by using ``--mkdir`` (or ``-d``) option to explicitly create output directory into the container without copying over any possible content.
 
@@ -128,9 +127,8 @@ You can address this by explicitly creating a ``dump/`` directory to the contain
 
 |
 
-"""""""""""""""""""""""""""""""
 Input and output file filtering
-"""""""""""""""""""""""""""""""
+===============================
 
 You can explicitly filter input files (copied to the container) and output files (copied from the container). The filtering is done by giving a glob-style pattern by: ``--in-filter`` (or ``-I``) option for input file filtering and ``--out-filter`` (or ``-O``) option for output file filtering. When the options are prefixed with ``^``, they are negative filters for filtering-out files.
 
@@ -157,9 +155,8 @@ For example, consider `the previous case <avoid_uploading_content_from_output_di
 
 |
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Filtering by `.cincanignore` - file stored inside container
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+===========================================================
 
 Downloadable files can be filtered by the ``.cincanignore`` file as well, which should be stored inside a tool's container in the build phase. All files listed in the ``.cincanignore`` file are not downloaded from the container. Paths are relative to the working directory of the container.
 
@@ -175,9 +172,8 @@ This works for user-supplied filters as well. Ignore file supports ``#`` char as
 
 |
 
-""""""""""""""""""""""""""""""""""
 Providing tool input as a tar file
-""""""""""""""""""""""""""""""""""
+==================================
 
 Instead of letting the ``cincan run`` command figure out the input files from the command-line (see: `Limitations to input/output <input_output_limitations_>`_), you can provide the input files directly as a tar file. When this is done, the ``cincan run`` command does not try to apply any logic to upload files, so you have full control.
 
@@ -189,9 +185,8 @@ The input tar file is specified with the ``--in`` option and you can provide a f
 
 **Note**: You cannot use input file filtering with this approach.
 
-"""""""""""""""""""""""""""""""""
 Getting tool output as a tar file
-"""""""""""""""""""""""""""""""""
+=================================
 
 The ``cincan run`` command also supports creating a tar file from a tool's output files. This is done with ``--out`` option. You can provide for the option either a file name or ``-`` for standard output. You can also apply output file filtering to limit the number of files copied into the output tar file.
 
@@ -203,9 +198,9 @@ For example, the following should write file ``output.tar``
 
 |
 
----------------------------------------
+***************************************
 Running a tool with interactive support
----------------------------------------
+***************************************
 
 Tools with interactive mode require ``--interactive`` (or ``-i``) and/or ``--tty`` (or ``-t``) options.
 
@@ -233,9 +228,9 @@ You should see an interactive prompt like above where *cincan/radare2* has opene
 
 .. _run_tool_tag:
 
-----------
+**********
 Tool[:tag]
-----------
+**********
 
 If you need to modify default tag when CinCan pulls a dockerized tool, you can do it by explicitly adding ``tool[:tag]`` to the command, for example:
 
@@ -247,9 +242,9 @@ If you need to modify default tag when CinCan pulls a dockerized tool, you can d
 
 |
 
--------------------
+*******************
 All ``run`` options
--------------------
+*******************
 
 The following table lists all command-line options available for the ``cincan run`` command:
 

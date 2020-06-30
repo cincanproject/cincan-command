@@ -1,8 +1,8 @@
 .. _commands:
 
-========
+########
 Commands
-========
+########
 
 .. toctree::
    :hidden:

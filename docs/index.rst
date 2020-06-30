@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-==========================================
+##########################################
 Welcome to CinCan Command's documentation!
-==========================================
+##########################################
 
 .. toctree::
    :hidden:
@@ -21,27 +21,29 @@ Welcome to CinCan Command's documentation!
    configuration
    symlinks/CHANGELOG
 
+************
 Introduction
-==============
+************
 
 The ``cincan`` command provides convenient use of native command-line tools in Docker images. The command is particularly used for security tools packed in the CinCan project. The list of available tools can be found from CinCan's `tool repository <https://gitlab.com/CinCan/tools>`_. *However*, it should be usable for most of the other CLI based Docker images.
 
 But Why?
---------
+========
 
 Regular usage of Docker images introduces the problem of moving files safely from the host machine into the container. Usually, this is achieved by using *volume mounts*, but this breaks the concept of isolation, as the host machine is exposed to the container. The ``cincan`` command attempts to avoid usage of volumes while providing a similar command-line experience as using the tool natively.
 
 Some additional features, such as tool version listing and tool command history are provided.
 
 Supported platforms
--------------------
+===================
 
 The ``cincan`` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina.
 
 On Windows, ``cincan`` **does not work**, unfortunately. `WSL 2 <https://docs.microsoft.com/en-us/windows/wsl/about>`_ has been tested to be an enabler in this case.
 
+***************
 Getting started
----------------
+***************
 
 As a prerequisite, you must have ``Docker`` **18.09+** installed for running the tools, and ``Python`` **3.6+** and ``pip`` Python package manager to install the ``cincan`` command.
 
@@ -53,9 +55,8 @@ The ``cincan`` command is in `Python Package Index (PyPi) <https://pypi.org/proj
 
 See more detailed installation steps in the :ref:`installation` section.
 
---------------
 Invoking tools
---------------
+==============
 
 You can see the list of `available tools <https://gitlab.com/CinCan/tools>`_ dockerized in CinCan project with:
 
