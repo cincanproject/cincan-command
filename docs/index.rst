@@ -41,6 +41,8 @@ The ``cincan`` command should run on all fairly modern Linux distributions. Part
 
 On Windows, ``cincan`` **does not work**, unfortunately. `WSL 2 <https://docs.microsoft.com/en-us/windows/wsl/about>`_ has been tested to be an enabler in this case.
 
+|
+
 ***************
 Getting started
 ***************

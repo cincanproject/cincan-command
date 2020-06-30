@@ -25,6 +25,8 @@ Example file could look like:
 
 .. _conf_tool_tag:
 
+|
+
 *********************
 Specify tag for tools
 *********************
