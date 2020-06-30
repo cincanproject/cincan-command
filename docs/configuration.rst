@@ -23,9 +23,9 @@ Example file could look like:
      "show_updates": false
    }
 
-.. _conf_tool_tag:
-
 |
+
+.. _conf_tool_tag:
 
 *********************
 Specify tag for tools
