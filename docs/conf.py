@@ -22,6 +22,7 @@ html_theme_options = {
     "logo": "cincan-command.png",
     "logo_name": True,
     "logo_text_align": "left",
+    "extra_nav_links": {'CinCan repository': 'https://gitlab.com/CinCan/cincan-command'},
 }
 
 # -- General configuration ---------------------------------------------------
@@ -63,6 +64,7 @@ html_sidebars = {
         'searchbox.html',
     ]
 }
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
