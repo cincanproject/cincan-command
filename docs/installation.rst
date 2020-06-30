@@ -115,7 +115,6 @@ On later Python versions, ``venv`` module should be automatically included and i
     source cincan-env/bin/activate
     pip3 install cincan-command
 
-
 .. Hide level 2 heading from table of contents
 .. raw:: html
 

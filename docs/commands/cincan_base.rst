@@ -2,6 +2,11 @@
 
 ``cincan`` is the base command for the CinCan CLI.
 
+.. Hide level 2 heading from table of contents
+.. raw:: html
+
+   <h2>Child commands</h2>
+
 +----------------------------------+--------------------------------------------------------------+
 | Command                          | Description                                                  |
 +==================================+==============================================================+
