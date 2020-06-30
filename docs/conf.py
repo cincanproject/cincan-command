@@ -19,6 +19,9 @@ master_doc = "index"
 html_theme_options = {
     "description": "A convenient way to run dockerized command-line tools.",
     # "fixed_sidebar": True,
+    "logo": "cincan-command.png",
+    "logo_name": True,
+    "logo_text_align": "left",
 }
 
 # -- General configuration ---------------------------------------------------
