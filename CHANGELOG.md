@@ -7,6 +7,8 @@
 - Changed: registry reworked - lives in separate module cincan-registry
 - Added: With change of registry module, list subcommand has many new features, such as listing image sizes, versions and more
 - Added: With change of registry module, feature for tool version check on runtime enabled
+- Removed: Experiemental commands 'fanin' and 'fanout'
+
 
 ## [0.2.8]
 
@@ -65,3 +67,4 @@ Changed
 
 Added
 - Initial beta version
+
