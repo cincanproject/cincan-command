@@ -12,6 +12,8 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.9]
 
+2020-07-11
+
 ### Added
 
   - Visual progress bar when downloading image from Docker registry
