@@ -5,6 +5,11 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [Unreleased]
 
+### Deprecated
+
+ - Removed: Experiemental commands 'fanin' and 'fanout'
+ - Removed: Code for fixing bug in Docker Python library - this was fixed in the upstream. Docker library 4.3.0 <= recommended to use.
+
 ## [0.2.9]
 
 ### Added

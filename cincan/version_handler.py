@@ -77,20 +77,20 @@ class VersionHandler:
             if not self.local_updates:
                 if self.current_version != self.latest_local:
                     self.logger.info(
-                        f"Latest local tool is up-to-date with remote. Latest local version: {self.latest_local}")
+                        f"Latest local tool is up-to-date with remote: version {self.latest_local}")
                 else:
-                    self.logger.info(f"Your tool is up-to-date with remote. Current version: {self.current_version}\n")
+                    self.logger.info(f"Your tool is up-to-date with remote. Current version: {self.current_version}")
             else:
                 if self.config.default_stable_tag in self.remote_tags:
                     self.logger.info(
-                        f"Update available in remote: ({self.latest_local} vs. {self.latest_remote})"
+                        f"Update available in remote: ('{self.latest_local}' vs. '{self.latest_remote}')"
                         f"\nUse 'docker pull {self.tool_name}:{self.config.default_stable_tag}' to update.")
                 else:
                     self.logger.info(f"Newer development version available in remote: "
-                                     f"{self.latest_remote} with tags '{','.join(self.remote_tags)}'")
+                                     f"'{self.latest_local}' vs. '{self.latest_remote}' with tags '{','.join(self.remote_tags)}'")
             if self.remote_updates:
                 self.logger.info(
-                    f"Remote is not up-to-date with origin ({self.latest_remote} vs. {self.latest_origin})"
-                    f" in '{self.origin_provider}'")
+                    f"Remote is not up-to-date with origin ({self.origin_provider}): "
+                    f"'{self.latest_remote}' vs. '{self.latest_origin}'")
         else:
             self.logger.info(f"No version information available for {self.tool_name}\n")
