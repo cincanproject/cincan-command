@@ -18,7 +18,6 @@ from typing import List, Set, Dict, Optional, Tuple
 import pkg_resources
 import docker
 import docker.errors
-from .dockerapi_fixes import CustomContainerApiMixin
 from requests.exceptions import ConnectionError
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
@@ -57,8 +56,6 @@ class ToolImage(CommandRunner):
                  rm: bool = True):
         self.config = Configuration()
         self.logger = logging.getLogger(name)
-        # FIXME dirty hack to override get_archive method. Get fixed in upstream??
-        docker.api.container.ContainerApiMixin.get_archive = CustomContainerApiMixin.get_archive
         self.client = docker.from_env()
         try:
             # Attempt to configure automatically
