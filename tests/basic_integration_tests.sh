@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 draw_line () {
     # Draw line by using horizontal box character
-    printf %"$COLUMNS"s | sed "s/\s/-/g"
+    printf %"$COLUMNS:-10"s | sed "s/\s/-/g"
 }
 
 echo "Location of the virtual environment: $TESTENV_DIR"
