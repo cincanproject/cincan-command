@@ -2,6 +2,10 @@ stages:
   - test
 variables:
   DOCKER_HOST: tcp://docker:2375/
+
+stages:
+  - test
+  - deploy
   
 unittests:
   stage: test
@@ -16,3 +20,16 @@ unittests:
     - pip3 install -r test-requirements.txt
   script:
     - make unit-tests-with-coverage
+
+image: python:3.7-alpine
+
+pages:
+  stage: deploy
+  script:
+  - pip install -U sphinx recommonmark
+  - sphinx-build -b html docs/ public
+  artifacts:
+    paths:
+    - public
+  only:
+    - master

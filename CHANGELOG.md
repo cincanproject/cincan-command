@@ -1,70 +1,126 @@
-# Change log
+# Changelog
+
+Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
+
+
+## [Unreleased]
+
+### Removed
+
+ - Experiemental commands 'fanin' and 'fanout'
+ - Code for fixing bug in Docker Python library - this was fixed in the upstream. Docker library >= 4.3.0  recommended to use.
 
 ## [0.2.9]
 
-- Added: Visual progress bar when downloading image from Docker registry
-- Changed: Default runtime tag is now 'latest', secondary tag 'dev' for cincan tools, error check improved with image usage
-- Changed: registry reworked - lives in separate module cincan-registry
-- Added: With change of registry module, list subcommand has many new features, such as listing image sizes, versions and more
-- Added: With change of registry module, feature for tool version check on runtime enabled
-- Removed: Experiemental commands 'fanin' and 'fanout'
+2020-07-11
 
+### Added
 
-## [0.2.8]
+  - Visual progress bar when downloading image from Docker registry
+  - With change of registry module, list subcommand has many new features, such as listing image sizes, versions and more
+  - With change of registry module, feature for tool version check on runtime enabled
 
-- Bugfix: Files are now downloaded properly in MacOS
-- Bugfix: Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
-- Added: Feature for filtering downloadable files from container, based on '.cincanignore' file which is stored inside container.
-- Added: Ability to filter `cincan list` by Docker image tag names
-- Added: Version number information from CLI
-- Changed: Sub command 'list' now fetches data in parallel for speed
+### Changed
 
-## [0.2.7]
+  - Default runtime tag is now 'latest', secondary tag 'dev' for cincan tools, error check improved with image usage
+  - registry reworked - lives in separate module cincan-registry
 
-- Bugfix: Accept filenames with whitespace(s) as arguments
-- Added: Experimental logging now documented to an extend
+### Deprecated
 
-## [0.2.6]
+  - Default tag 'latest-stable' on listing will be changed to 'latest'
+
+## [0.2.8] 
+
+2020-03-20
+
+### Added
+
+  - Feature for filtering downloadable files from container, based on '.cincanignore' file which is stored inside container.
+  - Ability to filter `cincan list` by Docker image tag names
+  - Version number information from CLI
+
+### Changed
+
+  - Sub command 'list' now fetches data in parallel for speed
+
+### Fixed
+
+  - Files are now downloaded properly in MacOS
+  - Slow download speed of 'get_archive' method fixed locally. Bug in upstream.
+
+## [0.2.7] 
+
+2020-02-13
+
+### Added
+
+ - Experimental logging now documented to an extend
+
+### Fixed
+
+  - Accept filenames with whitespace(s) as arguments
+
+## [0.2.6] 
+
+2020-01-24
+
+### Added
+  - Support for interactive tools, enabled with  `--interactive` (or `-i`)
+  - Point out if cannot use docker
+
+### Changed
+
+  - Must explicitly enable container TTY with `--tty` (or `-t`)
+  - For docker compatibility dropped the shorthand versions of `--in` and `--out` (`-i` and `-o`).
+
+### Fixed
 
 - Bugfix: Piping input for tools should be working now
-- Added: Support for interactive tools, enabled with  `--interactive` (or `-i`)
-- Changed: Must explicitly enable container TTY with `--tty` (or `-t`)
-- Changed: For docker compatibility dropped the shorthand versions of `--in` and `--out` (`-i` and `-o`).
-- Added: Point out if cannot use docker
 
-## [0.2.5]
+## [0.2.5] 
 
-Changed
-- Bugfix: Give uploaded input files world-writeable permissions (777).
-  Otherwise containers with non-root users work only when host uid and container uid match.
+2019-12-20
 
-## [0.2.4]
+### Fixed
+  - Give uploaded input files world-writeable permissions (777). Otherwise containers with non-root users work only when host uid and container uid match.
 
-Changed
-- Bugfix: Do not load **all** versions of an image, use the 'default' tag if none given
+## [0.2.4] 
 
-## [0.2.3]
+2019-12-16
 
-Changed
-- Bugfix: Colons ':' in output files made output download to fail
+### Fixed
+  - Do not load **all** versions of an image, use the 'default' tag if none given
 
-## [0.2.2]
+## [0.2.3] 
 
-Added:
-- Say something about supported platforms
+2019-12-11
 
-Changed
-- Bugfix: Sometimes '/' in command line was stripped away
-- Bugfix: Output files prefixes to other output files not downloaded from container
+### Fixed
+ - Colons ':' in output files made output download to fail
+
+## [0.2.2] 
+
+2019-12-5
+
+### Added:
+  - Say something about supported platforms
+
+### Fixed
+  -  Sometimes '/' in command line was stripped away
+  - Output files prefixes to other output files not downloaded from container
 
 ## [0.2.1] 
 
-Changed
-- Bugfix: Tool output mixed stdout and stderr together
-- Bugfix: Documentation flaws
+2019-11-30
 
-## [0.2.0]
+### Fixed
 
-Added
-- Initial beta version
+  - Tool output mixed stdout and stderr together
+  - Documentation flaws
 
+## [0.2.0] 
+
+2019-11-27
+
+### Added
+  - Initial beta version
