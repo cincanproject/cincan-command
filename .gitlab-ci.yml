@@ -1,7 +1,11 @@
-stages:
-  - test
 variables:
   DOCKER_HOST: tcp://docker:2375/
+
+image: python:3.6-alpine
+
+before_script:
+  - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make docker
+  - docker info
 
 stages:
   - test
@@ -14,12 +18,18 @@ unittests:
   image: python:3.6-alpine
 
   before_script:
-    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make docker
-    - docker info
     - pip3 install .
     - pip3 install -r test-requirements.txt
   script:
     - make unit-tests-with-coverage
+
+integrationtests:
+  stage: test
+  services:
+  - docker:dind
+  script:
+    - make integration-tests
+
 
 image: python:3.7-alpine
 
