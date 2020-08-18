@@ -27,6 +27,9 @@ dist: CHANGELOG.md setup.py
 upload: check-version unit-tests integration-tests dist
 	python3 -m twine upload dist/*
 
+only-upload: check-version dist
+	python3 -m twine upload dist/*
+
 check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	cat $(VERSION_LOCAL)
 	grep -v `cat $(VERSION_LOCAL)` $(VERSION_IN_PYPI)
