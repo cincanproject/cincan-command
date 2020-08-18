@@ -43,6 +43,7 @@ pages:
 release:
   stage: deploy
   script:
+    - pip3 install setuptools wheel twine
     - make only-upload
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
