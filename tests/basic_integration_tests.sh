@@ -11,9 +11,10 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
+SHELL_WIDTH=$(tput cols)
 draw_line () {
-    # Draw line by using horizontal box character
-    printf %"$COLUMNS:-10"s | sed "s/\s/-/g"
+    # Draw line by using hyphen
+    printf %"$SHELL_WIDTH"s | sed "s/\s/-/g"
 }
 
 echo "Location of the virtual environment: $TESTENV_DIR"
