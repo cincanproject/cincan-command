@@ -27,10 +27,10 @@ integrationtests:
     - make integration-tests
 
 
-image: python:3.7-alpine
 
 pages:
   stage: deploy
+  - image: python:3.7-alpine
   script:
   - pip install -U sphinx recommonmark
   - sphinx-build -b html docs/ public

@@ -5,8 +5,6 @@ TESTENV_DIR=${1:-_testenv}
 VERSION_LOCAL=${2:-VERSION}
 # Exit on failure or null variable
 set -eu
-# Winsize check
-shopt -s checkwinsize
 
 # Colors
 RED='\033[0;31m'
