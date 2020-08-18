@@ -14,10 +14,9 @@ unittests:
   stage: test
   services:
   - docker:dind
-  before_script:
+  script:
     - pip3 install .
     - pip3 install -r test-requirements.txt
-  script:
     - make unit-tests-with-coverage
 
 integrationtests:
