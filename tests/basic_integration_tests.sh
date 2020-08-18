@@ -5,12 +5,16 @@ TESTENV_DIR=${1:-_testenv}
 VERSION_LOCAL=${2:-VERSION}
 # Exit on failure or null variable
 set -eu
+# Winsize check
+shopt -s checkwinsize
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-printf %"$COLUMNS"s
+# Get window width
+size=$(stty size)
+COLUMNS=${size#* }
 SHELL_WIDTH=${COLUMNS:=20}
 draw_line () {
     # Draw line by using hyphen
