@@ -10,13 +10,12 @@ set -eu
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-# Get window width
-size=$(stty size)
-COLUMNS=${size#* }
-SHELL_WIDTH=${COLUMNS:=20}
+
+SHELL_WIDTH=${COLUMNS:=100}
 draw_line () {
     # Draw line by using hyphen
     printf %"$SHELL_WIDTH"s | sed "s/\s/-/g"
+    echo ""
 }
 
 echo "Location of the virtual environment: $TESTENV_DIR"
