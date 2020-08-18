@@ -10,8 +10,8 @@ set -eu
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-
-SHELL_WIDTH=$(tput cols)
+printf %"$COLUMNS"s
+SHELL_WIDTH=${COLUMNS:=20}
 draw_line () {
     # Draw line by using hyphen
     printf %"$SHELL_WIDTH"s | sed "s/\s/-/g"
