@@ -18,13 +18,13 @@ VERSION_IN_PYPI = build/version-in-pip
 
 TESTENV_DIR="_testenv"
 
-build: check-version unit-tests integration-tests dist
+build: check-version tests dist
 
 dist: CHANGELOG.md setup.py
 	rm -rf dist/
 	python3 setup.py sdist bdist_wheel
 
-upload: check-version unit-tests integration-tests dist
+upload: check-version tests dist
 	python3 -m twine upload dist/*
 
 only-upload: check-version dist
@@ -44,6 +44,8 @@ unit-tests-with-coverage:
 integration-tests:
 	sh tests/basic_integration_tests.sh $(TESTENV_DIR) $(VERSION_LOCAL)
 
+tests: unit-tests integration-tests
+
 always-refresh:
 
 $(VERSION_IN_PYPI): always-refresh
@@ -53,5 +55,4 @@ $(VERSION_IN_PYPI): always-refresh
 
 clean:
 	rm -rf build dist cincan_command.egg-info
-
 
