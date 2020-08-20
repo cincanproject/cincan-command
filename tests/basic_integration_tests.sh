@@ -3,6 +3,8 @@
 
 TESTENV_DIR=${1:-_testenv}
 VERSION_LOCAL=${2:-VERSION}
+TEST_IMAGE="cincan/test:dev"
+
 # Exit on failure or null variable
 set -eu
 
@@ -62,8 +64,8 @@ else
 fi
 
 # Check running test image
-echo "Testing default output of test image 'cincan/test'..."
-OUTPUT=$(cincan run cincan/test)
+echo "Testing default output of test image '$TEST_IMAGE'..."
+OUTPUT=$(cincan run "$TEST_IMAGE")
 if [ "$OUTPUT" = "Hello, world!" ]; then
     echo "Correct output from the container: ${OUTPUT}"
     echo ""
@@ -75,8 +77,8 @@ else
 fi
 
 # Test upload and download
-echo "Testing file upload and download..."
-OUTPUT=$(cincan test cincan/test)
+echo "Testing file upload and download in image '$TEST_IMAGE'..."
+OUTPUT=$(cincan test "$TEST_IMAGE")
 if [ "$OUTPUT" = "Test pass" ]; then
     echo ""
     echo -e "${GREEN}Success :)${NC}"
