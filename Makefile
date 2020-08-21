@@ -25,12 +25,10 @@ dist: CHANGELOG.md setup.py
 	python3 setup.py sdist bdist_wheel
 
 upload: check-version tests dist
-	export TWINE_USERNAME TWINE_PASSWORD
-	python3 -m twine upload dist/*
+	twine upload -r pypi dist/*
 
 only-upload: check-version dist
-	export TWINE_USERNAME TWINE_PASSWORD
-	python3 -m twine upload dist/*
+	twine upload -r pypi dist/*
 
 check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	cat $(VERSION_LOCAL)
