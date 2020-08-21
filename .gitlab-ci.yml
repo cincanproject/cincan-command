@@ -31,8 +31,9 @@ integrationtests:
 pages:
   stage: deploy
   image: python:3.7-alpine
-  script:
+  before_script:
   - pip install -U sphinx recommonmark
+  script:
   - sphinx-build -b html docs/ public
   artifacts:
     paths:
@@ -42,10 +43,12 @@ pages:
 
 release:
   stage: deploy
-  script:
+  before_script:
     - pip3 install setuptools wheel twine
+  script:
     - make only-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH != "master"'
+      when: never
     - if: $CI_COMMIT_TAG
 
