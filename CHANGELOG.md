@@ -3,7 +3,14 @@
 Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 
-## [Unreleased]
+## [0.2.10]
+
+2020-08-21
+
+### Added
+
+ - Integration tests for basic functionality
+ - CI can make new release automatically based on tag commit
 
 ### Removed
 
