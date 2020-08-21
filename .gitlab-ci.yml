@@ -44,7 +44,7 @@ pages:
 release:
   stage: deploy
   before_script:
-    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev mak
+    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make
     - pip3 install setuptools wheel twine
   script:
     - make only-upload
