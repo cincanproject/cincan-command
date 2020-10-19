@@ -14,7 +14,9 @@ unittests:
   image: ghcr.io/nicceboy/multipython:latest
   before_script:
     - echo "Current versions:"
-    - source ~/.bashrc && echo "Python 3.6: $(python3.6 -V)"
+    - source ~/.bashrc
+    - echo "Python 3.6:"
+    - python3.6 -V
   stage: test
   services:
   - docker:dind
