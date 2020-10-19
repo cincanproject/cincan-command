@@ -13,6 +13,8 @@ stages:
 unittests:
   image: ghcr.io/nicceboy/multipython:latest
   before_script:
+    # pytest-cov requires sqlite3
+    - apt-get update && apt-get install libsqlite3-dev
     - echo "Current versions:"
     - source ~/.bashrc
     - python3.6 -V
