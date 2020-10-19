@@ -23,7 +23,7 @@ unittests:
   services:
   - docker:dind
   script:
-    - source ~/.bashrc && tox
+    - source ~/.bashrc && tox -- --cov=cincan tests
 
 integrationtests:
   stage: test
