@@ -15,8 +15,10 @@ unittests:
   before_script:
     - echo "Current versions:"
     - source ~/.bashrc
-    - echo "Python 3.6:"
     - python3.6 -V
+    - python3.7 -V
+    - python3.8 -V
+    - python3.9 -V
   stage: test
   services:
   - docker:dind
