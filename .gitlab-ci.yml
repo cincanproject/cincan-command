@@ -11,13 +11,12 @@ stages:
   - deploy
   
 unittests:
+  image: ghcr.io/nicceboy/multipython:latest
   stage: test
   services:
   - docker:dind
   script:
-    - pip3 install .
-    - pip3 install -r test-requirements.txt
-    - make unit-tests-with-coverage
+    - source ~/.bashrc && tox
 
 integrationtests:
   stage: test
