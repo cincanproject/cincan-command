@@ -66,7 +66,10 @@ class VersionHandler:
 
     def compare_versions(self):
         """
-        Compare version information, log details
+        Compare version information, log details. Versions are colored with ANSI escapes
+        RED - direct update available
+        YELLOW - not latest version, but cant change immediately. Exception in current tool case.
+        GREEN - All good.
         """
 
         # Warn about rate limits when using CinCan tools from Docker Hub (is optional registry)
