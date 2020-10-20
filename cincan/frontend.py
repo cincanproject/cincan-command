@@ -50,7 +50,8 @@ class ToolImage(CommandRunner):
                  image: Optional[str] = None,
                  pull: bool = False,
                  tag: Optional[str] = None,
-                 rm: bool = True):
+                 rm: bool = True,
+                 script: bool = False):
         self.config = Configuration()
         self.logger = logging.getLogger(name)
         self.client = docker.from_env()
@@ -66,6 +67,7 @@ class ToolImage(CommandRunner):
             sys.exit(1)
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
+        self.script = script  # By default, tool doest not run inside script or other automation
         if path is not None:
             self.name = name or path
             if tag is not None:
@@ -85,10 +87,8 @@ class ToolImage(CommandRunner):
         self.version_handler = VersionHandler(self.config, self.registry, self.image,
                                               self.name.rsplit(":", 1)[0], self.logger)
         if self.config.show_updates:
-            # Only check versions if not running through pipe and logging level allows
-            # Running through pipe == piped input or output
-            if sys.stdin.isatty() and sys.stdout.isatty() \
-                    and self.logger.getEffectiveLevel() < 30:
+            # Only check scripts if not defined to run in script
+            if not self.script and self.logger.getEffectiveLevel() < 30:
                 self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
@@ -384,7 +384,9 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-
+    sub_parser.add_argument('--script', action='store_true', help='Use with scripts. Disables some information '
+                                                                  'prints meant for interactive tty device(s): '
+                                                                  'Version checking disabled.')
     sub_parser.add_argument('--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
     sub_parser.add_argument('--out', dest='output_tar', nargs='?',
@@ -486,11 +488,11 @@ def main():
             sys.exit('Missing tool name argument')
         name = args.tool[0]
         if args.path is None:
-            tool = ToolImage(name, image=name, pull=args.pull)
+            tool = ToolImage(name, image=name, pull=args.pull, script=args.script)
         elif args.path is not None:
-            tool = ToolImage(name, path=args.path)
+            tool = ToolImage(name, path=args.path, script=args.script)
         else:
-            tool = ToolImage(name)  # should raise exception
+            tool = ToolImage(name, script=args.script)  # should raise exception
 
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None
