@@ -85,7 +85,11 @@ class ToolImage(CommandRunner):
         self.version_handler = VersionHandler(self.config, self.registry, self.image,
                                               self.name.rsplit(":", 1)[0], self.logger)
         if self.config.show_updates:
-            self.version_handler.compare_versions()
+            # Only check versions if not running through pipe and logging level allows
+            # Running through pipe == piped input or output
+            if sys.stdin.isatty() and sys.stdout.isatty() \
+                    and self.logger.getEffectiveLevel() < 30:
+                self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
