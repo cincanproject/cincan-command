@@ -8,21 +8,18 @@ import pathlib
 import select
 import socket
 import struct
-import subprocess
 import sys
 import tty
 import termios
 from datetime import datetime
-from io import IOBase
-from typing import List, Set, Dict, Optional, Tuple
+from typing import List, Set, Dict, Optional, Tuple, IO
 import pkg_resources
 import docker
 import docker.errors
 from requests.exceptions import ConnectionError
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry
 from cincanregistry.utils import parse_file_time, format_time
-from cincan.command_inspector import CommandInspector
-from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandLogIndex, CommandRunner, quote_args
+from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandRunner, quote_args
 from cincan.configuration import Configuration
 from cincan.container_check import ContainerCheck
 from cincan.file_tool import FileResolver, FileMatcher
@@ -35,7 +32,7 @@ from cincan.version_handler import VersionHandler
 class ToolStream:
     """Handle stream to or from the container"""
 
-    def __init__(self, stream: IOBase):
+    def __init__(self, stream: IO):
         self.data_length = 0
         self.hash = hashlib.sha256()
         self.raw = bytearray()  # when collected
@@ -384,7 +381,8 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-d', '--mkdir', action='append', dest='output_dir', nargs='?',
                             help='Force an empty directory to container')
     sub_parser.add_argument('--no-defaults', action='store_true',
-                            help='Ignore all container specific output filters. (Defined inside container in .cincanignore file)')
+                            help='Ignore all container specific output filters. '
+                                 '(Defined inside container in .cincanignore file)')
 
     # Docker look-a-like settings for 'cincan run'
 
