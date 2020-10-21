@@ -384,8 +384,8 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-    sub_parser.add_argument('--script', action='store_true', help='Use with scripts. Disables some information '
-                                                                  'prints meant for interactive tty device(s): '
+    sub_parser.add_argument('--script', action='store_true', help='Use with scripts. Disables some '
+                                                                  'properties meant for interactive tty device(s): '
                                                                   'Version checking disabled, '
                                                                   'pull-progress-bar disabled.')
     sub_parser.add_argument('--in', dest='input_tar', nargs='?',
