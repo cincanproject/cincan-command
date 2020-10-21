@@ -5,9 +5,14 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.11]
 
+### Added
+
+ - CI tests Python versions 3.6, 3.7, 3.8 and 3.9 separately
+
 ### Fixed
 
  - Avoid excessive memory use with large input files
+ - Version tests to be compatible with supported Python versions
 
 ## [0.2.10]
 
