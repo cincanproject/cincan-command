@@ -79,7 +79,7 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger)
+            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger, self.script)
             self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
@@ -386,7 +386,8 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
     sub_parser.add_argument('--script', action='store_true', help='Use with scripts. Disables some information '
                                                                   'prints meant for interactive tty device(s): '
-                                                                  'Version checking disabled.')
+                                                                  'Version checking disabled, '
+                                                                  'pull-progress-bar disabled.')
     sub_parser.add_argument('--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
     sub_parser.add_argument('--out', dest='output_tar', nargs='?',
