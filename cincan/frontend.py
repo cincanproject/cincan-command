@@ -415,7 +415,15 @@ def get_version_information():
 
 def main():
     """Parse command line and run the tool"""
-    m_parser = argparse.ArgumentParser()
+    description_text = '''\
+  CinCan Command - https://gitlab.com/CinCan/cincan-command/\n
+  For full documentation, see: https://cincan.gitlab.io/cincan-command/
+    '''
+    epilog = '''  Report issues at https://gitlab.com/CinCan/cincan-command/-/issues
+    '''
+    m_parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                       description=description_text, epilog=epilog)
+
     m_parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                           help="Set the logging level", default=None)
     m_parser.add_argument('-q', '--quiet', action='store_true', help='Be quite quiet')
