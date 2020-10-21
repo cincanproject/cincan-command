@@ -17,7 +17,7 @@ Complete documentation is available at [CinCan Documentation](https://cincan.git
 
 ## Supported platforms
 
-The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows, `cincan` **does not work**, unfortunately.
+The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows, `cincan` **does not work**, unfortunately, unless used via [WSL 2](https://docs.microsoft.com/en-us/windows/wsl/compare-versions#whats-new-in-wsl-2). 
 
 ## Installation
 
