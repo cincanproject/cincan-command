@@ -33,6 +33,13 @@ You can verify that the installation works by running:
 
 If all goes well, you should get a list of the [latest stable tools](https://gitlab.com/CinCan/tools) dockerized in the CinCan project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
 
+Tool images are currently hosted (mirrored) in:
+
+ * [Docker Hub](https://hub.docker.com/u/cincan)
+ * [GitHub Container Registry](https://github.com/orgs/cincanproject/packages)
+ * [Quay Container Registry](https://quay.io/organization/cincan/)
+
+
 Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
 
 ## Using tools
