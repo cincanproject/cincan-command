@@ -27,6 +27,12 @@ Introduction
 
 The ``cincan`` command provides convenient use of native command-line tools in Docker images. The command is particularly used for security tools packed in the CinCan project. The list of available tools can be found from CinCan's `tool repository <https://gitlab.com/CinCan/tools>`_. *However*, it should be usable for most of the other CLI based Docker images.
 
+Our images are currently hosted in:
+
+ * `Docker Hub <https://hub.docker.com/u/cincan>`_
+ * `GitHub Container Registry <https://github.com/orgs/cincanproject/packages>`_
+ * `Quay Container Registry <https://quay.io/organization/cincan/>`_
+
 But Why?
 ========
 
