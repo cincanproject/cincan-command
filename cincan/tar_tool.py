@@ -45,7 +45,7 @@ class TarTool:
                 tar_file.seek(0)
                 self.__list_members(tar_file, in_files)
                 tar_file.seek(0)
-                self.__put_arhicive(tar_file)
+                self.__put_archive(tar_file)
             finally:
                 tar_file.close()  # should be deleted by close
         elif self.explicit_file:
@@ -54,16 +54,16 @@ class TarTool:
             with explicit_path.open("rb") as tar_file:
                 self.__list_members(tar_file, in_files)
             with explicit_path.open("rb") as tar_file:
-                self.__put_arhicive(tar_file)
+                self.__put_archive(tar_file)
         else:
             # collect a tar file, and upload it
             tar_file = self.__create_tar(upload_files, in_files)
             try:
-                self.__put_arhicive(tar_file)
+                self.__put_archive(tar_file)
             finally:
                 tar_file.close()
 
-    def __put_arhicive(self, tar_content):
+    def __put_archive(self, tar_content):
         put_arc_start = timeit.default_timer()
         self.container.put_archive(path=self.work_dir, data=tar_content)
         self.logger.debug("put_archive time %.4f s", timeit.default_timer() - put_arc_start)
