@@ -51,9 +51,9 @@ class TarTool:
         elif self.explicit_file:
             # tar file provided, use it as-it-is
             explicit_path = pathlib.Path(self.explicit_file)
-            with explicit_path as tar_file:
+            with explicit_path.open("rb") as tar_file:
                 self.__list_members(tar_file, in_files)
-            with explicit_path as tar_file:
+            with explicit_path.open("rb") as tar_file:
                 self.__put_arhicive(tar_file)
         else:
             # collect a tar file, and upload it
