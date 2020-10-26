@@ -3,6 +3,12 @@
 Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 
+## [0.2.11]
+
+### Fixed
+
+ - Avoid excessive memory use with large input files
+
 ## [0.2.10]
 
 2020-08-21
