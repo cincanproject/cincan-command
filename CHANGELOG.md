@@ -14,10 +14,6 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
  - Less information printed about version checks
 
-### Changed
-
- - Less information printed about version checks
-
 ### Fixed
 
  - Avoid excessive memory use with large input files
