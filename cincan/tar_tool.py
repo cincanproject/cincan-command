@@ -1,13 +1,14 @@
 import io
 import os
 import pathlib
+import shutil
 import sys
 import tarfile
 import tempfile
 import timeit
 from datetime import datetime
 from logging import Logger
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, BinaryIO
 
 from docker.models.containers import Container
 from docker.errors import NotFound
@@ -36,34 +37,52 @@ class TarTool:
         if not self.explicit_file and not upload_files:
             return  # nothing to upload
 
-        if self.explicit_file:
+        if self.explicit_file == '-':
+            # tar from stdin
+            tar_file = tempfile.TemporaryFile()
+            try:
+                shutil.copyfileobj(sys.stdin.buffer, tar_file)
+                tar_file.seek(0)
+                self.__list_members(tar_file, in_files)
+                tar_file.seek(0)
+                self.__put_archive(tar_file)
+            finally:
+                tar_file.close()  # should be deleted by close
+        elif self.explicit_file:
             # tar file provided, use it as-it-is
-            if self.explicit_file == '-':
-                tar_content = sys.stdin.buffer.read()
-            else:
-                explicit_file = pathlib.Path(self.explicit_file)
-                with explicit_file.open("rb") as f:
-                    tar_content = f.read()
-
-            with tarfile.open(fileobj=io.BytesIO(tar_content), mode="r") as tar:
-                for m in tar.getmembers():
-                    self.logger.debug(f"checking in file {m.name}")
-                    self.upload_stats[m.name] = [m.size, m.mtime]  # [size, mtime]
-                    if not m.isfile():
-                        continue
-                    m_fileobj = tar.extractfile(m)
-                    m_file = pathlib.Path(m.name)
-                    m_md = read_with_hash(m_fileobj.read)
-                    in_files.append(
-                        FileLog(m_file.resolve(), m_md, datetime.fromtimestamp(m.mtime)))
+            explicit_path = pathlib.Path(self.explicit_file)
+            with explicit_path.open("rb") as tar_file:
+                self.__list_members(tar_file, in_files)
+            with explicit_path.open("rb") as tar_file:
+                self.__put_archive(tar_file)
         else:
-            tar_content = self.__create_tar(upload_files, in_files)
+            # collect a tar file, and upload it
+            tar_file = self.__create_tar(upload_files, in_files)
+            try:
+                self.__put_archive(tar_file)
+            finally:
+                tar_file.close()
+
+    def __put_archive(self, tar_content):
         put_arc_start = timeit.default_timer()
         self.container.put_archive(path=self.work_dir, data=tar_content)
         self.logger.debug("put_archive time %.4f s", timeit.default_timer() - put_arc_start)
 
-    def __create_tar(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]) -> bytes:
-        file_out = io.BytesIO()
+    def __list_members(self, tar_content, in_files: List[FileLog]):
+        with tarfile.open(fileobj=tar_content, mode="r") as tar:
+            for m in tar.getmembers():
+                self.logger.debug(f"checking in file {m.name}")
+                self.upload_stats[m.name] = [m.size, m.mtime]  # [size, mtime]
+                if not m.isfile():
+                    continue
+                m_fileobj = tar.extractfile(m)
+                m_file = pathlib.Path(m.name)
+                m_md = read_with_hash(m_fileobj.read)
+                in_files.append(
+                    FileLog(m_file.resolve(), m_md, datetime.fromtimestamp(m.mtime)))
+
+    def __create_tar(self, upload_files: Dict[pathlib.Path, str], in_files: List[FileLog]):
+        file_out = tempfile.TemporaryFile()
         tar = tarfile.open(mode="w", fileobj=file_out)
 
         # need to have all directories explicitly, otherwise seen them to be created with root
@@ -102,8 +121,8 @@ class TarTool:
                     tar.addfile(tar_file)
                 else:
                     raise Exception(f"Cannot upload file of unknown type {arc_name}")
-        tar.close()
-        return file_out.getvalue()
+        file_out.seek(0)
+        return file_out
 
     @classmethod
     def __new_directory(cls, name: str) -> tarfile.TarInfo:
