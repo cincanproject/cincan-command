@@ -87,7 +87,7 @@ class ToolImage(CommandRunner):
         self.version_handler = VersionHandler(self.config, self.registry, self.image,
                                               self.name.rsplit(":", 1)[0], self.logger)
         if self.config.show_updates:
-            # Only check scripts if not defined to run in script
+            # Only check versions if not defined to run as script
             if not self.script and self.logger.getEffectiveLevel() < 30:
                 self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
