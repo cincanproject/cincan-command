@@ -114,9 +114,9 @@ class TarTool:
         p_file.mode = 511  # 777 - allow all to access (uid may be different in container)
         return p_file
 
-    def __read_single_file(self, filepath: pathlib.Path, skip_comment: bool = False) -> List[str]:
-        """Method for reading contents single file from the container.
-        Return list of strings, where one index represents single line of the file.
+    def __read_config_file(self, filepath: pathlib.Path, skip_comment: bool = False) -> List[str]:
+        """Read configuration file.
+        Returns a list of strings, where one index represents single line of the file.
         """
 
         file_lines = []
@@ -143,12 +143,12 @@ class TarTool:
             self.logger.debug(e)
         return file_lines
 
-    def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
+    def download_files(self, filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
         """Download modified files, filtered as required"""
         # check all modified (includes the ones we uploaded)
-        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
-                            reverse=True)
-        candidates = self.__filter_download_files(candidates, output_filters, no_defaults)
+        candidates = sorted(
+            [d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])], reverse=True)
+        candidates = self.__filter_files(candidates, filters, no_defaults)
 
         # write to a tar?
         explicit_file = None
@@ -162,25 +162,25 @@ class TarTool:
             out_files = []
             for f in candidates:
                 # separately download and possibly copy each result file
-                log = self.__download_file_maybe(f, write_to=explicit_file)
+                log = self.__download_if_required(f, write_to=explicit_file)
                 out_files.extend(log)
             return out_files
         finally:
             explicit_file and explicit_file.close()
 
-    def __filter_download_files(self, candidates: List[str], output_filters: List[FileMatcher] = None,
-                                no_defaults: bool = False) -> List[str]:
+    def __filter_files(self, candidates: List[str], filters: List[FileMatcher] = None,
+                       no_defaults: bool = False) -> List[str]:
         """Filter list of candidate files to download"""
         # Sort by excluding and including filters
         # Including filter has more power than excluding one!
-        output_filters_to_exclude = output_filters.copy() if output_filters else []
+        output_filters_to_exclude = filters.copy() if filters else []
         output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in
                                      enumerate(output_filters_to_exclude)
-                                     if f.include] if output_filters else []
+                                     if f.include] if filters else []
 
         # Check if container has .cincanignore file - these are not downloaded by default
         ignore_file = pathlib.Path(self.work_dir) / IGNORE_FILENAME
-        ignore_paths = self.__read_single_file(ignore_file, skip_comment=True)
+        ignore_paths = self.__read_config_file(ignore_file, skip_comment=True)
         # Ignore the ignorefile itself..
         ignore_paths.append(IGNORE_FILENAME)
         # remove files which are paths to files
@@ -214,16 +214,16 @@ class TarTool:
                 ignore_filters.append(FileMatcher(file, include=False))
 
         # If user has not defined output_filters, use .cincanignore from container if not set to be ignored
-        if not output_filters and ignore_paths and not no_defaults:
+        if not filters and ignore_paths and not no_defaults:
             self.logger.debug("No user provided output filters - using .cincanignore")
             for filth in ignore_filters or []:
                 candidates = filth.filter_download_files(candidates, self.work_dir)
 
-        elif output_filters and ignore_paths:
+        elif filters and ignore_paths:
 
             # Check if user has defined to not use container specific output filters
             if no_defaults:
-                for filth in output_filters or []:
+                for filth in filters or []:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
             elif output_filters_to_include:
                 # If we have some including filters, only those are applied
@@ -245,13 +245,13 @@ class TarTool:
                     candidates = filth.filter_download_files(candidates, self.work_dir)
 
         else:
-            for filth in output_filters or []:
+            for filth in filters or []:
                 # remove non-matching files
                 candidates = filth.filter_download_files(candidates, self.work_dir)
         return candidates
 
-    def __download_file_maybe(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
-        """Download a file and save to host, update at host is required"""
+    def __download_if_required(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
+        """Download a file and save to host. Update at host, if required"""
         host_file = pathlib.Path(
             (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name))
 
