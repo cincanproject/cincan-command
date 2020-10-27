@@ -11,13 +11,22 @@ stages:
   - deploy
   
 unittests:
+  # upstream image https://github.com/Nicceboy/tox-with-multipython
+  image: ghcr.io/nicceboy/multipython:latest
+  before_script:
+    # pytest-cov requires sqlite3
+    - apt-get update && apt-get install -y libsqlite3-0
+    - echo "Current versions:"
+    - source ~/.bashrc
+    - python3.6 -V
+    - python3.7 -V
+    - python3.8 -V
+    - python3.9 -V
   stage: test
   services:
   - docker:dind
   script:
-    - pip3 install .
-    - pip3 install -r test-requirements.txt
-    - make unit-tests-with-coverage
+    - source ~/.bashrc && tox -- --cov=cincan tests
 
 integrationtests:
   stage: test
