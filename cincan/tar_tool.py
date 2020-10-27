@@ -144,11 +144,38 @@ class TarTool:
         return file_lines
 
     def download_files(self, output_filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
+        """Download modified files, filtered as required"""
+        # check all modified (includes the ones we uploaded)
+        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
+                            reverse=True)
+        candidates = self.__filter_download_files(candidates, output_filters, no_defaults)
 
+        # write to a tar?
+        explicit_file = None
+        try:
+            if self.explicit_file == '-':
+                # write tar to stdout
+                explicit_file = tarfile.open(mode="w|", fileobj=sys.stdout.buffer)
+            elif self.explicit_file:
+                # write tar file
+                explicit_file = tarfile.open(self.explicit_file, "w")
+            out_files = []
+            for f in candidates:
+                # separately download and possibly copy each result file
+                log = self.__download_file_maybe(f, write_to=explicit_file)
+                out_files.extend(log)
+            return out_files
+        finally:
+            explicit_file and explicit_file.close()
+
+    def __filter_download_files(self, candidates: List[str], output_filters: List[FileMatcher] = None,
+                                no_defaults: bool = False) -> List[str]:
+        """Filter list of candidate files to download"""
         # Sort by excluding and including filters
         # Including filter has more power than excluding one!
         output_filters_to_exclude = output_filters.copy() if output_filters else []
-        output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in enumerate(output_filters_to_exclude)
+        output_filters_to_include = [output_filters_to_exclude.pop(i) for i, f in
+                                     enumerate(output_filters_to_exclude)
                                      if f.include] if output_filters else []
 
         # Check if container has .cincanignore file - these are not downloaded by default
@@ -156,10 +183,8 @@ class TarTool:
         ignore_paths = self.__read_single_file(ignore_file, skip_comment=True)
         # Ignore the ignorefile itself..
         ignore_paths.append(IGNORE_FILENAME)
-        # check all modified (includes the ones we uploaded)
-        candidates = sorted([d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])],
-                            reverse=True)
         # remove files which are paths to files
+        candidates = candidates.copy()
         skip_set = set()
         for i, c in enumerate(candidates):
             if c in skip_set:
@@ -223,23 +248,10 @@ class TarTool:
             for filth in output_filters or []:
                 # remove non-matching files
                 candidates = filth.filter_download_files(candidates, self.work_dir)
-
-        # write to a tar?
-        explicit_file = None
-        try:
-            if self.explicit_file == '-':
-                explicit_file = tarfile.open(mode="w|", fileobj=sys.stdout.buffer)
-            elif self.explicit_file:
-                explicit_file = tarfile.open(self.explicit_file, "w")
-            out_files = []
-            for f in candidates:
-                log = self.__download_file_maybe(f, write_to=explicit_file)
-                out_files.extend(log)
-            return out_files
-        finally:
-            explicit_file and explicit_file.close()
+        return candidates
 
     def __download_file_maybe(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
+        """Download a file and save to host, update at host is required"""
         host_file = pathlib.Path(
             (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name))
 
