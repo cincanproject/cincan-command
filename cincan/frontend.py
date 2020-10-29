@@ -326,7 +326,7 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                file_sets = []  # FIXME
+                file_sets = self.output_dirs
                 dn_files = tar_tool.download_files(self.output_filters, self.no_defaults, file_sets)
                 log.out_files.extend(dn_files)
         finally:

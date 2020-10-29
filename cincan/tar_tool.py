@@ -48,7 +48,8 @@ class TarTool:
             with tarfile.open(fileobj=io.BytesIO(tar_content), mode="r") as tar:
                 for m in tar.getmembers():
                     self.logger.debug(f"checking in file {m.name}")
-                    self.upload_stats[m.name] = [m.size, m.mtime]  # [size, mtime]
+                    # file size, modification time, upload time
+                    self.upload_stats[m.name] = [m.size, m.mtime, datetime.now().timestamp()]
                     if not m.isfile():
                         continue
                     m_fileobj = tar.extractfile(m)
@@ -87,7 +88,8 @@ class TarTool:
             else:
                 tar_file = tar.gettarinfo(host_file, arcname=arc_name)
                 tar_file.mode = 511  # 777 - allow all to access (uid may be different in container)
-                self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime]  # [size, mtime]
+                # file size, modification time, upload time
+                self.upload_stats[arc_name] = [tar_file.size, tar_file.mtime, datetime.now().timestamp()]
                 if host_file.is_file():
                     # put file to tar
                     with host_file.open("rb") as f:
@@ -165,7 +167,8 @@ class TarTool:
             files_to_do = set(candidates)
             out_files = []
             for fp in file_paths or []:
-                self.__download_file_set(fp, files_to_do, write_to=explicit_file)
+                log = self.__download_file_set(fp, files_to_do, write_to=explicit_file)
+                out_files.extend(log)
 
             files_to_load = sorted(files_to_do)
             for f in files_to_load:
@@ -267,10 +270,7 @@ class TarTool:
 
         # fetch the path from container in its own tar ball
         get_arc_start = timeit.default_timer()
-        chunks, stat = self.container.get_archive(file_path)
-        file_modified = self.__check_for_download(host_path, stat)
-        if not file_modified:
-            return []  # do not attempt download
+        chunks, _ = self.container.get_archive(file_path)
 
         # read the tarball into temp file
         tmp_tar = tempfile.TemporaryFile()
@@ -283,8 +283,14 @@ class TarTool:
         out_files = []
         for tar_file in down_tar:
             file_in_host = host_path.parent / tar_file.name
-            if file_in_host.as_posix() not in files:
+            file_full_name = file_in_host.as_posix()
+            if file_full_name not in files:
                 continue  # not interested in this
+            files.remove(file_full_name)
+
+            file_modified = self.__check_if_modified(file_in_host, tar_file)
+            if not file_modified:
+                continue  # no need to download
 
             md = ''
             timestamp = datetime.now()
@@ -349,35 +355,30 @@ class TarTool:
         tmp_tar.close()
         return out_files
 
-    def __check_for_download(self, host_file: pathlib.Path, stat: Dict) -> bool:
-        """Check if file should be downloaded from the container"""
+    def __check_if_modified(self, host_file: pathlib.Path, file_info: tarfile.TarInfo) -> bool:
+        """Check if file has been modified in the container"""
         up_stat = self.upload_stats.get(host_file.as_posix())
+        if up_stat is None:
+            return True  # not uploaded, must be downloaded
+
+        # original size, upload time, original creation time
+        orig_size, orig_time, up_time = up_stat
+
         # NOTE: for directories (?) size from container is 4096 -> mismatch for directories!!!
-        if up_stat and 'size' in stat:
-            down_size = int(stat['size'])
-            up_size = up_stat[0]
-            up_down_size_mismatch = up_size != down_size
-            if up_down_size_mismatch:
-                self.logger.debug(f"size {host_file.as_posix()} change {up_size} -> {down_size}")
-                return True
+        down_size = file_info.size
+        if orig_size != down_size:
+            self.logger.debug(f"size {host_file.as_posix()} change {orig_size} -> {down_size}")
+            return True
 
-        if up_stat and 'mtime' in stat:
-            # MacOS needs some timezone specifications
-            if sys.platform == "darwin":
-                up_time = datetime.utcfromtimestamp(int(up_stat[1]))
-            else:
-                up_time = datetime.fromtimestamp(int(up_stat[1]))
-            down_time_s = stat['mtime']  # seconds + timezone
-            up_time_s = up_time.strftime(self.time_format_seconds)  # seconds
-            time_now_s = datetime.now().strftime(self.time_format_seconds)
-            if down_time_s.startswith(up_time_s):
-                # looks like timestamp not updated, but down_time is seconds and up_time has more precision
-                if up_time_s == time_now_s:
-                    self.logger.debug(f"timestamps {host_file.as_posix()} now {down_time_s}, may or may not be updated")
-                    return True  # edited, but actually we do not know
-                self.logger.debug(f"timestamp {host_file.as_posix()} not updated {down_time_s}")
-                return False  # not edited, we are sure
-            self.logger.debug(f"timestamp {host_file.as_posix()} updated {up_time_s} -> {down_time_s}")
-            return True  # edited, we are sure
-
-        return True  # tell edited, but we have no idea
+        # only second accuracy available
+        down_time_s = int(file_info.mtime / 1000)
+        orig_time_s = int(orig_time / 1000)
+        up_time_s = int(up_time / 1000)
+        if orig_time_s != down_time_s:
+            self.logger.debug(f"{host_file.as_posix()} mtime updated at container")
+            return True
+        if orig_time_s != up_time_s:
+            self.logger.debug(f"{host_file.as_posix()} old and not modified")
+            return False
+        self.logger.debug(f"{host_file.as_posix()} timestamp nor size tells if modified")
+        return True
