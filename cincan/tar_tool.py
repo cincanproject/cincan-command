@@ -7,7 +7,7 @@ import tempfile
 import timeit
 from datetime import datetime
 from logging import Logger
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Set
 
 from docker.models.containers import Container
 from docker.errors import NotFound
@@ -143,12 +143,14 @@ class TarTool:
             self.logger.debug(e)
         return file_lines
 
-    def download_files(self, filters: List[FileMatcher] = None, no_defaults: bool = False) -> List[FileLog]:
+    def download_files(self, filters: List[FileMatcher] = None, no_defaults: bool = False,
+                       file_paths: List[str] = None) -> List[FileLog]:
         """Download modified files, filtered as required"""
         # check all modified (includes the ones we uploaded)
         candidates = sorted(
             [d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])], reverse=True)
         candidates = self.__filter_files(candidates, filters, no_defaults)
+        candidates = [c[1:] if c.startswith("/") else c for c in candidates]
 
         # write to a tar?
         explicit_file = None
@@ -159,10 +161,16 @@ class TarTool:
             elif self.explicit_file:
                 # write tar file
                 explicit_file = tarfile.open(self.explicit_file, "w")
+
+            files_to_do = set(candidates)
             out_files = []
-            for f in candidates:
+            for fp in file_paths or []:
+                self.__download_file_set(fp, files_to_do, write_to=explicit_file)
+
+            files_to_load = sorted(files_to_do)
+            for f in files_to_load:
                 # separately download and possibly copy each result file
-                log = self.__download_if_required(f, write_to=explicit_file)
+                log = self.__download_file_set(f, files_to_do, write_to=explicit_file)
                 out_files.extend(log)
             return out_files
         finally:
@@ -250,31 +258,35 @@ class TarTool:
                 candidates = filth.filter_download_files(candidates, self.work_dir)
         return candidates
 
-    def __download_if_required(self, file_name: str, write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
-        """Download a file and save to host. Update at host, if required"""
-        host_file = pathlib.Path(
-            (file_name[len(self.work_dir):] if file_name.startswith(self.work_dir) else file_name))
+    def __download_file_set(self, file_path: str, files: Set[str],
+                            write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
+        """Download files by a path, copy matching files into host"""
+        # target path in host
+        host_path = pathlib.Path(
+            (file_path[len(self.work_dir):] if file_path.startswith(self.work_dir) else file_path))
 
-        # fetch the file from container in its own tar ball
+        # fetch the path from container in its own tar ball
         get_arc_start = timeit.default_timer()
-        chunks, stat = self.container.get_archive(file_name)
-        file_modified = self.__check_for_download(host_file, stat)
+        chunks, stat = self.container.get_archive(file_path)
+        file_modified = self.__check_for_download(host_path, stat)
         if not file_modified:
             return []  # do not attempt download
 
         # read the tarball into temp file
         tmp_tar = tempfile.TemporaryFile()
         for c in chunks:
-            # self.logger.debug(f"chunk of {len(c)} bytes")
             tmp_tar.write(c)
-        self.logger.debug("get_archive time %.4f s", timeit.default_timer() - get_arc_start)
+        self.logger.debug("get_archive %s time %.4f s", file_path, timeit.default_timer() - get_arc_start)
 
         tmp_tar.seek(0)
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
         out_files = []
         for tar_file in down_tar:
-            # Note, we trust all intermediate directories to be provided in the tar files
-            local_file = host_file.parent / tar_file.name
+            file_name = tar_file.name
+            if file_name not in files:
+                continue  # not interested in this
+
+            file_in_host = pathlib.Path(file_name)
             md = ''
             timestamp = datetime.now()
             if write_to:
@@ -283,58 +295,58 @@ class TarTool:
                     tf_data = down_tar.extractfile(tar_file)
                     md = read_with_hash(tf_data.read, temp_file.write)
 
-                    write_tf = tarfile.TarInfo(local_file.as_posix())
+                    write_tf = tarfile.TarInfo(file_in_host.as_posix())
                     write_tf.mtime = tar_file.mtime
                     write_tf.mode = tar_file.mode
                     write_tf.size = temp_file.tell()
                     temp_file.seek(0)
                     write_to.addfile(write_tf, fileobj=temp_file)
-            elif local_file == host_file and tar_file.isfile():
-                # this is the file we were looking for
-                if not host_file.exists():
+            elif tar_file.isfile():
+                # this is a file we were looking for
+                if not file_in_host.exists():
                     # no local file or explicit output asked, this is too easy
-                    self.logger.info(f"=> {host_file.as_posix()}")
+                    self.logger.info(f"=> {file_in_host.as_posix()}")
                     tf_data = down_tar.extractfile(tar_file)
-                    if host_file.parent:
-                        host_file.parent.mkdir(parents=True, exist_ok=True)
-                    with host_file.open("wb") as f:
+                    if file_in_host.parent:
+                        file_in_host.parent.mkdir(parents=True, exist_ok=True)
+                    with file_in_host.open("wb") as f:
                         md = read_with_hash(tf_data.read, f.write)
                 else:
                     # compare by hash, if should override local file
                     tf_data = down_tar.extractfile(tar_file)
-                    temp_file = pathlib.Path(host_file.as_posix() + '_TEMP')
+                    temp_file = pathlib.Path(file_in_host.as_posix() + '_TEMP')
                     self.logger.debug(f"creating temp file {temp_file.as_posix()}")
 
                     # calculate hash for file from tar, copy it to temp file
-                    if host_file.parent:
-                        host_file.parent.mkdir(parents=True, exist_ok=True)
+                    if file_in_host.parent:
+                        file_in_host.parent.mkdir(parents=True, exist_ok=True)
                     with temp_file.open("wb") as f:
                         md = read_with_hash(tf_data.read, f.write)
 
                     # calculate hash for existing file
-                    with host_file.open("rb") as f:
+                    with file_in_host.open("rb") as f:
                         host_digest = read_with_hash(f.read)
 
-                    self.logger.info(f"=> {host_file.as_posix()}")
+                    self.logger.info(f"=> {file_in_host.as_posix()}")
                     if md == host_digest:
-                        self.logger.debug(f"identical file {host_file.as_posix()} digest {md}, no action")
+                        self.logger.debug(f"identical file {file_in_host.as_posix()} digest {md}, no action")
                         # The file is identical as uploaded, but timestamps tell different story.
                         # Assuming it was created identical, adding the log entry
                         temp_file.unlink()
                     else:
                         self.logger.debug(
-                            f"file {host_file.as_posix()} digest in container {md}, in host {host_digest}")
-                        host_file.unlink()
-                        temp_file.rename(host_file)
+                            f"file {file_in_host.as_posix()} digest in container {md}, in host {host_digest}")
+                        file_in_host.unlink()
+                        temp_file.rename(file_in_host)
             else:
-                if not host_file.exists():
+                if not file_in_host.exists():
                     # must be a directory we need
-                    self.logger.info(f"=> {local_file.as_posix()}/")
-                    local_file.mkdir(parents=True, exist_ok=True)
-                    timestamp = datetime.fromtimestamp(local_file.stat().st_mtime)
+                    self.logger.info(f"=> {file_in_host.as_posix()}/")
+                    file_in_host.mkdir(parents=True, exist_ok=True)
+                    timestamp = datetime.fromtimestamp(file_in_host.stat().st_mtime)
                 else:
                     pass  # no action required
-            out_files.append(FileLog(host_file.resolve(), md, timestamp))
+            out_files.append(FileLog(file_in_host.resolve(), md, timestamp))
         tmp_tar.close()
         return out_files
 

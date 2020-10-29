@@ -326,7 +326,9 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                log.out_files.extend(tar_tool.download_files(self.output_filters, self.no_defaults))
+                file_sets = []  # FIXME
+                dn_files = tar_tool.download_files(self.output_filters, self.no_defaults, file_sets)
+                log.out_files.extend(dn_files)
         finally:
             self.logger.debug("killing the container")
             container.kill()
