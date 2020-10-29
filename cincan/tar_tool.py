@@ -370,10 +370,10 @@ class TarTool:
             self.logger.debug(f"size {host_file.as_posix()} change {orig_size} -> {down_size}")
             return True
 
-        # only second accuracy available
-        down_time_s = int(file_info.mtime / 1000)
-        orig_time_s = int(orig_time / 1000)
-        up_time_s = int(up_time / 1000)
+        # remove fractions for comparison
+        down_time_s = int(file_info.mtime)
+        orig_time_s = int(orig_time)
+        up_time_s = int(up_time)
         if orig_time_s != down_time_s:
             self.logger.debug(f"{host_file.as_posix()} mtime updated at container")
             return True
