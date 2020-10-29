@@ -282,11 +282,10 @@ class TarTool:
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
         out_files = []
         for tar_file in down_tar:
-            file_name = tar_file.name
-            if file_name not in files:
+            file_in_host = host_path.parent / tar_file.name
+            if file_in_host.as_posix() not in files:
                 continue  # not interested in this
 
-            file_in_host = pathlib.Path(file_name)
             md = ''
             timestamp = datetime.now()
             if write_to:
