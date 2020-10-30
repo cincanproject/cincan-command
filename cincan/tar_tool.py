@@ -293,8 +293,8 @@ class TarTool:
                 continue  # not interested in this
             files.remove(file_full_name)
 
-            file_modified = self.__check_if_modified(file_in_host, tar_file)
-            if not file_modified:
+            modified, unmodified = self.__check_if_modified(file_in_host, tar_file)
+            if unmodified:
                 continue  # no need to download
 
             md = ''
@@ -333,21 +333,27 @@ class TarTool:
                     with temp_file.open("wb") as f:
                         md = read_with_hash(tf_data.read, f.write)
 
-                    # calculate hash for existing file
-                    with file_in_host.open("rb") as f:
-                        host_digest = read_with_hash(f.read)
-
                     self.logger.info(f"=> {file_in_host.as_posix()}")
-                    if md == host_digest:
-                        self.logger.debug(f"identical file {file_in_host.as_posix()} digest {md}, no action")
-                        # The file is identical as uploaded, but timestamps tell different story.
-                        # Assuming it was created identical, adding the log entry
-                        temp_file.unlink()
-                    else:
-                        self.logger.debug(
-                            f"file {file_in_host.as_posix()} digest in container {md}, in host {host_digest}")
+                    if modified:
+                        # modified by timestamp or size, overwrite
                         file_in_host.unlink()
                         temp_file.rename(file_in_host)
+                    else:
+                        # not sure if modified, calculate hash for existing file
+                        with file_in_host.open("rb") as f:
+                            host_digest = read_with_hash(f.read)
+
+                        if md == host_digest:
+                            self.logger.debug(f"identical file {file_in_host.as_posix()} digest {md}, no action")
+                            # The file is identical as uploaded
+                            # Assuming it was created identical, adding the log entry
+                            temp_file.unlink()
+                        else:
+                            # digest changed, modified despite identical size and timestamps
+                            self.logger.debug(
+                                f"file {file_in_host.as_posix()} digest in container {md}, in host {host_digest}")
+                            file_in_host.unlink()
+                            temp_file.rename(file_in_host)
             else:
                 if not file_in_host.exists():
                     # must be a directory we need
@@ -360,11 +366,11 @@ class TarTool:
         tmp_tar.close()
         return out_files
 
-    def __check_if_modified(self, host_file: pathlib.Path, file_info: tarfile.TarInfo) -> bool:
-        """Check if file has been modified in the container"""
+    def __check_if_modified(self, host_file: pathlib.Path, file_info: tarfile.TarInfo) -> Tuple[bool, bool]:
+        """Check if file has been modified, or not modified in the container"""
         up_stat = self.upload_stats.get(host_file.as_posix())
         if up_stat is None:
-            return True  # not uploaded, must be downloaded
+            return True, False  # not uploaded, must be downloaded
 
         # original size, upload time, original creation time
         orig_size, orig_time, up_time = up_stat
@@ -373,7 +379,7 @@ class TarTool:
         down_size = file_info.size
         if orig_size != down_size:
             self.logger.debug(f"size {host_file.as_posix()} change {orig_size} -> {down_size}")
-            return True
+            return True, False
 
         # remove fractions for comparison
         down_time_s = int(file_info.mtime)
@@ -381,9 +387,9 @@ class TarTool:
         up_time_s = int(up_time)
         if orig_time_s != down_time_s:
             self.logger.debug(f"{host_file.as_posix()} mtime updated at container")
-            return True
+            return True, False
         if orig_time_s != up_time_s:
             self.logger.debug(f"{host_file.as_posix()} old and not modified")
-            return False
+            return False, True
         self.logger.debug(f"{host_file.as_posix()} timestamp nor size tells if modified")
-        return True
+        return False, False
