@@ -7,8 +7,9 @@ import tempfile
 import timeit
 from datetime import datetime
 from logging import Logger
-from typing import Dict, Optional, List, Set
+from typing import Dict, Optional, List, Set, Tuple
 
+import docker
 from docker.models.containers import Container
 from docker.errors import NotFound
 
@@ -270,7 +271,11 @@ class TarTool:
 
         # fetch the path from container in its own tar ball
         get_arc_start = timeit.default_timer()
-        chunks, _ = self.container.get_archive(file_path)
+        try:
+            chunks, _ = self.container.get_archive(file_path)
+        except docker.errors.NotFound:
+            self.logger.debug("Not found in container: %s", file_path)
+            return []
 
         # read the tarball into temp file
         tmp_tar = tempfile.TemporaryFile()
