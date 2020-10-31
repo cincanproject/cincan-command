@@ -152,8 +152,8 @@ class TarTool:
         # check all modified (includes the ones we uploaded)
         candidates = sorted(
             [d['Path'] for d in filter(lambda f: 'Path' in f, self.container.diff() or [])], reverse=True)
+        # note: candidates start with / as path container absolute
         candidates = self.__filter_files(candidates, filters, no_defaults)
-        candidates = [c[1:] if c.startswith("/") else c for c in candidates]
 
         # write to a tar?
         explicit_file = None
@@ -265,9 +265,10 @@ class TarTool:
     def __download_file_set(self, file_path: str, files: Set[str],
                             write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
         """Download files by a path, copy matching files into host"""
-        # target path in host
+        # target path in host, container
         host_path = pathlib.Path(
             (file_path[len(self.work_dir):] if file_path.startswith(self.work_dir) else file_path))
+        cont_path = pathlib.Path(file_path)
 
         # fetch the path from container in its own tar ball
         get_arc_start = timeit.default_timer()
@@ -287,12 +288,13 @@ class TarTool:
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
         out_files = []
         for tar_file in down_tar:
-            file_in_host = host_path.parent / tar_file.name
-            file_full_name = file_in_host.as_posix()
-            if file_full_name not in files:
+            file_in_cont = cont_path.parent / tar_file.name
+            cont_full_name = file_in_cont.as_posix()
+            if cont_full_name not in files:
                 continue  # not interested in this
-            files.remove(file_full_name)
+            files.remove(cont_full_name)
 
+            file_in_host = host_path.parent / tar_file.name
             modified, unmodified = self.__check_if_modified(file_in_host, tar_file)
             if unmodified:
                 continue  # no need to download
