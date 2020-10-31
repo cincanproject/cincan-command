@@ -167,14 +167,21 @@ class TarTool:
 
             files_to_do = set(candidates)
             out_files = []
-            for fp in file_paths or []:
-                fp_in_cont = (pathlib.Path(self.work_dir) / fp).as_posix()
-                log = self.__download_file_set(fp_in_cont, files_to_do, write_to=explicit_file)
+
+            if self.work_dir != '/':
+                # container has non-root working directory, get it at once!
+                log = self.__download_file_set(self.work_dir, files_to_do, write_to=explicit_file)
                 out_files.extend(log)
+            else:
+                # container has / working directory, get possible result directories one-by-one
+                for fp in file_paths or []:
+                    fp_in_cont = (pathlib.Path(self.work_dir) / fp).as_posix()
+                    log = self.__download_file_set(fp_in_cont, files_to_do, write_to=explicit_file)
+                    out_files.extend(log)
 
             files_to_load = sorted(files_to_do)
             for f in files_to_load:
-                # separately download and possibly copy each result file
+                # separately download and possibly copy remaining result files
                 log = self.__download_file_set(f, files_to_do, write_to=explicit_file)
                 out_files.extend(log)
             return out_files
