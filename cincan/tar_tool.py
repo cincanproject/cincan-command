@@ -168,7 +168,8 @@ class TarTool:
             files_to_do = set(candidates)
             out_files = []
             for fp in file_paths or []:
-                log = self.__download_file_set(fp, files_to_do, write_to=explicit_file)
+                fp_in_cont = (pathlib.Path(self.work_dir) / fp).as_posix()
+                log = self.__download_file_set(fp_in_cont, files_to_do, write_to=explicit_file)
                 out_files.extend(log)
 
             files_to_load = sorted(files_to_do)
