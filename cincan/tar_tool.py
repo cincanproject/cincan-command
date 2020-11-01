@@ -291,10 +291,7 @@ class TarTool:
     def __download_file_set(self, file_path: str, files: Set[str],
                             write_to: Optional[tarfile.TarFile] = None) -> List[FileLog]:
         """Download files by a path, copy matching files into host"""
-        # target path in host, container
-        host_path = pathlib.Path(
-            (file_path[len(self.work_dir):] if file_path.startswith(self.work_dir) else file_path))
-        cont_path = pathlib.Path(file_path)
+        base_path = pathlib.Path(file_path)
 
         # fetch the path from container in its own tar ball
         get_arc_start = timeit.default_timer()
@@ -314,13 +311,22 @@ class TarTool:
         down_tar = tarfile.open(fileobj=tmp_tar, mode="r|")
         out_files = []
         for tar_file in down_tar:
-            file_in_cont = cont_path.parent / tar_file.name
+            file_in_cont = (base_path.parent or base_path) / tar_file.name
             cont_full_name = file_in_cont.as_posix()
             if cont_full_name not in files:
                 continue  # not interested in this
             files.remove(cont_full_name)
 
-            file_in_host = host_path.parent / tar_file.name
+            if cont_full_name.startswith(self.work_dir):
+                file_in_host = pathlib.Path(cont_full_name[len(self.work_dir):])
+            elif cont_full_name.startswith('/'):
+                file_in_host = pathlib.Path(cont_full_name[1:])
+            else:
+                self.logger.warning("skipping file %s", cont_full_name)
+                continue
+            if file_in_host.is_absolute():
+                self.logger.warning("skipping suspicious file %s", cont_full_name)
+                continue
             modified, unmodified = self.__check_if_modified(file_in_host, tar_file)
             if unmodified:
                 continue  # no need to download
