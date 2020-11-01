@@ -12,6 +12,7 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 ### Fixed
 
  - Avoid excessive memory use with large input files
+ - Speedier download with argument `--mkdir` and with containers with non-root working directory
  - Version tests to be compatible with supported Python versions
 
 ## [0.2.10]
