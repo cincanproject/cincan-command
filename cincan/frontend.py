@@ -508,8 +508,8 @@ def main():
         reg = ToolRegistry()
         conf = Configuration()
         name, tag = name.rsplit(":", 1) if ":" in name else [name, conf.default_stable_tag]
-        info = reg.fetch_manifest(name, tag)
-        print(json.dumps(info, indent=2))
+        info = reg.remote_registry.fetch_manifest(name, tag)
+        print(info)
     elif sub_command == 'list':
         list_handler(args)
     else:
