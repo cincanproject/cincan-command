@@ -16,7 +16,7 @@ from cincan.frontend import ToolImage
 from cincan.configuration import Configuration
 from copy import deepcopy
 
-TEST_IMAGE = "cincan/test:dev"
+TEST_IMAGE = "quay.io/cincan/test:dev"
 TEST_IMAGE_NAME = TEST_IMAGE.rsplit(":", 1)[0]
 TEST_IMAGE_TAG = TEST_IMAGE.rsplit(":", 1)[1]
 DEFAULT_STABLE_TAG = Configuration().default_stable_tag
@@ -54,7 +54,7 @@ def test_image_version_up_to_date(caplog):
     version_data_copy["versions"]["remote"]["tags"] = ["latest", TEST_IMAGE_TAG]
     async_mock = AsyncMock(return_value=version_data_copy)
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0") as mock_ver_id:
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="1.0") as mock_ver_id:
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
             mock_ver_id.assert_called()
@@ -71,7 +71,7 @@ def test_image_version_no_info(caplog):
 
     async_mock = AsyncMock(return_value={})
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0") as mock_ver_id:
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="1.0") as mock_ver_id:
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
             mock_ver_id.assert_called()
@@ -89,7 +89,7 @@ def test_image_version_local_old_tag(caplog):
 
     async_mock = AsyncMock(return_value=VERSION_DATA)
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="0.9"):
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="0.9"):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
@@ -110,7 +110,7 @@ def test_image_version_local_outdated(caplog):
     version_data_copy["updates"]["local"] = True
     async_mock = AsyncMock(return_value=version_data_copy)
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0"):
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="1.0"):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
@@ -130,7 +130,7 @@ def test_image_version_remote_outdated(caplog):
     version_data_copy["updates"]["remote"] = True
     async_mock = AsyncMock(return_value=version_data_copy)
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0"):
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="1.0"):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
@@ -151,7 +151,7 @@ def test_image_version_new_dev_version(caplog):
     version_data_copy["updates"]["local"] = True
     async_mock = AsyncMock(return_value=version_data_copy)
 
-    with mock.patch("cincanregistry.ToolRegistry.get_version_by_image_id", return_value="1.0"):
+    with mock.patch("cincanregistry.daemon.DaemonRegistry.get_version_by_image_id", return_value="1.0"):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
