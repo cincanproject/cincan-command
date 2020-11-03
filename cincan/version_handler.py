@@ -67,7 +67,7 @@ class VersionHandler:
         Compare version information, log details
         """
 
-        # Warn when using CinCan tools from Docker Hub
+        # Warn about rate limits when using CinCan tools from Docker Hub (is optional registry)
         if self.registry.default_remote == Remotes.DOCKERHUB:
             # Default prefix for dockerhub: cincan
             if not self.tool_name.startswith(f"{self.registry.remote_registry.full_prefix}/"):
