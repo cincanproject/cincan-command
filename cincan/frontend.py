@@ -51,7 +51,7 @@ class ToolImage(CommandRunner):
                  pull: bool = False,
                  tag: Optional[str] = None,
                  rm: bool = True,
-                 script: bool = False):
+                 batch: bool = False):
         self.config = Configuration()
         self.logger = logging.getLogger(name)
         self.client = docker.from_env()
@@ -67,7 +67,7 @@ class ToolImage(CommandRunner):
             sys.exit(1)
         self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
-        self.script = script  # By default, tool doest not run inside script or other automation
+        self.batch = batch  # Use batch to disable some properties when running inside script or other automation
         if path is not None:
             self.name = name or path
             if tag is not None:
@@ -79,7 +79,7 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger, self.script)
+            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger, self.batch)
             self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
@@ -87,8 +87,8 @@ class ToolImage(CommandRunner):
         self.version_handler = VersionHandler(self.config, self.registry, self.image,
                                               self.name.rsplit(":", 1)[0], self.logger)
         if self.config.show_updates:
-            # Only check versions if not defined to run as script
-            if not self.script and self.logger.getEffectiveLevel() < 30:
+            # Only check versions if not defined to run inside script or logging level is low
+            if not self.batch and self.logger.getEffectiveLevel() < 30:
                 self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
@@ -384,10 +384,6 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('tool', help="the tool and possible arguments", nargs=argparse.REMAINDER)
     sub_parser.add_argument('-p', '--path', help='path to Docker context')
     sub_parser.add_argument('-u', '--pull', action='store_true', help='Pull image from registry')
-    sub_parser.add_argument('--script', action='store_true', help='Use with scripts. Disables some '
-                                                                  'properties meant for interactive tty device(s): '
-                                                                  'Version checking disabled, '
-                                                                  'pull-progress-bar disabled.')
     sub_parser.add_argument('--in', dest='input_tar', nargs='?',
                             help='Provide the input files to load unfiltered into the container working directory')
     sub_parser.add_argument('--out', dest='output_tar', nargs='?',
@@ -448,6 +444,10 @@ def main():
 
     m_parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                           help="Set the logging level", default=None)
+    m_parser.add_argument('--batch', action='store_true', help='Use with automation. Disables some '
+                                                               'properties meant for interactive tty device(s): '
+                                                               'Version checking disabled, '
+                                                               'pull-progress-bar disabled.')
     m_parser.add_argument('-q', '--quiet', action='store_true', help='Be quite quiet')
     m_parser.add_argument('-v', '--version', action='store_true', help='Shows currently installed version of the tool.')
     subparsers = m_parser.add_subparsers(dest='sub_command')
@@ -483,17 +483,17 @@ def main():
         # We do not want informative version logs here unless DEBUG mode
         if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
             logging.getLogger('versions').setLevel(logging.ERROR)
-        # Also suppress metahandler output
+            # Also suppress meta handler output
             logging.getLogger('metahandler').setLevel(logging.ERROR)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]
         if args.path is None:
-            tool = ToolImage(name, image=name, pull=args.pull, script=args.script)
+            tool = ToolImage(name, image=name, pull=args.pull, batch=args.batch)
         elif args.path is not None:
-            tool = ToolImage(name, path=args.path, script=args.script)
+            tool = ToolImage(name, path=args.path, batch=args.batch)
         else:
-            tool = ToolImage(name, script=args.script)  # should raise exception
+            tool = ToolImage(name, batch=args.batch)  # should raise exception
 
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None

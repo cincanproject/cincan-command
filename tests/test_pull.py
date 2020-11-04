@@ -103,3 +103,19 @@ def test_pull_no_default_tags_no_credentials(caplog):
     ]
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
+
+
+def test_batch_option_pull(caplog):
+    """Test --batch option to disable some properties (version check, pull-progress bar"""
+
+    caplog.set_level(logging.INFO)
+    tool = ToolImage(image=f"cincan/test:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=True)
+    pull_msgs = [
+        f"pulling image with tag '{DEFAULT_DEV_TAG}'...",
+    ]
+    logs = [l.message for l in caplog.records]
+    assert logs == pull_msgs
+    tool = ToolImage(image=f"cincan/test:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=False)
+    msgs = [f"No version information available for cincan/test\n"]
+    logs = [l.message for l in caplog.records]
+    assert logs[-1:] == msgs
