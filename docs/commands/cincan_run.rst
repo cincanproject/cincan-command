@@ -286,7 +286,7 @@ The following table lists all command-line options available for the ``cincan ru
 +------------------------------------+---------------------------------------------------------------+
 | ``--no-defaults``                  | Ignore all container specific output filters. (.cincanignore) |
 +------------------------------------+---------------------------------------------------------------+
-| ``--no-implicit-output, -M``       | No implicit output, only download the marked output directories |
+| ``--no-implicit-output, -M``       | No implicit output, only download the marked output dirs      |
 +------------------------------------+---------------------------------------------------------------+
 | ``--explicit-output, -e`` file     | Give downloaded result file or directory explicitly           |
 +------------------------------------+---------------------------------------------------------------+
