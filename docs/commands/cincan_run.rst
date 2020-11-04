@@ -286,6 +286,10 @@ The following table lists all command-line options available for the ``cincan ru
 +------------------------------------+---------------------------------------------------------------+
 | ``--no-defaults``                  | Ignore all container specific output filters. (.cincanignore) |
 +------------------------------------+---------------------------------------------------------------+
+| ``--no-implicit-output, -M``       | No implicit output, only download the marked output directories |
++------------------------------------+---------------------------------------------------------------+
+| ``--explicit-output, -e`` file     | Give downloaded result file or directory explicitly           |
++------------------------------------+---------------------------------------------------------------+
 |                                    | Similar to ``docker run``                                     |
 +------------------------------------+---------------------------------------------------------------+
 | ``--tty, -t``                      | Allocate a pseudo-TTY                                         |
