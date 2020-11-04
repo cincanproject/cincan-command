@@ -476,6 +476,8 @@ def main():
         # We do not want informative version logs here unless DEBUG mode
         if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
             logging.getLogger('versions').setLevel(logging.ERROR)
+        # Also suppress metahandler output
+            logging.getLogger('metahandler').setLevel(logging.ERROR)
         if len(args.tool) == 0:
             sys.exit('Missing tool name argument')
         name = args.tool[0]

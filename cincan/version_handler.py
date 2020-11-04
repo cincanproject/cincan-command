@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from docker.models.images import Image
 from cincan.configuration import Configuration
 from cincanregistry import ToolRegistry, Remotes
+from cincan.utils import ANSIEscapes
 
 
 class VersionHandler:
@@ -98,28 +99,32 @@ class VersionHandler:
 
         self._get_version_information()
         if self.data_available:
-            if self.current_version != self.latest_local:
-                self.logger.info(
-                    f"You are not using latest locally available version: "
-                    f"({self.current_version} vs {self.latest_local}) "
-                    f"Latest is available with tags '{','.join(self.local_tags)}'")
+            other = ""
             if not self.local_updates:
                 if self.current_version != self.latest_local:
-                    self.logger.info(
-                        f"Latest local tool is up-to-date with remote: version {self.latest_local}")
+                    color_current = ANSIEscapes.YELLOW
+                    color_local = ANSIEscapes.GREEN
+                    other = f"Latest local is available with tags '{','.join(self.local_tags)}'"
                 else:
-                    self.logger.info(f"Your tool is up-to-date with remote. Current version: {self.current_version}")
+                    color_current = ANSIEscapes.GREEN
+                    color_local = ANSIEscapes.GREEN
             else:
+                color_current = ANSIEscapes.YELLOW
+                color_local = ANSIEscapes.RED
                 if self.config.default_stable_tag in self.remote_tags:
-                    self.logger.info(
-                        f"Update available in remote: ('{self.latest_local}' vs. '{self.latest_remote}')"
-                        f"\nUse 'docker pull {self.tool_name}:{self.config.default_stable_tag}' to update.")
+                    other = f"Update available in remote: ('{self.latest_local}' vs. '{self.latest_remote}')" \
+                            f" Use 'docker pull {self.tool_name}:{self.config.default_stable_tag}' to update."
                 else:
-                    self.logger.info(f"Newer development version available in remote: "
-                                     f"'{self.latest_local}' vs. '{self.latest_remote}' with tags '{','.join(self.remote_tags)}'")
-            if self.remote_updates:
-                self.logger.info(
-                    f"Remote is not up-to-date with origin ({self.origin_provider}): "
-                    f"'{self.latest_remote}' vs. '{self.latest_origin}'")
+                    other = f"Newer development version available in remote: " \
+                            f"'{self.latest_local}' vs. '{self.latest_remote}' with tags '{','.join(self.remote_tags)}'"
+            color_remote = ANSIEscapes.YELLOW if self.remote_updates else ANSIEscapes.GREEN
+            currentV = f"{ANSIEscapes.BOLD}Current:{ANSIEscapes.END} {color_current}{self.current_version}{ANSIEscapes.END}"
+            localV = f"{ANSIEscapes.BOLD}Latest Local:{ANSIEscapes.END} {color_local}{self.latest_local}{ANSIEscapes.END}"
+            remoteV = f"{ANSIEscapes.BOLD}Latest Remote:{ANSIEscapes.END} {color_remote}{self.latest_remote}{ANSIEscapes.END}"
+            originV = f"{ANSIEscapes.BOLD}Origin:{ANSIEscapes.END} {self.latest_origin}"
+            ver_info = f"Version information - {currentV} {localV} {remoteV} {originV}"
+            self.logger.info(ver_info)
+            if other:
+                self.logger.info(other)
         else:
             self.logger.info(f"No version information available for {self.tool_name}\n")
