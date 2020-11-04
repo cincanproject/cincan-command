@@ -61,6 +61,14 @@ def test_many_output_files(tool):
     assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
 
 
+def test_many_output_files_mkdir(tool):
+    work_dir = prepare_work_dir('_test', ['ab.zip'])
+    tool.output_dirs = ['_test']
+    tool.run_get_string(['unzip', '-d', '_test', '_test/ab.zip'])
+    assert tool.upload_files == ['_test', '_test/ab.zip']
+    assert tool.download_files == ['_test/source-a.txt', '_test/source-b.txt']
+
+
 def test_log_stdout(tool):
     work_dir = prepare_work_dir('_test', ['ab.zip'])
     log = tool.run(['echo', 'abc'])

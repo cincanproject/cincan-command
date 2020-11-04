@@ -155,23 +155,6 @@ For example, consider `the previous case <avoid_uploading_content_from_output_di
 
 |
 
-Filtering by `.cincanignore` - file stored inside container
-===========================================================
-
-Downloadable files can be filtered by the ``.cincanignore`` file as well, which should be stored inside a tool's container in the build phase. All files listed in the ``.cincanignore`` file are not downloaded from the container. Paths are relative to the working directory of the container.
-
-See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
-
-.. literalinclude:: ../../samples/.cincanignore
-   :caption: samples/.cincanignore
-
-
-This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
-
-**Tip**: Option ``--no-defaults`` can be passed to not use this file.
-
-|
-
 Providing tool input as a tar file
 ==================================
 
@@ -195,6 +178,24 @@ For example, the following should write file ``output.tar``
 .. code-block:: shell
 
     $ cincan run --out output.tar cincan/tshark -r myfile.pcap -w output.pcap
+
+|
+
+Additional performance optimization
+===================================
+
+Sometimes the containerized tool may run slow because
+a lot of files gets downloaded from the container.
+This may happen even when you filter the unnecessary files out,
+as the ``cincan`` command may still download them before they
+are discarded.
+
+If this is suspected, you can try a couple of things:
+
+1. Use option ``--no-implicit-output`` with ``--mkdir``. This causes only the given output directories to be downloaded from the container.
+
+2. Use option ``--explicit-output`` to explicilty list all files and/or directories which are downloaded from the container.
+
 
 |
 
@@ -223,6 +224,26 @@ We are using *cincan/radare2* as an example of a tool with an interactive mode h
    [0x00005b10]>
 
 You should see an interactive prompt like above where *cincan/radare2* has opened the ``/bin/ls`` file. Start the analysis by typing ``aaa`` and pressing enter. Type ``exit`` or press ``ctrl + d`` to quit the interactive prompt.
+
+|
+
+*****************************************
+Filtering output files by `.cincanignore`
+*****************************************
+
+You can alter how output files are handled by adding specially named file
+``.cincanignore`` into a container on built-time.
+All files listed in the file are not downloaded from the container. Paths are relative to the working directory of the container.
+
+See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
+
+.. literalinclude:: ../../samples/.cincanignore
+   :caption: samples/.cincanignore
+
+
+This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
+
+**Tip**: Option ``--no-defaults`` can be passed to not use this file.
 
 |
 
@@ -264,6 +285,10 @@ The following table lists all command-line options available for the ``cincan ru
 | ``--mkdir, -d`` directory          | Mark output directory, not uploaded as input                  |
 +------------------------------------+---------------------------------------------------------------+
 | ``--no-defaults``                  | Ignore all container specific output filters. (.cincanignore) |
++------------------------------------+---------------------------------------------------------------+
+| ``--no-implicit-output, -M``       | No implicit output, only download the marked output dirs      |
++------------------------------------+---------------------------------------------------------------+
+| ``--explicit-output, -e`` file     | Give downloaded result file or directory explicitly           |
 +------------------------------------+---------------------------------------------------------------+
 |                                    | Similar to ``docker run``                                     |
 +------------------------------------+---------------------------------------------------------------+

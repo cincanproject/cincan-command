@@ -90,6 +90,8 @@ class ToolImage(CommandRunner):
         self.input_filters: Optional[List[FileMatcher]] = None
         self.output_tar: Optional[str] = None  # use '-' for stdout
         self.output_dirs: List[str] = []  # output directories to create and download (filled with troves of data)
+        self.implicit_output: bool = True  # implicitly detect output files from working directory?
+        self.explicit_output: List[str] = []  # explicitly give the download files/dirs
         self.upload_stats: Dict[str, List] = {}  # upload file stats
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
@@ -323,7 +325,16 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                log.out_files.extend(tar_tool.download_files(self.output_filters, self.no_defaults))
+                if self.explicit_output:
+                    # just use the explicitly given output
+                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                                       file_paths=self.explicit_output, implicit_output=False)
+                else:
+                    # try to implicitly resolve files
+                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                                       file_paths=self.output_dirs,
+                                                       implicit_output=self.implicit_output)
+                log.out_files.extend(dn_files)
         finally:
             self.logger.debug("killing the container")
             container.kill()
@@ -383,6 +394,10 @@ def image_default_args(sub_parser):
     sub_parser.add_argument('--no-defaults', action='store_true',
                             help='Ignore all container specific output filters. '
                                  '(Defined inside container in .cincanignore file)')
+    sub_parser.add_argument('-M', '--no-implicit-output', action='store_true',
+                            help='No implicit output file detection, use the directories by --mkdir')
+    sub_parser.add_argument('-e', '--explicit-output', action='append', dest='explicit_output', nargs='?',
+                            help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
 
@@ -474,6 +489,8 @@ def main():
         tool.input_tar = args.input_tar if args.input_tar else None
         tool.output_tar = args.output_tar if args.output_tar else None
         tool.output_dirs = args.output_dir or []
+        tool.implicit_output = not args.no_implicit_output
+        tool.explicit_output = args.explicit_output
         tool.input_filters = FileMatcher.parse(args.in_filter) if args.in_filter is not None else None
         tool.output_filters = FileMatcher.parse(args.out_filter) if args.out_filter is not None else None
         tool.no_defaults = args.no_defaults if args.no_defaults else False
