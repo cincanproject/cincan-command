@@ -17,6 +17,7 @@ from cincan.configuration import Configuration
 from copy import deepcopy
 
 TEST_IMAGE = "quay.io/cincan/test:dev"
+TEST_IMAGE_NAME_ONLY = "test"
 TEST_IMAGE_NAME = TEST_IMAGE.rsplit(":", 1)[0]
 TEST_IMAGE_TAG = TEST_IMAGE.rsplit(":", 1)[1]
 DEFAULT_STABLE_TAG = Configuration().default_stable_tag
@@ -58,7 +59,7 @@ def test_image_version_up_to_date(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
             mock_ver_id.assert_called()
-            mock_list.assert_called_with(TEST_IMAGE_NAME, only_updates=False)
+            mock_list.assert_called_with(TEST_IMAGE_NAME_ONLY, only_updates=False)
     pull_msgs = [
         "Your tool is up-to-date with remote. Current version: 1.0"
     ]
@@ -75,7 +76,7 @@ def test_image_version_no_info(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
             mock_ver_id.assert_called()
-            mock_list.assert_called_with(TEST_IMAGE_NAME, only_updates=False)
+            mock_list.assert_called_with(TEST_IMAGE_NAME_ONLY, only_updates=False)
     pull_msgs = [
         f"No version information available for {TEST_IMAGE_NAME}\n"
     ]
