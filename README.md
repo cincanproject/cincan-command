@@ -17,7 +17,7 @@ Complete documentation is available at [CinCan Documentation](https://cincan.git
 
 ## Supported platforms
 
-The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows, `cincan` **does not work**, unfortunately.
+The `cincan` command should run on all fairly modern Linux distributions. Partial support for macOS is available - tested to work with macOS Catalina. On Windows, `cincan` **does not work**, unfortunately, unless used with Windows Subsystem for Linux 2 (WSL2). 
 
 ## Installation
 
@@ -32,6 +32,13 @@ You can verify that the installation works by running:
     % cincan list
 
 If all goes well, you should get a list of the [latest stable tools](https://gitlab.com/CinCan/tools) dockerized in the CinCan project. The first time running this may take a while as it will fetch information about the tools and cache it locally.
+
+Tool images are currently hosted (mirrored) in:
+
+ * [Docker Hub](https://hub.docker.com/u/cincan)
+ * [GitHub Container Registry](https://github.com/orgs/cincanproject/packages)
+ * [Quay Container Registry](https://quay.io/organization/cincan/)
+
 
 Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
 
