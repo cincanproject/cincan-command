@@ -116,6 +116,7 @@ def test_batch_option_pull(caplog):
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
     tool = ToolImage(image=f"cincan/test:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=False)
-    msgs = [f"No version information available for cincan/test\n"]
+    msgs = [f"Version information is not fully supported when using tools from Docker Hub. We are migrating away due to rate limits.",
+             "You can use images from current default registry Quay for example with command 'cincan run quay.io/cincan/test'\n"]
     logs = [l.message for l in caplog.records]
-    assert logs[-1:] == msgs
+    assert logs[-2:] == msgs
