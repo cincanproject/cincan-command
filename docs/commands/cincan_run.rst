@@ -181,6 +181,24 @@ For example, the following should write file ``output.tar``
 
 |
 
+Additional performance optimization
+===================================
+
+Sometimes the containerized tool may run slow because
+a lot of files gets downloaded from the container.
+This may happen even when you filter the unnecessary files out,
+as the ``cincan`` command may still download them before they
+are discarded.
+
+If this is suspected, you can try a couple of things:
+
+1. Use option ``--no-implicit-output`` with ``--mkdir``. This causes only the given output directories to be downloaded from the container.
+
+2. Use option ``--explicit-output`` to explicilty list all files and/or directories which are downloaded from the container.
+
+
+|
+
 ***************************************
 Running a tool with interactive support
 ***************************************
