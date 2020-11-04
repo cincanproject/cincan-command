@@ -1,9 +1,11 @@
+from os.path import basename
 import asyncio
 import logging
 from typing import List
+from urllib.parse import urlparse
 from docker.models.images import Image
 from cincan.configuration import Configuration
-from cincanregistry import ToolRegistry
+from cincanregistry import ToolRegistry, Remotes
 
 
 class VersionHandler:
@@ -32,10 +34,11 @@ class VersionHandler:
         Get version status of image from remote and origin,
         including local current version
         """
-        self.current_version = self.registry.get_version_by_image_id(self.image.id)
+        self.current_version = self.registry.local_registry.get_version_by_image_id(self.image.id)
         loop = asyncio.get_event_loop()
         try:
-            version_info = loop.run_until_complete(self.registry.list_versions(self.tool_name, only_updates=False))
+            version_info = loop.run_until_complete(
+                self.registry.list_versions(basename(self.tool_name), only_updates=False))
         except FileNotFoundError as e:
             # FileNotFoundError is raised if origin check is not implemented
             self.logger.debug(f"Version check failed for {self.tool_name}: {e}")
@@ -64,9 +67,35 @@ class VersionHandler:
         """
         Compare version information, log details
         """
-        if not self.tool_name.startswith('cincan/'):
-            self.logger.debug("Version checking enabled only for 'cincan' tools.")
-            return
+
+        # Warn about rate limits when using CinCan tools from Docker Hub (is optional registry)
+        if self.registry.default_remote == Remotes.DOCKERHUB:
+            # Default prefix for dockerhub: cincan
+            if not self.tool_name.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+                self.logger.debug("Version checking enabled only for 'cincan' tools, or when used from the configured"
+                                  f"default registry. Current: {str(self.registry.default_remote)}. Image names"
+                                  f"which starts with 'cincan/' are pointing to Docker Hub.")
+                return
+            else:
+                self.logger.warning(f"WARNING: Rate limits will be used, when using Docker Hub. Use with caution! ")
+                self.logger.warning(
+                    f"Usage will be increased with the amount of tags tool have. Change default registry "
+                    f"into {str(list(Remotes)[0])} by modifying file '{self.registry.config.file}'")
+        else:
+            registry_name = urlparse(self.registry.remote_registry.registry_root).netloc
+            if not self.tool_name.startswith(f'{registry_name}/{self.registry.remote_registry.cincan_namespace}/'):
+                if self.tool_name.startswith('cincan/'):
+                    tool_basename = basename(self.tool_name)
+                    self.logger.warning("Version information is not fully supported when using tools "
+                                        "from Docker Hub. We are migrating away due to rate limits.")
+                    self.logger.warning(f"You can use images from current default registry {str(list(Remotes)[0])}"
+                                        f" for example with command 'cincan run {registry_name}"
+                                        f"/{self.registry.remote_registry.cincan_namespace}/{tool_basename}'\n")
+                    return
+                else:
+                    self.logger.debug("Version information disabled for non-cincan tools.")
+                    return
+
         self._get_version_information()
         if self.data_available:
             if self.current_version != self.latest_local:
