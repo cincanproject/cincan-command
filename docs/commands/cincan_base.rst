@@ -12,7 +12,7 @@
 +==================================+==================================================================+
 | ``--help, -h``                   | Show help text.                                                  |
 +----------------------------------+------------------------------------------------------------------+
-| ``-l``                           | Set logging level. Choose from DEBUG,INFO,WARNING,ERROR,CRITICAL |
+| ``-l`` level                     | Set logging level. Choose from DEBUG,INFO,WARNING,ERROR,CRITICAL |
 +----------------------------------+------------------------------------------------------------------+
 | ``--batch``                      | Use with automation. Disables some properties meant for tty      |
 |                                  | device(s). Such as animations and version prints.                |
