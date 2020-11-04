@@ -37,7 +37,8 @@ class VersionHandler:
         self.current_version = self.registry.local_registry.get_version_by_image_id(self.image.id)
         loop = asyncio.get_event_loop()
         try:
-            version_info = loop.run_until_complete(self.registry.list_versions(self.tool_name, only_updates=False))
+            version_info = loop.run_until_complete(
+                self.registry.list_versions(basename(self.tool_name), only_updates=False))
         except FileNotFoundError as e:
             # FileNotFoundError is raised if origin check is not implemented
             self.logger.debug(f"Version check failed for {self.tool_name}: {e}")
