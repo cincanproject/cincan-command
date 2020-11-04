@@ -165,7 +165,7 @@ class TarTool:
         return file_lines
 
     def download_files(self, filters: List[FileMatcher] = None, no_defaults: bool = False,
-                       file_paths: List[str] = None) -> List[FileLog]:
+                       file_paths: List[str] = None, implicit_output=True) -> List[FileLog]:
         """Download modified files, filtered as required"""
         # check all modified (includes the ones we uploaded)
         candidates = sorted(
@@ -186,22 +186,34 @@ class TarTool:
             files_to_do = set(candidates)
             out_files = []
 
-            if self.work_dir != '/':
+            if implicit_output and self.work_dir != '/':
                 # container has non-root working directory, get it at once!
+                self.logger.debug("%d files to download, looking from %s...", len(files_to_do), self.work_dir)
                 log = self.__download_file_set(self.work_dir, files_to_do, write_to=explicit_file)
                 out_files.extend(log)
-            else:
-                # container has / working directory, get possible result directories one-by-one
-                for fp in file_paths or []:
-                    fp_in_cont = (pathlib.Path(self.work_dir) / fp).as_posix()
-                    log = self.__download_file_set(fp_in_cont, files_to_do, write_to=explicit_file)
+
+            # explicit result directories
+            for fp in file_paths or []:
+                if not files_to_do:
+                    continue
+                fp_in_cont = (pathlib.Path(self.work_dir) / fp).as_posix()
+                self.logger.debug("%d files to download, looking from %s...", len(files_to_do), fp_in_cont)
+                log = self.__download_file_set(fp_in_cont, files_to_do, write_to=explicit_file)
+                out_files.extend(log)
+
+            if implicit_output and files_to_do:
+                # go for each missing file individually
+                self.logger.debug("%d files to download, fetching each individually", len(files_to_do))
+                files_to_load = sorted(files_to_do)
+                for f in files_to_load:
+                    # separately download and possibly copy remaining result files
+                    log = self.__download_file_set(f, files_to_do, write_to=explicit_file)
                     out_files.extend(log)
 
-            files_to_load = sorted(files_to_do)
-            for f in files_to_load:
-                # separately download and possibly copy remaining result files
-                log = self.__download_file_set(f, files_to_do, write_to=explicit_file)
-                out_files.extend(log)
+            if files_to_do:
+                self.logger.debug("%d files in diff not downloaded:", len(files_to_do))
+                for f in sorted(files_to_do):
+                    self.logger.debug("  %s", f)
             return out_files
         finally:
             explicit_file and explicit_file.close()
