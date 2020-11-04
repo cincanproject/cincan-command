@@ -8,7 +8,7 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 ### Added
 
  - CI tests Python versions 3.6, 3.7, 3.8 and 3.9 separately
- - New run option `--script` to remove functionality meant for tty devices.
+ - New run option `--batch` to remove functionality meant for tty devices.
 
 ### Changed
 
