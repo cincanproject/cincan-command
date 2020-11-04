@@ -155,23 +155,6 @@ For example, consider `the previous case <avoid_uploading_content_from_output_di
 
 |
 
-Filtering by `.cincanignore` - file stored inside container
-===========================================================
-
-Downloadable files can be filtered by the ``.cincanignore`` file as well, which should be stored inside a tool's container in the build phase. All files listed in the ``.cincanignore`` file are not downloaded from the container. Paths are relative to the working directory of the container.
-
-See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
-
-.. literalinclude:: ../../samples/.cincanignore
-   :caption: samples/.cincanignore
-
-
-This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
-
-**Tip**: Option ``--no-defaults`` can be passed to not use this file.
-
-|
-
 Providing tool input as a tar file
 ==================================
 
@@ -223,6 +206,26 @@ We are using *cincan/radare2* as an example of a tool with an interactive mode h
    [0x00005b10]>
 
 You should see an interactive prompt like above where *cincan/radare2* has opened the ``/bin/ls`` file. Start the analysis by typing ``aaa`` and pressing enter. Type ``exit`` or press ``ctrl + d`` to quit the interactive prompt.
+
+|
+
+*****************************************
+Filtering output files by `.cincanignore`
+*****************************************
+
+You can alter how output files are handled by adding specially named file
+``.cincanignore`` into a container on built-time.
+All files listed in the file are not downloaded from the container. Paths are relative to the working directory of the container.
+
+See `example file <https://gitlab.com/CinCan/cincan-command/-/blob/master/samples/.cincanignore>`_ from path ``samples/.cincanignore``:
+
+.. literalinclude:: ../../samples/.cincanignore
+   :caption: samples/.cincanignore
+
+
+This works for user-supplied filters as well. Ignore file supports ``#`` char as a comment character.
+
+**Tip**: Option ``--no-defaults`` can be passed to not use this file.
 
 |
 
