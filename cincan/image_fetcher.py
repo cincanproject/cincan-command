@@ -70,7 +70,7 @@ class ImageFetcher:
         try:
             if isinstance(self.low_level_client, APIClient) \
                     and sys.stdin.isatty() and sys.stdout.isatty() \
-                    and self.logger.getEffectiveLevel() < 30 and not self.script:
+                    and self.logger.getEffectiveLevel() < logging.WARNING and not self.script:
                 self.__pull_image_with_progress(repository, tag)
             else:
                 # No fancy progress bar

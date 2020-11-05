@@ -88,7 +88,7 @@ class ToolImage(CommandRunner):
                                               self.name.rsplit(":", 1)[0], self.logger)
         if self.config.show_updates:
             # Only check versions if not defined to run inside script or logging level is low
-            if not self.batch and self.logger.getEffectiveLevel() < 30:
+            if not self.batch and self.logger.getEffectiveLevel() < logging.WARNING:
                 self.version_handler.compare_versions()
         self.input_tar: Optional[str] = None  # use '-' for stdin
         self.input_filters: Optional[List[FileMatcher]] = None
