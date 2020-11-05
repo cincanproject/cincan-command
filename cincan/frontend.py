@@ -17,7 +17,8 @@ import pkg_resources
 import docker
 import docker.errors
 from requests.exceptions import ConnectionError
-from cincanregistry import list_handler, create_list_argparse, ToolRegistry
+from urllib.parse import urlparse
+from cincanregistry import list_handler, create_list_argparse, ToolRegistry, Remotes
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandRunner, quote_args
 from cincan.configuration import Configuration
@@ -53,7 +54,10 @@ class ToolImage(CommandRunner):
                  rm: bool = True,
                  batch: bool = False):
         self.config = Configuration()
+        self.registry = ToolRegistry()
+        # Init logger, check naming convention of "name" and "image"
         self.logger = logging.getLogger(name)
+        name, image = self.namespace_conversion(name, image)
         self.client = docker.from_env()
         try:
             # Attempt to configure automatically
@@ -65,7 +69,6 @@ class ToolImage(CommandRunner):
             self.low_level_client = None
         if not self._is_docker_running():
             sys.exit(1)
-        self.registry = ToolRegistry()
         self.loaded_image = False  # did we load the image?
         self.batch = batch  # Use batch to disable some properties when running inside script or other automation
         if path is not None:
@@ -79,7 +82,7 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            fetcher = ImageFetcher(self.config, self.client, self.low_level_client, self.logger, self.batch)
+            fetcher = ImageFetcher(self.config, self.registry, self.client, self.low_level_client, self.logger, self.batch)
             self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
@@ -114,6 +117,39 @@ class ToolImage(CommandRunner):
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
         self.buffer_output = False
+
+    def namespace_conversion(self, name: str, image: str) -> Tuple[str, str]:
+        """
+        Method for migrating images from Docker Hub into default (Quay Container Registry at the moment)
+        Converts Docker Hub namespace into Quay Namespace and notifies user.
+        Change the name of the logger.
+        Needed for consistent version information and to avoid Docker Hub rate limits
+        """
+        if self.registry.default_remote == Remotes.DOCKERHUB:
+            # Default prefix for dockerhub: cincan
+            # DockerHub set as default - no need for conversion
+            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+                self.logger.debug("Not cincan tool - do nothing.")
+            else:
+                self.logger.warning(f"Using Docker Hub for image and version source. Rate limits will be applied.")
+        else:
+            # Default is other than Docker Hub
+            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+                tool_basename = os.path.basename(image)
+                if image.startswith('cincan/'):
+                    # Convert Docker Hub cincan image to point to default registry
+                    image = f"{self.registry.remote_registry.full_prefix}/{tool_basename}"
+                    if name and name.startswith('cincan/'):
+                        name = f"{self.registry.remote_registry.full_prefix}/{tool_basename}"
+                        self.logger = logging.getLogger(name)
+                    self.logger.warning(f"We are migrating away from Docker Hub - using "
+                                        f"{self.registry.remote_registry.registry_name} as default."
+                                        f" Avoid this notification by using CinCan images from there,"
+                                        f" for example 'cincan run "
+                                        f"{self.registry.remote_registry.full_prefix}/{tool_basename}'")
+                else:
+                    self.logger.debug("Not cincan tool - do nothing.")
+        return name, image
 
     def _is_docker_running(self):
         """Check if Docker is working properly"""
