@@ -135,8 +135,8 @@ class ToolImage(CommandRunner):
         else:
             # Default is other than Docker Hub
             if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
-                tool_basename = os.path.basename(image)
                 if image.startswith('cincan/'):
+                    tool_basename = os.path.basename(image)
                     # Convert Docker Hub cincan image to point to default registry
                     image = f"{self.registry.remote_registry.full_prefix}/{tool_basename}"
                     if name and name.startswith('cincan/'):
@@ -147,8 +147,8 @@ class ToolImage(CommandRunner):
                                         f" Avoid this notification by using CinCan images from there,"
                                         f" for example 'cincan run "
                                         f"{self.registry.remote_registry.full_prefix}/{tool_basename}'")
-                else:
-                    self.logger.debug("Not cincan tool - do nothing.")
+            else:
+                self.logger.debug("Not cincan tool - do nothing.")
         return name, image
 
     def _is_docker_running(self):
