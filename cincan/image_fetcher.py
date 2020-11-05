@@ -13,12 +13,12 @@ class ImageFetcher:
     """Class for getting the correct tool image, possibly pulling it from remote"""
 
     def __init__(self, config: Configuration, client: DockerClient, low_level_client: APIClient,
-                 logger: logging.Logger, script: bool):
+                 logger: logging.Logger, batch: bool):
         self.config = config
         self.logger = logger
         self.client = client
         self.low_level_client = low_level_client
-        self.script = script  # Are we running in script?
+        self.batch = batch  # Are we running in batch?
 
     def get_image(self, image: str, pull: bool = False) -> Image:
 
@@ -70,7 +70,7 @@ class ImageFetcher:
         try:
             if isinstance(self.low_level_client, APIClient) \
                     and sys.stdin.isatty() and sys.stdout.isatty() \
-                    and self.logger.getEffectiveLevel() < logging.WARNING and not self.script:
+                    and self.logger.getEffectiveLevel() < logging.WARNING and not self.batch:
                 self.__pull_image_with_progress(repository, tag)
             else:
                 # No fancy progress bar
