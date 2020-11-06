@@ -5,7 +5,7 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.11]
 
-2020-06-11
+2020-11-06
 
 ### Added
 
