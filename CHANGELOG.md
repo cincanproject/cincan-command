@@ -13,6 +13,7 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 ### Changed
 
  - Less information printed about version checks
+ - Uses quay.io as default registry e.g. cincan/ilspy converted to quay.io/cincan/ilspy namespace. Remove old cache from path ~/.cincan/ !
 
 ### Fixed
 
