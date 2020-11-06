@@ -39,6 +39,7 @@ Tool images are currently hosted (mirrored) in:
  * [GitHub Container Registry](https://github.com/orgs/cincanproject/packages)
  * [Quay Container Registry](https://quay.io/organization/cincan/)
 
+Currently, **default registry is quay.io**, use full names to run CinCan images from certain registry - otherwise quay.io is used by default. For example name `cincan/tshark` will be converted into `quay.io/cincan/tshark`. This only applies to CinCan images. We are migrating away from Docker Hub due to newly introduced rate limits.
 
 Use the [installation instructions in the CinCan Documentation](https://cincan.gitlab.io/cincan-command/installation.html) for additional help.
 
