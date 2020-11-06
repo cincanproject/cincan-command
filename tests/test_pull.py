@@ -4,6 +4,7 @@ from unittest import mock
 from cincan.frontend import ToolImage
 from cincan.configuration import Configuration
 
+DEFAULT_IMAGE = "quay.io/cincan/test"
 DEFAULT_STABLE_TAG = Configuration().default_stable_tag
 DEFAULT_DEV_TAG = Configuration().default_dev_tag
 
@@ -11,7 +12,7 @@ DEFAULT_DEV_TAG = Configuration().default_dev_tag
 def test_image_pull_no_default_tag(caplog):
     caplog.set_level(logging.INFO)
     # cincan/test image has only 'dev' tag
-    tool = ToolImage(image="cincan/test", pull=True, rm=False)
+    tool = ToolImage(image=DEFAULT_IMAGE, pull=True, rm=False)
     logs = [l.message for l in caplog.records]
     pull_msgs = [
         f"pulling image with tag '{DEFAULT_STABLE_TAG}'...",
@@ -51,7 +52,7 @@ def test_pull_tag_not_found(caplog):
     caplog.set_level(logging.INFO)
     # Pulling non-existing tag from cincan tool
     with pytest.raises(SystemExit) as ex:
-        tool = ToolImage(image="cincan/test:not_found", pull=True, rm=False)
+        tool = ToolImage(image=f"{DEFAULT_IMAGE}:not_found", pull=True, rm=False)
     assert ex.type == SystemExit
     assert ex.value.code == 1
     pull_msgs = [
@@ -94,12 +95,34 @@ def test_pull_no_default_tags_no_credentials(caplog):
     with mock.patch("builtins.open", mock_open):
         # Pulling 'cincan' image without default development or stable tag
         with pytest.raises(SystemExit) as ex:
-            tool = ToolImage(image="cincan/test_not_found", pull=True, rm=False)
+            tool = ToolImage(image="quay.io/cincan/test_not_found", pull=True, rm=False)
     assert ex.type == SystemExit
     assert ex.value.code == 1
+    pull_msg = '500 Server Error: Internal Server Error ' \
+               '("unauthorized: access to the requested resource is not authorized")'
+    logs = [l.message for l in caplog.records]
+    assert pull_msg in logs
+
+
+def test_batch_option_pull(caplog):
+    """Test --batch option to disable some properties (version check, pull-progress bar"""
+
+    caplog.set_level(logging.INFO)
+    tool = ToolImage(image=f"{DEFAULT_IMAGE}:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=True)
     pull_msgs = [
-        f"pulling image with tag '{DEFAULT_STABLE_TAG}'...",
-        f"Repository not found or no access into it. Is it typed correctly?"
+        f"pulling image with tag '{DEFAULT_DEV_TAG}'...",
     ]
     logs = [l.message for l in caplog.records]
     assert logs == pull_msgs
+    tool = ToolImage(image=f"cincan/test:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=False)
+    msg = f"No version information available for {DEFAULT_IMAGE}\n"
+    logs = [l.message for l in caplog.records]
+    assert msg in logs
+
+
+def test_pull_cincan_tool_from_dockerhub(caplog):
+    """Pull cincan image from Docker Hub -> Redirect into Quay expected"""
+
+    caplog.set_level(logging.INFO)
+    tool = ToolImage(image=f"cincan/test:{DEFAULT_DEV_TAG}", pull=True, rm=False, batch=True)
+    assert f"{DEFAULT_IMAGE}:{DEFAULT_DEV_TAG}" in tool.image.tags

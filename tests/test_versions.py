@@ -1,6 +1,7 @@
 import logging
 import pytest
 import asyncio
+
 try:
     # AsyncMock implemented only in Python 3.8+
     from unittest.mock import AsyncMock
@@ -61,7 +62,11 @@ def test_image_version_up_to_date(caplog):
             mock_ver_id.assert_called()
             mock_list.assert_called_with(TEST_IMAGE_NAME_ONLY, only_updates=False)
     pull_msgs = [
-        "Your tool is up-to-date with remote. Current version: 1.0"
+        "Version information - [1m"
+        "Current:[0m [92m1.0[0m [1m"
+        "Latest Local:[0m [92m1.0[0m [1m"
+        "Latest Remote:[0m [92m1.0[0m [1m"
+        "Origin:[0m 1.0"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
@@ -94,9 +99,11 @@ def test_image_version_local_old_tag(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
-        "You are not using latest locally available version: (0.9 vs 1.0) Latest is "
-        f"available with tags '{TEST_IMAGE_NAME}:{DEFAULT_STABLE_TAG}'",
-        "Latest local tool is up-to-date with remote: version 1.0"
+        "Version information - [1m"
+        "Current:[0m [93m0.9[0m [1m"
+        "Latest Local:[0m [92m1.0[0m [1m"
+        "Latest Remote:[0m [92m1.0[0m [1m"
+        "Origin:[0m 1.0", f"Latest local is available with tags \'{TEST_IMAGE_NAME}:{DEFAULT_STABLE_TAG}\'"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
@@ -115,8 +122,11 @@ def test_image_version_local_outdated(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
-        "Update available in remote: ('1.0' vs. '1.1')"
-        f"\nUse 'docker pull {TEST_IMAGE_NAME}:{DEFAULT_STABLE_TAG}' to update."
+        "Version information - [1m"
+        "Current:[0m [93m1.0[0m [1m"
+        "Latest Local:[0m [31m1.0[0m [1m"
+        "Latest Remote:[0m [92m1.1[0m [1m"
+        "Origin:[0m 1.0", f"Update available in remote: ('1.0' vs. '1.1') Use 'docker pull {TEST_IMAGE_NAME}:{DEFAULT_STABLE_TAG}' to update."
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
@@ -135,8 +145,11 @@ def test_image_version_remote_outdated(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
-        "Your tool is up-to-date with remote. Current version: 1.0",
-        "Remote is not up-to-date with origin (GitHub): '1.0' vs. '1.1'"
+        "Version information - [1m"
+        "Current:[0m [92m1.0[0m [1m"
+        "Latest Local:[0m [92m1.0[0m [1m"
+        "Latest Remote:[0m [93m1.0[0m [1m"
+        "Origin:[0m 1.1"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs
@@ -156,7 +169,11 @@ def test_image_version_new_dev_version(caplog):
         with mock.patch("cincanregistry.ToolRegistry.list_versions", side_effect=async_mock) as mock_list:
             tool = ToolImage(image=TEST_IMAGE, pull=True, rm=False)
     pull_msgs = [
-        f"Newer development version available in remote: '1.0' vs. '1.1' with tags 'dev'"
+        "Version information - [1m"
+        "Current:[0m [93m1.0[0m [1m"
+        "Latest Local:[0m [31m1.0[0m [1m"
+        "Latest Remote:[0m [92m1.1[0m [1m"
+        "Origin:[0m 1.0", f"Newer development version available in remote: '1.0' vs. '1.1' with tags 'dev'"
     ]
     logs = [l.message for l in caplog.records]
     assert logs[1:] == pull_msgs

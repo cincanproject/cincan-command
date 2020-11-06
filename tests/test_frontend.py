@@ -172,3 +172,23 @@ def test_interactive_mode():
     outs, errs = process.communicate(b'echo Hello, World!\n')
     assert outs == b"Hello, World!\n"
     assert errs == b""
+
+
+def test_implicit_namespace_conversion(tool):
+    """
+    Test naming migration for Docker Hub into Quay
+    """
+    name, image = "cincan/test", "cincan/test"
+    name, image = tool.namespace_conversion(name, image)
+    assert name == "quay.io/cincan/test"
+    assert image == "quay.io/cincan/test"
+
+    name, image = "busybox", "busybox"
+    name, image = tool.namespace_conversion(name, image)
+    assert name == "busybox"
+    assert image == "busybox"
+
+    name, image = "busybox", "cincan/busybox"
+    name, image = tool.namespace_conversion(name, image)
+    assert name == "busybox"
+    assert image == "quay.io/cincan/busybox"

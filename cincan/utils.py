@@ -52,3 +52,25 @@ class NavigateCursor:
     def clear_line(cls):
         """Clear current line"""
         sys.stdout.write("\33[2K")
+
+
+class ANSIEscapes:
+
+    BLACK = "\033[30m"
+    PURPLE = "\033[95m"
+    CYAN = "\033[96m"
+    DARKCYAN = "\033[36m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    GREEN_BACKGROUND = "\033[102m"
+    YELLOW = "\033[93m"
+    GRAY = "\033[90m"
+    GRAY_BACKGROUND = "\033[100m"
+    RED = "\033[31m"
+    RED_BACKGROUND = "\033[41m"
+    BOLD_RED = "\033[1m\033[31m"
+    BOLD = "\033[1m"
+    BOLD_YELLOW = "\033[1m\033[33m"
+    UNDERLINE = "\033[4m"
+    WHITE_BACKGROUND = "\033[47m"
+    END = "\033[0m"

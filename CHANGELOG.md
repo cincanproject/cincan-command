@@ -5,9 +5,17 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.11]
 
+2020-11-06
+
 ### Added
 
  - CI tests Python versions 3.6, 3.7, 3.8 and 3.9 separately
+ - New run option `--batch` to remove functionality meant for tty devices.
+
+### Changed
+
+ - Less information printed about version checks
+ - Uses quay.io as default registry e.g. cincan/ilspy converted to quay.io/cincan/ilspy namespace. Remove old cache from path ~/.cincan/ !
 
 ### Fixed
 
