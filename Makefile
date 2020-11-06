@@ -16,7 +16,11 @@ VERSION_LOCAL = VERSION
 
 VERSION_IN_PYPI = build/version-in-pip
 
-TESTENV_DIR="_testenv"
+TESTENV_DIR = "_testenv"
+
+TWINE_USERNAME = ${TWINE_USERNAME} 
+
+TWINE_PASSWORD = ${TWINE_PASSWORD}
 
 build: check-version tests dist
 
