@@ -142,11 +142,8 @@ class ToolImage(CommandRunner):
                     if name and name.startswith('cincan/'):
                         name = f"{self.registry.remote_registry.full_prefix}/{tool_basename}"
                         self.logger = logging.getLogger(name)
-                    self.logger.warning(f"We are migrating away from Docker Hub - using "
-                                        f"{self.registry.remote_registry.registry_name} as default."
-                                        f" Avoid this notification by using CinCan images from there,"
-                                        f" for example 'cincan run "
-                                        f"{self.registry.remote_registry.full_prefix}/{tool_basename}'")
+                    self.logger.debug(f"We are migrating away from Docker Hub - using "
+                                      f"{self.registry.remote_registry.registry_name} as default.")
             else:
                 self.logger.debug("Not cincan tool - do nothing.")
         return name, image
