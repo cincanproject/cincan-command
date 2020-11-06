@@ -5,6 +5,8 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.11]
 
+2020-06-11
+
 ### Added
 
  - CI tests Python versions 3.6, 3.7, 3.8 and 3.9 separately
