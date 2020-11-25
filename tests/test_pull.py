@@ -98,10 +98,9 @@ def test_pull_no_default_tags_no_credentials(caplog):
             tool = ToolImage(image="quay.io/cincan/test_not_found", pull=True, rm=False)
     assert ex.type == SystemExit
     assert ex.value.code == 1
-    pull_msg = '500 Server Error: Internal Server Error ' \
-               '("unauthorized: access to the requested resource is not authorized")'
+    pull_msg = 'Internal Server Error ("unauthorized: access to the requested resource is not authorized")'
     logs = [l.message for l in caplog.records]
-    assert pull_msg in logs
+    assert pull_msg in logs[1]
 
 
 def test_batch_option_pull(caplog):
