@@ -11,6 +11,7 @@ import struct
 import sys
 import tty
 import termios
+from hashlib import sha256
 from datetime import datetime
 from typing import List, Set, Dict, Optional, Tuple, IO
 import pkg_resources
@@ -82,7 +83,8 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            fetcher = ImageFetcher(self.config, self.registry, self.client, self.low_level_client, self.logger, self.batch)
+            fetcher = ImageFetcher(self.config, self.registry, self.client, self.low_level_client, self.logger,
+                                   self.batch)
             self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
@@ -168,7 +170,7 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
+    def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog], command: List[str]):
         """Create a container from the image here"""
 
         if self.network_mode:
@@ -182,13 +184,8 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
-        # override entry point to just keep the container running
-        container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
-                                                  stdin_open=True, tty=True, network_mode=self.network_mode,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
-                                                  runtime=self.runtime)
-        container.start()
-
+        # Initial container for fileupload
+        container = self.client.containers.create(self.image)
         # kludge, lets show work directory in tests
         work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
@@ -198,11 +195,46 @@ class ToolImage(CommandRunner):
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
+        # Files have been uploaded, create commit to make comparison of changes easier later on
+        files_digest = sha256(json.dumps([i.to_json() for i in input_files]).encode('utf-8')).hexdigest()
+        # print(self.image.labels)
+        # print(self.image.tags)
+        image_with_files = f"{self.image.tags[0]}_{files_digest}".lower()
+        # print(image_with_files)
+        container.commit(image_with_files)
+        container.remove()
+        container = self.client.containers.create(image_with_files, command=command,
+                                                  network_mode=self.network_mode,
+                                                  detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
+                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                  runtime=self.runtime)
         return container
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
         buf = bytearray()
+
+        # Nothing special when TTY is enabled
+        if self.is_tty:
+            # There is no EOF in all cases, must read some amount of bytes at time
+            r = c_socket.read(1024 * 1024)
+            if not r:
+                return 0, bytes([])  # EOF
+            buf.extend(r)
+            return 1, buf
+
+        # Other format is specified in here:
+            # https://docs.docker.com/engine/api/v1.41/#operation/ContainerAttach
+        # Used when stdout and stderr are given separately. Includes describing header
+        # header := [8]byte{STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
+        # The simplest way to implement this protocol is the following:
+        #
+        # Read 8 bytes.
+        # Choose stdout or stderr depending on the first byte.
+        # Extract the frame size from the last four bytes.
+        # Read the extracted size and output it on the correct output.
+        # Goto 1.
+
         while len(buf) < 8:
             r = c_socket.read(8 - len(buf))
             if not r:
@@ -253,10 +285,12 @@ class ToolImage(CommandRunner):
             self.logger.debug(e)
             raise Exception("The input device is not a TTY. Did you pipe input when -it enabled?") from None
 
-        # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=self.read_stdin, tty=self.is_tty)
-        exec_id = exec['Id']
-        c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
+        # Attach into container to get stdout and stderr with socket. Enable stdin for stream if required
+        # container = self.client.containers.run(container_image, detach=True)
+        c_socket = container.attach_socket(
+            params={"logs": True, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
+        container.start()
+
         buffer_size = 1024 * 1024
 
         self.logger.debug("enter stdin/container io loop...")
@@ -321,9 +355,11 @@ class ToolImage(CommandRunner):
                 # Restore old terminal settings, regardless of what happened
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-        # inspect execution result
-        inspect = self.client.api.exec_inspect(exec_id)
-        log.exit_code = inspect.get('ExitCode', 0)
+        result = container.wait()
+        error_status = result.get("Error", "")
+        if error_status:
+            self.logger.warning(f"Container exited with error {error_status}")
+        log.exit_code = result.get('StatusCode', 0)
 
         # collect raw data
         if self.buffer_output:
@@ -354,7 +390,7 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container = self.__create_container(upload_files, in_files)
+        container = self.__create_container(upload_files, in_files, cmd_args)
         log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
@@ -373,8 +409,12 @@ class ToolImage(CommandRunner):
                                                        implicit_output=self.implicit_output)
                 log.out_files.extend(dn_files)
         finally:
-            self.logger.debug("killing the container")
-            container.kill()
+            self.logger.debug("removing the container")
+            try:
+                container.kill()
+            except docker.errors.APIError:
+                self.logger.debug("Container was not running anymore. Can't kill.")
+            container.remove()
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
                 self.logger.info(f"removing the docker image {self.get_id()}")
