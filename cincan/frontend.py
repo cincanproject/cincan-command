@@ -197,8 +197,6 @@ class ToolImage(CommandRunner):
 
         # Files have been uploaded, create commit to make comparison of changes easier later on
         files_digest = sha256(json.dumps([i.to_json() for i in input_files]).encode('utf-8')).hexdigest()
-        # print(self.image.labels)
-        # print(self.image.tags)
         image_with_files = f"{self.image.tags[0]}_{files_digest}".lower()
         # print(image_with_files)
         container.commit(image_with_files)
@@ -208,7 +206,8 @@ class ToolImage(CommandRunner):
                                                   detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
                                                   user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
                                                   runtime=self.runtime)
-        return container
+        #self.client.images.remove(image_with_files)
+        return container, image_with_files
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
@@ -221,6 +220,7 @@ class ToolImage(CommandRunner):
             if not r:
                 return 0, bytes([])  # EOF
             buf.extend(r)
+            # Mark it as stdout (1)
             return 1, buf
 
         # Other format is specified in here:
@@ -390,7 +390,7 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container = self.__create_container(upload_files, in_files, cmd_args)
+        container, ref_image = self.__create_container(upload_files, in_files, cmd_args)
         log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
@@ -415,6 +415,8 @@ class ToolImage(CommandRunner):
             except docker.errors.APIError:
                 self.logger.debug("Container was not running anymore. Can't kill.")
             container.remove()
+            # Remove generated image
+            self.client.images.remove(ref_image)
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
                 self.logger.info(f"removing the docker image {self.get_id()}")
