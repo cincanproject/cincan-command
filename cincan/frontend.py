@@ -30,6 +30,7 @@ from cincan.image_fetcher import ImageFetcher
 from docker.utils import kwargs_from_env
 from cincan.version_handler import VersionHandler
 
+BUFFER_SIZE = 1024 * 1024
 
 class ToolStream:
     """Handle stream to or from the container"""
@@ -202,7 +203,7 @@ class ToolImage(CommandRunner):
         # Nothing special when TTY is enabled
         if self.is_tty:
             # There is no EOF in all cases, must read some amount of bytes at time
-            r = c_socket.read(1024 * 1024)
+            r = c_socket.read(BUFFER_SIZE)
             if not r:
                 return 0, bytes([])  # EOF
             buf.extend(r)
@@ -277,7 +278,6 @@ class ToolImage(CommandRunner):
             params={"logs": True, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
         container.start()
 
-        buffer_size = 1024 * 1024
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [c_socket._sock]  # prefer socket to limit the amount of data in the container (?)
@@ -298,7 +298,7 @@ class ToolImage(CommandRunner):
 
                 for sel in select_in:
                     if sel == sys.stdin:
-                        s_data = os.read(0, buffer_size)  # fd 0 is stdin
+                        s_data = os.read(0, BUFFER_SIZE)  # fd 0 is stdin
                         if not s_data:
                             self.logger.debug(f"received eof from stdin")
                             active_streams.remove(sel)
