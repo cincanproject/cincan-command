@@ -59,7 +59,12 @@ class ToolImage(CommandRunner):
         # Init logger, check naming convention of "name" and "image"
         self.logger = logging.getLogger(name)
         name, image = self.namespace_conversion(name, image)
-        self.client = docker.from_env()
+        # Later versions of Docker API fetch version from server automatically
+        try:
+            self.client = docker.from_env()
+        except docker.errors.DockerException:
+            self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
+            sys.exit(1)
         try:
             # Attempt to configure automatically
             kwargs = kwargs_from_env()
@@ -68,8 +73,6 @@ class ToolImage(CommandRunner):
             self.logger.warning(
                 "Unable to configure low-level API automatically. Some properties disabled.")
             self.low_level_client = None
-        if not self._is_docker_running():
-            sys.exit(1)
         self.loaded_image = False  # did we load the image?
         self.batch = batch  # Use batch to disable some properties when running inside script or other automation
         if path is not None:
@@ -150,15 +153,6 @@ class ToolImage(CommandRunner):
                 self.logger.debug("Not cincan tool - do nothing.")
         return name, image
 
-    def _is_docker_running(self):
-        """Check if Docker is working properly"""
-        try:
-            self.client.ping()
-            return True
-        except ConnectionError:
-            self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
-            return False
-
     def get_tags(self) -> List[str]:
         """List image tags"""
         return self.image.tags
@@ -184,8 +178,12 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
-        # Initial container for fileupload
-        container = self.client.containers.create(self.image)
+        # Initial container with correct command and configuration
+        container = self.client.containers.create(self.image, command=command,
+                                                  network_mode=self.network_mode,
+                                                  detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
+                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                  runtime=self.runtime)
         # kludge, lets show work directory in tests
         work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
@@ -195,19 +193,7 @@ class ToolImage(CommandRunner):
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
-        # Files have been uploaded, create commit to make comparison of changes easier later on
-        files_digest = sha256(json.dumps([i.to_json() for i in input_files]).encode('utf-8')).hexdigest()
-        image_with_files = f"{self.image.tags[0]}_{files_digest}".lower()
-        # print(image_with_files)
-        container.commit(image_with_files)
-        container.remove()
-        container = self.client.containers.create(image_with_files, command=command,
-                                                  network_mode=self.network_mode,
-                                                  detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
-                                                  runtime=self.runtime)
-        #self.client.images.remove(image_with_files)
-        return container, image_with_files
+        return container
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
@@ -390,7 +376,7 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container, ref_image = self.__create_container(upload_files, in_files, cmd_args)
+        container = self.__create_container(upload_files, in_files, cmd_args)
         log = CommandLog([])
         try:
             log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
@@ -409,14 +395,12 @@ class ToolImage(CommandRunner):
                                                        implicit_output=self.implicit_output)
                 log.out_files.extend(dn_files)
         finally:
-            self.logger.debug("removing the container")
+            self.logger.debug("removing the container and generated image(s)")
             try:
                 container.kill()
             except docker.errors.APIError:
                 self.logger.debug("Container was not running anymore. Can't kill.")
             container.remove()
-            # Remove generated image
-            self.client.images.remove(ref_image)
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
                 self.logger.info(f"removing the docker image {self.get_id()}")
