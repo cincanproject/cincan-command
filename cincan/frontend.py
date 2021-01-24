@@ -276,8 +276,10 @@ class ToolImage(CommandRunner):
         # container = self.client.containers.run(container_image, detach=True)
         c_socket = container.attach_socket(
             params={"logs": True, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
-        container.start()
-
+        try:
+            container.start()
+        except docker.errors.APIError as e:
+            self.logger.error(f"Failed to execute command: {e}")
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [c_socket._sock]  # prefer socket to limit the amount of data in the container (?)
