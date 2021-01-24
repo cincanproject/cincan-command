@@ -346,7 +346,8 @@ class ToolImage(CommandRunner):
         result = container.wait()
         error_status = result.get("Error", "")
         if error_status:
-            self.logger.warning(f"Container exited with error {error_status}")
+            self.logger.error(f"Container exited with error {error_status}")
+
         log.exit_code = result.get('StatusCode', 0)
 
         # collect raw data
