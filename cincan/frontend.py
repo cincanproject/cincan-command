@@ -11,14 +11,11 @@ import struct
 import sys
 import tty
 import termios
-from hashlib import sha256
 from datetime import datetime
 from typing import List, Set, Dict, Optional, Tuple, IO
 import pkg_resources
 import docker
 import docker.errors
-from requests.exceptions import ConnectionError
-from urllib.parse import urlparse
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry, Remotes
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandRunner, quote_args
