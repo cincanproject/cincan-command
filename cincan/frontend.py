@@ -60,12 +60,14 @@ class ToolImage(CommandRunner):
         # Later versions of Docker API fetch version from server automatically
         try:
             self.client = docker.from_env()
+            # self.client = docker.DockerClient(base_url="0.0.0.0:2376")
         except docker.errors.DockerException:
             self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
             sys.exit(1)
         try:
             # Attempt to configure automatically
             kwargs = kwargs_from_env()
+            # self.low_level_client = docker.APIClient(base_url="0.0.0.0:2376", version="auto", **kwargs)
             self.low_level_client = docker.APIClient(version="auto", **kwargs)
         except:
             self.logger.warning(
@@ -173,9 +175,14 @@ class ToolImage(CommandRunner):
             provided = True
         for shell in self.config.default_shells:
             try:
+                # Must use labels to prune containers later, unable to use "remove" for "Created" status containers
                 container = self.client.containers.create(self.image)
                 _, stat = container.get_archive(shell)
+                # Currently need to loop through stream on Unix socket, otherwise next connection gets stuck
+                for i in _:
+                    pass
                 self.logger.debug(f"Shell found with info: {stat}")
+                container.remove(force=True)
             except docker.errors.NotFound:
                 if provided:
                     # First item in the list should be user supplied
