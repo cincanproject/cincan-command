@@ -15,7 +15,7 @@ def disable_tty_interactive(monkeypatch):
 @pytest.fixture(scope='function')
 def tool(request):
     # Do not remove automatically, will be used multiple times
-    tool = ToolImage(image='cincan/test:dev', rm=False)
+    tool = ToolImage(image='quay.io/cincan/test:dev', rm=False)
     yield tool
 
 
