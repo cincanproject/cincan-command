@@ -10,7 +10,7 @@ def test_run_get_string(tool):
     assert out == 'Hello\n'
 
     out = tool.run_get_string(['echxo', 'Hello'])
-    assert 'OCI runtime exec failed: exec failed:' in out
+    assert 'OCI runtime create failed' in out
 
 
 def test_magic_file_io(tool):
