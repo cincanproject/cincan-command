@@ -280,6 +280,11 @@ class ToolImage(CommandRunner):
             container.start()
         except docker.errors.APIError as e:
             self.logger.error(f"Failed to execute command: {e}")
+            result = container.wait()
+            log.exit_code = result.get('StatusCode', 0)
+            error_status = result.get("Error", "")
+            log.stderr = error_status.get("Message", "").encode("utf-8")
+            return log
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [c_socket._sock]  # prefer socket to limit the amount of data in the container (?)
