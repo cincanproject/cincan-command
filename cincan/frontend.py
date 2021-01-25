@@ -116,6 +116,9 @@ class ToolImage(CommandRunner):
         self.is_tty: bool = False
         self.read_stdin: bool = False
 
+        # Shell subcommand specific
+        self.shell: str = ""
+
         # more test-oriented attributes...
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
@@ -162,6 +165,28 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
+    def __detect_shell(self) -> str:
+
+        provided = False
+        if self.shell not in self.config.default_shells:
+            self.config.default_shells.insert(0, self.shell)
+            provided = True
+        for shell in self.config.default_shells:
+            try:
+                container = self.client.containers.create(self.image)
+                _, stat = container.get_archive(shell)
+                self.logger.debug(f"Shell found with info: {stat}")
+            except docker.errors.NotFound:
+                if provided:
+                    # First item in the list should be user supplied
+                    self.logger.warning(f"User supplied shell path not found. Attempting others instead.")
+                    provided = False
+                    continue
+                self.logger.debug(f"Shell {shell} not found from the container.")
+                continue
+            return shell
+        return ""
+
     def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog], command: List[str]):
         """Create a container from the image here"""
 
@@ -176,6 +201,16 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
+        # Opening shell into container with SHELL subcommand.
+        if self.shell:
+            self.entrypoint = self.__detect_shell()
+            if not self.entrypoint:
+                self.logger.error(
+                    "No viable shell found form the container. Try to provide custom path if there is known"
+                    " shell.")
+                sys.exit(1)
+            else:
+                self.logger.info(f"Using shell from the path: {self.entrypoint}")
         # Determine entrypoint if it is user supplied or from the base image
         entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
         if not entry_point:
@@ -195,7 +230,7 @@ class ToolImage(CommandRunner):
         # kludge, lets show work directory in tests
         work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
-            self.logger.info(f"Workdir: {work_dir}")
+            self.logger.debug(f"Workdir: {work_dir}")
 
         # upload files into freshly created container
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
@@ -218,7 +253,7 @@ class ToolImage(CommandRunner):
             return 1, buf
 
         # Other format is specified in here:
-            # https://docs.docker.com/engine/api/v1.41/#operation/ContainerAttach
+        # https://docs.docker.com/engine/api/v1.41/#operation/ContainerAttach
         # Used when stdout and stderr are given separately. Includes describing header
         # header := [8]byte{STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
         # The simplest way to implement this protocol is the following:
@@ -398,7 +433,7 @@ class ToolImage(CommandRunner):
                                                        implicit_output=self.implicit_output)
                 log.out_files.extend(dn_files)
         finally:
-            self.logger.debug("removing the container and generated image(s)")
+            self.logger.debug("stopping and removing the container")
             try:
                 # Required when interrupting with Ctrl+C
                 container.kill()
@@ -467,7 +502,6 @@ def image_default_args(sub_parser):
                             help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
-    sub_parser.add_argument('--entrypoint', nargs='?', help="Custom entrypoint for the container.")
     sub_parser.add_argument('--network', nargs='?',
                             help='Container network (see docker run --help)')
     sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
@@ -477,9 +511,13 @@ def image_default_args(sub_parser):
                             help='Drop Linux capability, use many times if required (see docker run --help)')
     sub_parser.add_argument('--runtime', nargs='?',
                             help="Runtime to use with this container (see docker run --help)")
-    sub_parser.add_argument('-i', '--interactive', action='store_true',
-                            help='Keep STDIN open even if not attached (see docker run --help)')
-    sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
+    # With SHELL subcommand these are always enabled/modified, cannot be changed
+    if not sub_parser.prog.endswith("shell"):
+        sub_parser.add_argument('--entrypoint', nargs='?', help="Custom entrypoint for the container.")
+        sub_parser.add_argument('-i', '--interactive', action='store_true',
+                                help='Keep STDIN open even if not attached (see docker run --help)')
+        sub_parser.add_argument('-t', '--tty', action='store_true',
+                                help='Allocate a pseudo-TTY (see docker run --help)')
 
 
 def get_version_information():
@@ -522,8 +560,13 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = create_list_argparse(subparsers)
+    shell_parser = subparsers.add_parser('shell')
+    image_default_args(shell_parser)
+    shell_parser.add_argument('-s', '--shell', nargs="?", help="Give custom path to desirable shell."
+                                                               " By default, /bin/bash >> /bin/sh are used",
+                              default="/bin/bash")
 
+    list_parser = create_list_argparse(subparsers)
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
     help_parser = subparsers.add_parser('help')
@@ -543,7 +586,7 @@ def main():
     if sub_command == 'help':
         m_parser.print_help()
         sys.exit(1)
-    elif sub_command in {'run', 'test'}:
+    elif sub_command in {'run', 'test', 'shell'}:
         # We do not want informative version logs here unless DEBUG mode
         if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
             logging.getLogger('versions').setLevel(logging.ERROR)
@@ -571,20 +614,23 @@ def main():
         if tool.input_tar and tool.input_filters:
             sys.exit("Cannot specify input filters with input tar file")
 
-        tool.entrypoint = args.entrypoint
+        tool.entrypoint = args.entrypoint if sub_command != "shell" else ""
         tool.network_mode = args.network
         tool.user = args.user
         tool.cap_add = args.cap_add
         tool.cap_drop = args.cap_drop
         tool.runtime = args.runtime
-        tool.is_tty = args.tty
-        tool.read_stdin = args.interactive
+        tool.is_tty = args.tty if sub_command != "shell" else True
+        tool.read_stdin = args.interactive if sub_command != "shell" else True
 
         all_args = args.tool[1:]
         if sub_command == 'test':
             check = ContainerCheck(tool)
             tool.logger.info("# {} {}".format(','.join(tool.get_tags()), format_time(tool.get_creation_time())))
             log = check.run(all_args)
+        elif sub_command == "shell":
+            tool.shell = args.shell
+            log = tool.run(all_args)
         else:
             log = tool.run(all_args)
 
