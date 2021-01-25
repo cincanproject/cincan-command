@@ -175,7 +175,6 @@ class ToolImage(CommandRunner):
             provided = True
         for shell in self.config.default_shells:
             try:
-                # Must use labels to prune containers later, unable to use "remove" for "Created" status containers
                 container = self.client.containers.create(self.image)
                 _, stat = container.get_archive(shell)
                 # Currently need to loop through stream on Unix socket, otherwise next connection gets stuck
