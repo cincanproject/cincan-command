@@ -296,6 +296,8 @@ The following table lists all command-line options available for the ``cincan ru
 +------------------------------------+---------------------------------------------------------------+
 | ``--interactive, -i``              | Keep STDIN open even if not attached                          |
 +------------------------------------+---------------------------------------------------------------+
+| ``--entrypoint``                   | Supply custom entrypoint for the container.                   |
++------------------------------------+---------------------------------------------------------------+
 | ``--network`` value                | Network to connect                                            |
 +------------------------------------+---------------------------------------------------------------+
 | ``--user`` name                    | User to run with                                              |

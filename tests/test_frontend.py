@@ -162,6 +162,17 @@ def test_colon_in_file_name(tool):
         assert f.read() == 'Hello\n'
 
 
+def test_entrypoint(tool):
+    tool.entrypoint = "/bin/sh"
+    r = tool.run_get_string(['-c', 'pwd'])
+    # cincan/test image working directory is /home/appuser
+    assert r == "/home/appuser\n"
+
+    tool.entrypoint = "echo"
+    r = tool.run_get_string(['hello'])
+    assert r == "hello\n"
+
+
 def test_interactive_mode():
     """
     Test interactive support with very simple commands by using subprocess

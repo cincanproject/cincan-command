@@ -11,7 +11,7 @@ import sys
 import tty
 import termios
 from datetime import datetime
-from typing import List, Set, Dict, Optional, Tuple, IO
+from typing import List, Set, Dict, Optional, Tuple, IO, Union
 import pkg_resources
 import docker
 import docker.errors
@@ -106,6 +106,7 @@ class ToolImage(CommandRunner):
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
+        self.entrypoint: Optional[Union[str, List[str]]] = None  # docker run --entrypoint=<value>
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
@@ -116,7 +117,6 @@ class ToolImage(CommandRunner):
         self.read_stdin: bool = False
 
         # more test-oriented attributes...
-        self.entrypoint: Optional[str] = None
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
         self.buffer_output = False
@@ -176,12 +176,13 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
-        # create the full command line and run with exec
+        # Determine entrypoint if it is user supplied or from the base image
         entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
         if not entry_point:
             entry_point = []
         cmd = self.image.attrs['Config'].get('Cmd')
-        if not cmd:
+        # Do not use default command with custom entrypoint
+        if not cmd or self.entrypoint:
             cmd = []  # 'None' value observed
         user_cmd = (command if command else cmd)
         log = CommandLog([self.name] + user_cmd)
@@ -196,7 +197,7 @@ class ToolImage(CommandRunner):
         if self.entrypoint:
             self.logger.info(f"Workdir: {work_dir}")
 
-        # upload files to container
+        # upload files into freshly created container
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
@@ -269,7 +270,6 @@ class ToolImage(CommandRunner):
             raise Exception("The input device is not a TTY. Did you pipe input when -it enabled?") from None
 
         # Attach into container to get stdout and stderr with socket. Enable stdin for stream if required
-        # container = self.client.containers.run(container_image, detach=True)
         c_socket = container.attach_socket(
             params={"logs": True, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
         try:
@@ -400,9 +400,11 @@ class ToolImage(CommandRunner):
         finally:
             self.logger.debug("removing the container and generated image(s)")
             try:
+                # Required when interrupting with Ctrl+C
                 container.kill()
             except docker.errors.APIError:
                 self.logger.debug("Container was not running anymore. Can't kill.")
+            # We have to remove container manually, can't use auto_remove parameter earlier. (need output files)
             container.remove()
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
@@ -465,7 +467,7 @@ def image_default_args(sub_parser):
                             help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
-
+    sub_parser.add_argument('--entrypoint', nargs='?', help="Custom entrypoint for the container.")
     sub_parser.add_argument('--network', nargs='?',
                             help='Container network (see docker run --help)')
     sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
@@ -569,6 +571,7 @@ def main():
         if tool.input_tar and tool.input_filters:
             sys.exit("Cannot specify input filters with input tar file")
 
+        tool.entrypoint = args.entrypoint
         tool.network_mode = args.network
         tool.user = args.user
         tool.cap_add = args.cap_add
