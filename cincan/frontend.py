@@ -1,7 +1,6 @@
 import argparse
 import hashlib
 import io
-import json
 import logging
 import os
 import pathlib
@@ -28,6 +27,7 @@ from docker.utils import kwargs_from_env
 from cincan.version_handler import VersionHandler
 
 BUFFER_SIZE = 1024 * 1024
+
 
 class ToolStream:
     """Handle stream to or from the container"""
@@ -176,8 +176,17 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
+        # create the full command line and run with exec
+        entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
+        if not entry_point:
+            entry_point = []
+        cmd = self.image.attrs['Config'].get('Cmd')
+        if not cmd:
+            cmd = []  # 'None' value observed
+        user_cmd = (command if command else cmd)
+        log = CommandLog([self.name] + user_cmd)
         # Initial container with correct command and configuration
-        container = self.client.containers.create(self.image, command=command,
+        container = self.client.containers.create(self.image, command=user_cmd, entrypoint=entry_point,
                                                   network_mode=self.network_mode,
                                                   detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
                                                   user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
@@ -191,7 +200,7 @@ class ToolImage(CommandRunner):
         tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
-        return container
+        return container, log
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
@@ -237,19 +246,9 @@ class ToolImage(CommandRunner):
             buf.extend(r)
         return s_type, buf
 
-    def __container_exec(self, container, cmd_args: List[str], write_stdout: bool) -> CommandLog:
+    def __container_exec(self, container, log: CommandLog, write_stdout: bool) -> CommandLog:
         """Execute a command in the container"""
-        # create the full command line and run with exec
-        entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
-        if not entry_point:
-            entry_point = []
-        cmd = self.image.attrs['Config'].get('Cmd')
-        if not cmd:
-            cmd = []  # 'None' value observed
-        user_cmd = (cmd_args if cmd_args else cmd)
-        full_cmd = entry_point + user_cmd
 
-        log = CommandLog([self.name] + user_cmd)
         stdin_s = ToolStream(sys.stdin) if self.read_stdin else None
         stdout_s = ToolStream(sys.stdout.buffer) if write_stdout else None
         stderr_s = ToolStream(sys.stderr.buffer)
@@ -276,7 +275,7 @@ class ToolImage(CommandRunner):
         try:
             container.start()
         except docker.errors.APIError as e:
-            self.logger.error(f"Failed to execute command: {e}")
+            self.logger.error(f"Failed to start container: {e}")
             result = container.wait()
             log.exit_code = result.get('StatusCode', 0)
             error_status = result.get("Error", "")
@@ -381,10 +380,9 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container = self.__create_container(upload_files, in_files, cmd_args)
-        log = CommandLog([])
+        container, log = self.__create_container(upload_files, in_files, cmd_args)
         try:
-            log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
+            log = self.__container_exec(container, log, write_stdout=(self.output_tar != '-'))
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
