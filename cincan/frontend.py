@@ -60,14 +60,12 @@ class ToolImage(CommandRunner):
         # Later versions of Docker API fetch version from server automatically
         try:
             self.client = docker.from_env()
-            # self.client = docker.DockerClient(base_url="0.0.0.0:2376")
         except docker.errors.DockerException:
             self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
             sys.exit(1)
         try:
             # Attempt to configure automatically
             kwargs = kwargs_from_env()
-            # self.low_level_client = docker.APIClient(base_url="0.0.0.0:2376", version="auto", **kwargs)
             self.low_level_client = docker.APIClient(version="auto", **kwargs)
         except:
             self.logger.warning(
