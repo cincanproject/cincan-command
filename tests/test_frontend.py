@@ -217,3 +217,8 @@ def test_detect_shell(tool, caplog):
     assert shell == "/bin/sh"
     logs = [l.message for l in caplog.records]
     assert "User supplied shell path not found." in logs[0]
+
+    tool.config.default_shells = []
+    tool.shell = "/bin/zsh"
+    shell = tool._detect_shell()
+    assert not shell
