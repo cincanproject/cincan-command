@@ -135,13 +135,13 @@ class ToolImage(CommandRunner):
         if self.registry.default_remote == Remotes.DOCKERHUB:
             # Default prefix for dockerhub: cincan
             # DockerHub set as default - no need for conversion
-            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+            if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
                 self.logger.debug("Not cincan tool - do nothing.")
             else:
                 self.logger.warning(f"Using Docker Hub for image and version source. Rate limits will be applied.")
         else:
             # Default is other than Docker Hub
-            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+            if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
                 if image.startswith('cincan/'):
                     tool_basename = os.path.basename(image)
                     # Convert Docker Hub cincan image to point to default registry

@@ -205,6 +205,14 @@ def test_implicit_namespace_conversion(tool):
     assert name == "busybox"
     assert image == "quay.io/cincan/busybox"
 
+    # Issue #55 when image not set
+
+    name, image = "cincan/test", None
+    name, image = tool.namespace_conversion(name, image)
+    assert name == "cincan/test"
+    assert not image
+
+
 
 def test_detect_shell(tool, caplog):
     tool.shell = "/bin/bash"
