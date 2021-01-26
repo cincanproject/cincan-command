@@ -222,3 +222,4 @@ def test_detect_shell(tool, caplog):
     tool.shell = "/bin/zsh"
     shell = tool._detect_shell()
     assert not shell
+
