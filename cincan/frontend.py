@@ -407,6 +407,20 @@ class ToolImage(CommandRunner):
 
         return log
 
+    def __download_results(self, container: docker.models.containers.Container, log: CommandLog) -> CommandLog:
+        tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
+        if self.explicit_output:
+            # just use the explicitly given output
+            dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                               file_paths=self.explicit_output, implicit_output=False)
+        else:
+            # try to implicitly resolve files
+            dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                               file_paths=self.output_dirs,
+                                               implicit_output=self.implicit_output)
+        log.out_files.extend(dn_files)
+        return log
+
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
         # resolve files to upload
@@ -425,17 +439,11 @@ class ToolImage(CommandRunner):
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
-                tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                if self.explicit_output:
-                    # just use the explicitly given output
-                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
-                                                       file_paths=self.explicit_output, implicit_output=False)
-                else:
-                    # try to implicitly resolve files
-                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
-                                                       file_paths=self.output_dirs,
-                                                       implicit_output=self.implicit_output)
-                log.out_files.extend(dn_files)
+                log = self.__download_results(container, log)
+
+        except KeyboardInterrupt:
+            self.logger.info("Keyboard Interrupt detected, download results anyway.")
+            log = self.__download_results(container, log)
         finally:
             self.logger.debug("stopping and removing the container")
             try:
