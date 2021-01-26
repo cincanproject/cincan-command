@@ -26,7 +26,8 @@ from cincan.image_fetcher import ImageFetcher
 from docker.utils import kwargs_from_env
 from cincan.version_handler import VersionHandler
 
-BUFFER_SIZE = 1024 * 1024
+BUFFER_SIZE = 1024 * 1024  # Bytes
+CONTAINER_KILL_TIMEOUT = 30  # In seconds
 
 
 class ToolStream:
@@ -165,7 +166,7 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __detect_shell(self) -> str:
+    def _detect_shell(self) -> str:
 
         provided = False
         if self.shell not in self.config.default_shells:
@@ -207,7 +208,7 @@ class ToolImage(CommandRunner):
 
         # Opening shell into container with SHELL subcommand.
         if self.shell:
-            self.entrypoint = self.__detect_shell()
+            self.entrypoint = self._detect_shell()
             if not self.entrypoint:
                 self.logger.error(
                     "No viable shell found form the container. Try to provide custom path if there is known"
@@ -315,7 +316,7 @@ class ToolImage(CommandRunner):
             container.start()
         except docker.errors.APIError as e:
             self.logger.error(f"Failed to start container: {e}")
-            result = container.wait()
+            result = container.wait(timeout=CONTAINER_KILL_TIMEOUT)
             log.exit_code = result.get('StatusCode', 0)
             error_status = result.get("Error", "")
             log.stderr = error_status.get("Message", "").encode("utf-8")
@@ -383,7 +384,7 @@ class ToolImage(CommandRunner):
                 # Restore old terminal settings, regardless of what happened
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-        result = container.wait()
+        result = container.wait(timeout=CONTAINER_KILL_TIMEOUT)
         error_status = result.get("Error", "")
         if error_status:
             self.logger.error(f"Container exited with error {error_status}")
@@ -440,7 +441,6 @@ class ToolImage(CommandRunner):
             if log.exit_code == 0:
                 # download results
                 log = self.__download_results(container, log)
-
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected, download results anyway.")
             log = self.__download_results(container, log)

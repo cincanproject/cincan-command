@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import tarfile
 import time
@@ -203,3 +204,16 @@ def test_implicit_namespace_conversion(tool):
     name, image = tool.namespace_conversion(name, image)
     assert name == "busybox"
     assert image == "quay.io/cincan/busybox"
+
+
+def test_detect_shell(tool, caplog):
+    tool.shell = "/bin/bash"
+    shell = tool._detect_shell()
+    assert shell == "/bin/sh"
+
+    caplog.set_level(logging.WARNING)
+    tool.shell = "/bin/zsh"
+    shell = tool._detect_shell()
+    assert shell == "/bin/sh"
+    logs = [l.message for l in caplog.records]
+    assert "User supplied shell path not found." in logs[0]
