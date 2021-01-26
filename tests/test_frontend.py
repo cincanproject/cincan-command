@@ -213,7 +213,6 @@ def test_implicit_namespace_conversion(tool):
     assert not image
 
 
-
 def test_detect_shell(tool, caplog):
     tool.shell = "/bin/bash"
     shell = tool._detect_shell()
@@ -230,4 +229,3 @@ def test_detect_shell(tool, caplog):
     tool.shell = "/bin/zsh"
     shell = tool._detect_shell()
     assert not shell
-
