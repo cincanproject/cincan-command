@@ -224,7 +224,12 @@ class ToolImage(CommandRunner):
         # Do not use default command with custom entrypoint
         if not cmd or self.entrypoint:
             cmd = []  # 'None' value observed
-        user_cmd = (command if command else cmd)
+        if not self.shell:
+            user_cmd = (command if command else cmd)
+        elif command:
+            self.logger.warning(f"Positional arguments used only for passing input files with SHELL command.")
+            user_cmd = []
+
         log = CommandLog([self.name] + user_cmd)
         # Initial container with correct command and configuration
         container = self.client.containers.create(self.image, command=user_cmd, entrypoint=entry_point,
