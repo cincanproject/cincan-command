@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import io
+import re
 import logging
 import os
 import pathlib
@@ -56,9 +57,9 @@ class ToolImage(CommandRunner):
         self.config = Configuration()
         self.registry = ToolRegistry()
         # Init logger, check naming convention of "name" and "image"
-        self.logger = logging.getLogger(name)
+        self.logger = logging.getLogger(image)
         name, image = self.namespace_conversion(name, image)
-        # Later versions of Docker API fetch version from server automatically
+        # Later versions of Docker API attempt fetch version from server automatically
         try:
             self.client = docker.from_env()
         except docker.errors.DockerException:
@@ -107,6 +108,7 @@ class ToolImage(CommandRunner):
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
+        self.keep_changes: bool = False
         self.entrypoint: Optional[Union[str, List[str]]] = None  # docker run --entrypoint=<value>
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
@@ -216,37 +218,40 @@ class ToolImage(CommandRunner):
                 sys.exit(1)
             else:
                 self.logger.info(f"Using shell from the path: {self.entrypoint}")
-        # Determine entrypoint if it is user supplied or from the base image
+        # Determine entrypoint if it is user supplied or from the base image or container
         entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
+        cmd = self.image.attrs['Config'].get('Cmd')
         if not entry_point:
             entry_point = []
-        cmd = self.image.attrs['Config'].get('Cmd')
         # Do not use default command with custom entrypoint
         if not cmd or self.entrypoint:
             cmd = []  # 'None' value observed
         if not self.shell:
             user_cmd = (command if command else cmd)
-        elif command:
+        else:
             self.logger.warning(f"Positional arguments used only for passing input files with SHELL command.")
             user_cmd = []
 
         log = CommandLog([self.name] + user_cmd)
         # Initial container with correct command and configuration
-        container = self.client.containers.create(self.image, command=user_cmd, entrypoint=entry_point,
-                                                  network_mode=self.network_mode,
-                                                  detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
-                                                  runtime=self.runtime)
+        self.logger.debug(
+            f"Entrypoint for the container: {entry_point}, "
+            f"default command for container: {cmd}, user supplied command: {command}")
+        self.container = self.client.containers.create(self.image, command=user_cmd, entrypoint=entry_point,
+                                                       network_mode=self.network_mode,
+                                                       detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
+                                                       user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                       runtime=self.runtime)
         # kludge, lets show work directory in tests
-        work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
+        work_dir = self.container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
             self.logger.debug(f"Workdir: {work_dir}")
 
         # upload files into freshly created container
-        tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
+        tar_tool = TarTool(self.logger, self.container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
-        return container, log
+        return log
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
@@ -315,8 +320,9 @@ class ToolImage(CommandRunner):
             raise Exception("The input device is not a TTY. Did you pipe input when -it enabled?") from None
 
         # Attach into container to get stdout and stderr with socket. Enable stdin for stream if required
+        # Logs false, otherwise output is printed again when attaching existing container
         c_socket = container.attach_socket(
-            params={"logs": True, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
+            params={"logs": False, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
         try:
             container.start()
         except docker.errors.APIError as e:
@@ -439,25 +445,32 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container, log = self.__create_container(upload_files, in_files, cmd_args)
+        log = self.__create_container(upload_files, in_files, cmd_args)
         try:
-            log = self.__container_exec(container, log, write_stdout=(self.output_tar != '-'))
+            log = self.__container_exec(self.container, log, write_stdout=(self.output_tar != '-'))
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
-                log = self.__download_results(container, log)
+                log = self.__download_results(self.container, log)
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected, download results anyway.")
-            log = self.__download_results(container, log)
+            log = self.__download_results(self.container, log)
         finally:
             self.logger.debug("stopping and removing the container")
             try:
                 # Required when interrupting with Ctrl+C
-                container.kill()
+                self.container.kill()
             except docker.errors.APIError:
                 self.logger.debug("Container was not running anymore. Can't kill.")
+            if self.keep_changes:
+                self.logger.info("Creating new image from the produced container.")
+                new_image = self.container.commit()
+                # print(new_image.id)
+                self.logger.info(f"Use it with following id. Shorter version can be used.")
+                self.logger.info(f"id: {new_image.id}")
+                self.logger.info(f"e.g. run 'cincan shell {new_image.short_id}' to open shell.")
             # We have to remove container manually, can't use auto_remove parameter earlier. (need output files)
-            container.remove()
+            self.container.remove()
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
                 self.logger.info(f"removing the docker image {self.get_id()}")
@@ -519,6 +532,9 @@ def image_default_args(sub_parser):
                             help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
+    sub_parser.add_argument('--keep-changes', '-k', action='store_true',
+                            help='Create new image from the created container. You can inspect filesystem or possibly'
+                                 ' re-use uploaded files to execute new commands.')
     sub_parser.add_argument('--network', nargs='?',
                             help='Container network (see docker run --help)')
     sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
@@ -631,6 +647,7 @@ def main():
         if tool.input_tar and tool.input_filters:
             sys.exit("Cannot specify input filters with input tar file")
 
+        tool.keep_changes = args.keep_changes
         tool.entrypoint = args.entrypoint if sub_command != "shell" else ""
         tool.network_mode = args.network
         tool.user = args.user
