@@ -290,6 +290,8 @@ The following table lists all command-line options available for the ``cincan ru
 +------------------------------------+---------------------------------------------------------------+
 | ``--explicit-output, -e`` file     | Give downloaded result file or directory explicitly           |
 +------------------------------------+---------------------------------------------------------------+
+| ``--keep-changes, -k``             | Generate new image from the produced container.               |
++------------------------------------+---------------------------------------------------------------+
 |                                    | Similar to ``docker run``                                     |
 +------------------------------------+---------------------------------------------------------------+
 | ``--tty, -t``                      | Allocate a pseudo-TTY                                         |

@@ -171,6 +171,9 @@ class ToolImage(CommandRunner):
     def _detect_shell(self) -> str:
 
         provided = False
+        if not isinstance(self.config.default_shells, List):
+            self.logger.warning("'shells' attribute value type must be list of strings")
+            return ""
         if self.shell not in self.config.default_shells:
             self.config.default_shells.insert(0, self.shell)
             provided = True
