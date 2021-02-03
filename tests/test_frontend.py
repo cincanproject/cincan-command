@@ -229,3 +229,13 @@ def test_detect_shell(tool, caplog):
     tool.shell = "/bin/zsh"
     shell = tool._detect_shell()
     assert not shell
+
+    # Test invalid type
+    caplog.clear()
+    caplog.set_level(logging.WARNING)
+    tool.config.default_shells = "someshell"
+    shell = tool._detect_shell()
+    assert not shell
+    logs = [l.message for l in caplog.records]
+    assert "'shells' attribute value type must be" in logs[0]
+
