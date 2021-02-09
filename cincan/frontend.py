@@ -230,7 +230,7 @@ class ToolImage(CommandRunner):
         if not cmd or self.entrypoint:
             cmd = []  # 'None' value observed
         if not self.shell:
-            user_cmd = (command if command else cmd)
+            user_cmd = command or cmd
         else:
             self.logger.warning(f"Positional arguments used only for passing input files with SHELL command.")
             user_cmd = []
