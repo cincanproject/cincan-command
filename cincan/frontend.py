@@ -108,7 +108,7 @@ class ToolImage(CommandRunner):
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
-        self.keep_changes: bool = False
+        self.create_image: bool = False
         self.entrypoint: Optional[Union[str, List[str]]] = None  # docker run --entrypoint=<value>
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
@@ -140,7 +140,7 @@ class ToolImage(CommandRunner):
             if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
                 self.logger.debug("Not cincan tool - do nothing.")
             else:
-                self.logger.warning(f"Using Docker Hub for image and version source. Rate limits will be applied.")
+                self.logger.warning(f"Using Docker Hub for image and version source. Rate limits may be applied.")
         else:
             # Default is other than Docker Hub
             if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
@@ -465,7 +465,7 @@ class ToolImage(CommandRunner):
                 self.container.kill()
             except docker.errors.APIError:
                 self.logger.debug("Container was not running anymore. Can't kill.")
-            if self.keep_changes:
+            if self.create_image:
                 self.logger.info("Creating new image from the produced container.")
                 new_image = self.container.commit()
                 # print(new_image.id)
@@ -535,7 +535,7 @@ def image_default_args(sub_parser):
                             help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
-    sub_parser.add_argument('--keep-changes', '-k', action='store_true',
+    sub_parser.add_argument('--create-image', '-c', action='store_true',
                             help='Create new image from the created container. You can inspect filesystem or possibly'
                                  ' re-use uploaded files to execute new commands.')
     sub_parser.add_argument('--network', nargs='?',
@@ -650,7 +650,7 @@ def main():
         if tool.input_tar and tool.input_filters:
             sys.exit("Cannot specify input filters with input tar file")
 
-        tool.keep_changes = args.keep_changes
+        tool.create_image = args.create_image
         tool.entrypoint = args.entrypoint if sub_command != "shell" else ""
         tool.network_mode = args.network
         tool.user = args.user

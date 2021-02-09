@@ -25,10 +25,10 @@ Shell from the custom path could be defined as following, if it exist:
     cincan shell --shell=/bin/zsh cincan/test  
 
 *************
-Advanced use
+Inspect container after command execution
 *************
 
-``cincan run`` has option to create new image from produced container. It can be enabled with switch ``--keep-changes`` or ``-k``.
+``cincan run`` has option to create new image from produced container. It can be enabled with switch ``--create-image`` or ``-c``.
 If something weird is happening in the container or you want to inspect produced environment more closely, you can for example launch shell into it afterwards. (if this base image has shell)
 
 For example, if you could run some command with specific input files, they would be found from the new image.
