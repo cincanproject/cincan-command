@@ -2,6 +2,17 @@
 
 Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
+## [UNRELEASED]
+
+### Added
+
+ - New subcommand 'shell' to launch interactive shell into image
+ - Support downloading files when interrupted Ctrl-C 
+ - New option to create new image from produced container
+
+### Changed
+
+ - Mechanic how file upload and container execution is handled - supports now images without shell
 
 ## [0.2.11]
 
