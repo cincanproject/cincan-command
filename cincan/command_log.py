@@ -68,9 +68,9 @@ class CommandLog:
         self.command = command
         self.timestamp = timestamp
         self.exit_code = 0
-        self.stdin: Optional[bytes] = None
-        self.stdout: Optional[bytes] = None
-        self.stderr: Optional[bytes] = None
+        self.stdin: Optional[bytes] = b''
+        self.stdout: Optional[bytes] = b''
+        self.stderr: Optional[bytes] = b''
         self.in_files: List[FileLog] = []
         self.out_files: List[FileLog] = []
 

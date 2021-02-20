@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import tarfile
 import time
@@ -10,7 +11,7 @@ def test_run_get_string(tool):
     assert out == 'Hello\n'
 
     out = tool.run_get_string(['echxo', 'Hello'])
-    assert 'OCI runtime exec failed: exec failed:' in out
+    assert 'OCI runtime create failed' in out
 
 
 def test_magic_file_io(tool):
@@ -162,6 +163,17 @@ def test_colon_in_file_name(tool):
         assert f.read() == 'Hello\n'
 
 
+def test_entrypoint(tool):
+    tool.entrypoint = "/bin/sh"
+    r = tool.run_get_string(['-c', 'pwd'])
+    # cincan/test image working directory is /home/appuser
+    assert r == "/home/appuser\n"
+
+    tool.entrypoint = "echo"
+    r = tool.run_get_string(['hello'])
+    assert r == "hello\n"
+
+
 def test_interactive_mode():
     """
     Test interactive support with very simple commands by using subprocess
@@ -192,3 +204,38 @@ def test_implicit_namespace_conversion(tool):
     name, image = tool.namespace_conversion(name, image)
     assert name == "busybox"
     assert image == "quay.io/cincan/busybox"
+
+    # Issue #55 when image not set
+
+    name, image = "cincan/test", None
+    name, image = tool.namespace_conversion(name, image)
+    assert name == "cincan/test"
+    assert not image
+
+
+def test_detect_shell(tool, caplog):
+    tool.shell = "/bin/bash"
+    shell = tool._detect_shell()
+    assert shell == "/bin/sh"
+
+    caplog.set_level(logging.WARNING)
+    tool.shell = "/bin/zsh"
+    shell = tool._detect_shell()
+    assert shell == "/bin/sh"
+    logs = [l.message for l in caplog.records]
+    assert "User supplied shell path not found." in logs[0]
+
+    tool.config.default_shells = []
+    tool.shell = "/bin/zsh"
+    shell = tool._detect_shell()
+    assert not shell
+
+    # Test invalid type
+    caplog.clear()
+    caplog.set_level(logging.WARNING)
+    tool.config.default_shells = "someshell"
+    shell = tool._detect_shell()
+    assert not shell
+    logs = [l.message for l in caplog.records]
+    assert "'shells' attribute value type must be" in logs[0]
+

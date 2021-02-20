@@ -1,7 +1,7 @@
 import argparse
 import hashlib
 import io
-import json
+import re
 import logging
 import os
 import pathlib
@@ -12,12 +12,10 @@ import sys
 import tty
 import termios
 from datetime import datetime
-from typing import List, Set, Dict, Optional, Tuple, IO
+from typing import List, Set, Dict, Optional, Tuple, IO, Union
 import pkg_resources
 import docker
 import docker.errors
-from requests.exceptions import ConnectionError
-from urllib.parse import urlparse
 from cincanregistry import list_handler, create_list_argparse, ToolRegistry, Remotes
 from cincanregistry.utils import parse_file_time, format_time
 from cincan.command_log import CommandLog, FileLog, CommandLogWriter, CommandRunner, quote_args
@@ -28,6 +26,9 @@ from cincan.tar_tool import TarTool
 from cincan.image_fetcher import ImageFetcher
 from docker.utils import kwargs_from_env
 from cincan.version_handler import VersionHandler
+
+BUFFER_SIZE = 1024 * 1024  # Bytes
+CONTAINER_KILL_TIMEOUT = 30  # In seconds
 
 
 class ToolStream:
@@ -56,9 +57,14 @@ class ToolImage(CommandRunner):
         self.config = Configuration()
         self.registry = ToolRegistry()
         # Init logger, check naming convention of "name" and "image"
-        self.logger = logging.getLogger(name)
+        self.logger = logging.getLogger(image)
         name, image = self.namespace_conversion(name, image)
-        self.client = docker.from_env()
+        # Later versions of Docker API attempt fetch version from server automatically
+        try:
+            self.client = docker.from_env()
+        except docker.errors.DockerException:
+            self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
+            sys.exit(1)
         try:
             # Attempt to configure automatically
             kwargs = kwargs_from_env()
@@ -67,8 +73,6 @@ class ToolImage(CommandRunner):
             self.logger.warning(
                 "Unable to configure low-level API automatically. Some properties disabled.")
             self.low_level_client = None
-        if not self._is_docker_running():
-            sys.exit(1)
         self.loaded_image = False  # did we load the image?
         self.batch = batch  # Use batch to disable some properties when running inside script or other automation
         if path is not None:
@@ -82,7 +86,8 @@ class ToolImage(CommandRunner):
         elif image is not None:
             self.name = name or image
             self.loaded_image = True
-            fetcher = ImageFetcher(self.config, self.registry, self.client, self.low_level_client, self.logger, self.batch)
+            fetcher = ImageFetcher(self.config, self.registry, self.client, self.low_level_client, self.logger,
+                                   self.batch)
             self.image = fetcher.get_image(image, pull)
             self.context = '.'  # not really correct, but will do
         else:
@@ -103,6 +108,8 @@ class ToolImage(CommandRunner):
         self.output_filters: Optional[List[FileMatcher]] = None
         self.no_defaults: bool = False  # If set true, ignoring container specific rules from .cincanignore
 
+        self.create_image: bool = False
+        self.entrypoint: Optional[Union[str, List[str]]] = None  # docker run --entrypoint=<value>
         self.network_mode: Optional[str] = None  # docker run --network=<value>
         self.user: Optional[str] = None  # docker run --user=<value>
         self.cap_add: List[str] = []  # docker run --cap-add=<value>
@@ -112,8 +119,10 @@ class ToolImage(CommandRunner):
         self.is_tty: bool = False
         self.read_stdin: bool = False
 
+        # Shell subcommand specific
+        self.shell: str = ""
+
         # more test-oriented attributes...
-        self.entrypoint: Optional[str] = None
         self.upload_files: List[str] = []
         self.download_files: List[str] = []
         self.buffer_output = False
@@ -128,13 +137,13 @@ class ToolImage(CommandRunner):
         if self.registry.default_remote == Remotes.DOCKERHUB:
             # Default prefix for dockerhub: cincan
             # DockerHub set as default - no need for conversion
-            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+            if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
                 self.logger.debug("Not cincan tool - do nothing.")
             else:
-                self.logger.warning(f"Using Docker Hub for image and version source. Rate limits will be applied.")
+                self.logger.warning(f"Using Docker Hub for image and version source. Rate limits may be applied.")
         else:
             # Default is other than Docker Hub
-            if not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
+            if image and not image.startswith(f"{self.registry.remote_registry.full_prefix}/"):
                 if image.startswith('cincan/'):
                     tool_basename = os.path.basename(image)
                     # Convert Docker Hub cincan image to point to default registry
@@ -148,15 +157,6 @@ class ToolImage(CommandRunner):
                 self.logger.debug("Not cincan tool - do nothing.")
         return name, image
 
-    def _is_docker_running(self):
-        """Check if Docker is working properly"""
-        try:
-            self.client.ping()
-            return True
-        except ConnectionError:
-            self.logger.error("Failed to connect to Docker Server. Is it running and with proper permissions?")
-            return False
-
     def get_tags(self) -> List[str]:
         """List image tags"""
         return self.image.tags
@@ -168,7 +168,36 @@ class ToolImage(CommandRunner):
         """Get image creation time"""
         return parse_file_time(self.image.attrs['Created'])
 
-    def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog]):
+    def _detect_shell(self) -> str:
+
+        provided = False
+        if not isinstance(self.config.default_shells, List):
+            self.logger.warning("'shells' attribute value type must be list of strings")
+            return ""
+        if self.shell not in self.config.default_shells:
+            self.config.default_shells.insert(0, self.shell)
+            provided = True
+        for shell in self.config.default_shells:
+            try:
+                container = self.client.containers.create(self.image)
+                _, stat = container.get_archive(shell)
+                # Currently need to loop through stream on Unix socket, otherwise next connection gets stuck
+                for i in _:
+                    pass
+                self.logger.debug(f"Shell found with info: {stat}")
+                container.remove(force=True)
+            except docker.errors.NotFound:
+                if provided:
+                    # First item in the list should be user supplied
+                    self.logger.warning(f"User supplied shell path not found. Attempting others instead.")
+                    provided = False
+                    continue
+                self.logger.debug(f"Shell {shell} not found from the container.")
+                continue
+            return shell
+        return ""
+
+    def __create_container(self, upload_files: Dict[pathlib.Path, str], input_files: List[FileLog], command: List[str]):
         """Create a container from the image here"""
 
         if self.network_mode:
@@ -182,27 +211,77 @@ class ToolImage(CommandRunner):
         if self.runtime:
             self.logger.debug(f"option runtime={self.runtime}")
 
-        # override entry point to just keep the container running
-        container = self.client.containers.create(self.image, auto_remove=True, entrypoint="sh",
-                                                  stdin_open=True, tty=True, network_mode=self.network_mode,
-                                                  user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
-                                                  runtime=self.runtime)
-        container.start()
+        # Opening shell into container with SHELL subcommand.
+        if self.shell:
+            self.entrypoint = self._detect_shell()
+            if not self.entrypoint:
+                self.logger.error(
+                    "No viable shell found form the container. Try to provide custom path if there is known"
+                    " shell.")
+                sys.exit(1)
+            else:
+                self.logger.info(f"Using shell from the path: {self.entrypoint}")
+        # Determine entrypoint if it is user supplied or from the base image or container
+        entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
+        cmd = self.image.attrs['Config'].get('Cmd')
+        if not entry_point:
+            entry_point = []
+        # Do not use default command with custom entrypoint
+        if not cmd or self.entrypoint:
+            cmd = []  # 'None' value observed
+        if not self.shell:
+            user_cmd = command or cmd
+        else:
+            self.logger.warning(f"Positional arguments used only for passing input files with SHELL command.")
+            user_cmd = []
 
+        log = CommandLog([self.name] + user_cmd)
+        # Initial container with correct command and configuration
+        self.logger.debug(
+            f"Entrypoint for the container: {entry_point}, "
+            f"default command for container: {cmd}, user supplied command: {command}")
+        self.container = self.client.containers.create(self.image, command=user_cmd, entrypoint=entry_point,
+                                                       network_mode=self.network_mode,
+                                                       detach=False, tty=self.is_tty, stdin_open=self.read_stdin,
+                                                       user=self.user, cap_add=self.cap_add, cap_drop=self.cap_drop,
+                                                       runtime=self.runtime)
         # kludge, lets show work directory in tests
-        work_dir = container.image.attrs['Config'].get('WorkingDir') or '/'
+        work_dir = self.container.image.attrs['Config'].get('WorkingDir') or '/'
         if self.entrypoint:
-            self.logger.info(f"Workdir: {work_dir}")
+            self.logger.debug(f"Workdir: {work_dir}")
 
-        # upload files to container
-        tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.input_tar)
+        # upload files into freshly created container
+        tar_tool = TarTool(self.logger, self.container, self.upload_stats, explicit_file=self.input_tar)
         tar_tool.upload(upload_files, input_files)
 
-        return container
+        return log
 
     def __unpack_container_stream(self, c_socket) -> Tuple[int, bytes]:
         """Unpack bytes coming from container stream"""
         buf = bytearray()
+
+        # Nothing special when TTY is enabled
+        if self.is_tty:
+            # There is no EOF in all cases, must read some amount of bytes at time
+            r = c_socket.read(BUFFER_SIZE)
+            if not r:
+                return 0, bytes([])  # EOF
+            buf.extend(r)
+            # Mark it as stdout (1)
+            return 1, buf
+
+        # Other format is specified in here:
+        # https://docs.docker.com/engine/api/v1.41/#operation/ContainerAttach
+        # Used when stdout and stderr are given separately. Includes describing header
+        # header := [8]byte{STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
+        # The simplest way to implement this protocol is the following:
+        #
+        # Read 8 bytes.
+        # Choose stdout or stderr depending on the first byte.
+        # Extract the frame size from the last four bytes.
+        # Read the extracted size and output it on the correct output.
+        # Goto 1.
+
         while len(buf) < 8:
             r = c_socket.read(8 - len(buf))
             if not r:
@@ -221,19 +300,9 @@ class ToolImage(CommandRunner):
             buf.extend(r)
         return s_type, buf
 
-    def __container_exec(self, container, cmd_args: List[str], write_stdout: bool) -> CommandLog:
+    def __container_exec(self, container, log: CommandLog, write_stdout: bool) -> CommandLog:
         """Execute a command in the container"""
-        # create the full command line and run with exec
-        entry_point = [self.entrypoint] if self.entrypoint else self.image.attrs['Config'].get('Entrypoint')
-        if not entry_point:
-            entry_point = []
-        cmd = self.image.attrs['Config'].get('Cmd')
-        if not cmd:
-            cmd = []  # 'None' value observed
-        user_cmd = (cmd_args if cmd_args else cmd)
-        full_cmd = entry_point + user_cmd
 
-        log = CommandLog([self.name] + user_cmd)
         stdin_s = ToolStream(sys.stdin) if self.read_stdin else None
         stdout_s = ToolStream(sys.stdout.buffer) if write_stdout else None
         stderr_s = ToolStream(sys.stderr.buffer)
@@ -253,11 +322,19 @@ class ToolImage(CommandRunner):
             self.logger.debug(e)
             raise Exception("The input device is not a TTY. Did you pipe input when -it enabled?") from None
 
-        # execute the command, collect stdin and stderr
-        exec = self.client.api.exec_create(container.id, cmd=full_cmd, stdin=self.read_stdin, tty=self.is_tty)
-        exec_id = exec['Id']
-        c_socket = self.client.api.exec_start(exec_id, detach=False, socket=True)
-        buffer_size = 1024 * 1024
+        # Attach into container to get stdout and stderr with socket. Enable stdin for stream if required
+        # Logs false, otherwise output is printed again when attaching existing container
+        c_socket = container.attach_socket(
+            params={"logs": False, "stream": True, "stdout": True, "stderr": True, "stdin": self.read_stdin})
+        try:
+            container.start()
+        except docker.errors.APIError as e:
+            self.logger.error(f"Failed to start container: {e}")
+            result = container.wait(timeout=CONTAINER_KILL_TIMEOUT)
+            log.exit_code = result.get('StatusCode', 0)
+            error_status = result.get("Error", "")
+            log.stderr = error_status.get("Message", "").encode("utf-8")
+            return log
 
         self.logger.debug("enter stdin/container io loop...")
         active_streams = [c_socket._sock]  # prefer socket to limit the amount of data in the container (?)
@@ -278,7 +355,7 @@ class ToolImage(CommandRunner):
 
                 for sel in select_in:
                     if sel == sys.stdin:
-                        s_data = os.read(0, buffer_size)  # fd 0 is stdin
+                        s_data = os.read(0, BUFFER_SIZE)  # fd 0 is stdin
                         if not s_data:
                             self.logger.debug(f"received eof from stdin")
                             active_streams.remove(sel)
@@ -321,9 +398,12 @@ class ToolImage(CommandRunner):
                 # Restore old terminal settings, regardless of what happened
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-        # inspect execution result
-        inspect = self.client.api.exec_inspect(exec_id)
-        log.exit_code = inspect.get('ExitCode', 0)
+        result = container.wait(timeout=CONTAINER_KILL_TIMEOUT)
+        error_status = result.get("Error", "")
+        if error_status:
+            self.logger.error(f"Container exited with error {error_status}")
+
+        log.exit_code = result.get('StatusCode', 0)
 
         # collect raw data
         if self.buffer_output:
@@ -342,6 +422,20 @@ class ToolImage(CommandRunner):
 
         return log
 
+    def __download_results(self, container: docker.models.containers.Container, log: CommandLog) -> CommandLog:
+        tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
+        if self.explicit_output:
+            # just use the explicitly given output
+            dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                               file_paths=self.explicit_output, implicit_output=False)
+        else:
+            # try to implicitly resolve files
+            dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
+                                               file_paths=self.output_dirs,
+                                               implicit_output=self.implicit_output)
+        log.out_files.extend(dn_files)
+        return log
+
     def __run(self, args: List[str]) -> CommandLog:
         """Run native tool in container with given arguments"""
         # resolve files to upload
@@ -354,27 +448,32 @@ class ToolImage(CommandRunner):
         self.logger.debug("args: %s", ' '.join(quote_args(cmd_args)))
 
         in_files = []
-        container = self.__create_container(upload_files, in_files)
-        log = CommandLog([])
+        log = self.__create_container(upload_files, in_files, cmd_args)
         try:
-            log = self.__container_exec(container, cmd_args, write_stdout=(self.output_tar != '-'))
+            log = self.__container_exec(self.container, log, write_stdout=(self.output_tar != '-'))
             log.in_files.extend(in_files)
             if log.exit_code == 0:
                 # download results
-                tar_tool = TarTool(self.logger, container, self.upload_stats, explicit_file=self.output_tar)
-                if self.explicit_output:
-                    # just use the explicitly given output
-                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
-                                                       file_paths=self.explicit_output, implicit_output=False)
-                else:
-                    # try to implicitly resolve files
-                    dn_files = tar_tool.download_files(self.output_filters, self.no_defaults,
-                                                       file_paths=self.output_dirs,
-                                                       implicit_output=self.implicit_output)
-                log.out_files.extend(dn_files)
+                log = self.__download_results(self.container, log)
+        except KeyboardInterrupt:
+            self.logger.info("Keyboard Interrupt detected, download results anyway.")
+            log = self.__download_results(self.container, log)
         finally:
-            self.logger.debug("killing the container")
-            container.kill()
+            self.logger.debug("stopping and removing the container")
+            try:
+                # Required when interrupting with Ctrl+C
+                self.container.kill()
+            except docker.errors.APIError:
+                self.logger.debug("Container was not running anymore. Can't kill.")
+            if self.create_image:
+                self.logger.info("Creating new image from the produced container.")
+                new_image = self.container.commit()
+                # print(new_image.id)
+                self.logger.info(f"Use it with following id. Shorter version can be used.")
+                self.logger.info(f"id: {new_image.id}")
+                self.logger.info(f"e.g. run 'cincan shell {new_image.short_id}' to open shell.")
+            # We have to remove container manually, can't use auto_remove parameter earlier. (need output files)
+            self.container.remove()
             # if we created the image, lets also remove it (intended for testing)
             if not self.loaded_image:
                 self.logger.info(f"removing the docker image {self.get_id()}")
@@ -436,7 +535,9 @@ def image_default_args(sub_parser):
                             help='Specify output files/directories to download explicitly')
 
     # Docker look-a-like settings for 'cincan run'
-
+    sub_parser.add_argument('--create-image', '-c', action='store_true',
+                            help='Create new image from the created container. You can inspect filesystem or possibly'
+                                 ' re-use uploaded files to execute new commands.')
     sub_parser.add_argument('--network', nargs='?',
                             help='Container network (see docker run --help)')
     sub_parser.add_argument('--user', nargs='?', help='User in container (see docker run --help)')
@@ -446,9 +547,13 @@ def image_default_args(sub_parser):
                             help='Drop Linux capability, use many times if required (see docker run --help)')
     sub_parser.add_argument('--runtime', nargs='?',
                             help="Runtime to use with this container (see docker run --help)")
-    sub_parser.add_argument('-i', '--interactive', action='store_true',
-                            help='Keep STDIN open even if not attached (see docker run --help)')
-    sub_parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY (see docker run --help)')
+    # With SHELL subcommand these are always enabled/modified, cannot be changed
+    if not sub_parser.prog.endswith("shell"):
+        sub_parser.add_argument('--entrypoint', nargs='?', help="Custom entrypoint for the container.")
+        sub_parser.add_argument('-i', '--interactive', action='store_true',
+                                help='Keep STDIN open even if not attached (see docker run --help)')
+        sub_parser.add_argument('-t', '--tty', action='store_true',
+                                help='Allocate a pseudo-TTY (see docker run --help)')
 
 
 def get_version_information():
@@ -491,8 +596,13 @@ def main():
     test_parser = subparsers.add_parser('test')
     image_default_args(test_parser)
 
-    list_parser = create_list_argparse(subparsers)
+    shell_parser = subparsers.add_parser('shell')
+    image_default_args(shell_parser)
+    shell_parser.add_argument('-s', '--shell', nargs="?", help="Give custom path to desirable shell."
+                                                               " By default, /bin/bash >> /bin/sh are used",
+                              default="/bin/bash")
 
+    list_parser = create_list_argparse(subparsers)
     mani_parser = subparsers.add_parser('manifest')
     image_default_args(mani_parser)
     help_parser = subparsers.add_parser('help')
@@ -512,7 +622,7 @@ def main():
     if sub_command == 'help':
         m_parser.print_help()
         sys.exit(1)
-    elif sub_command in {'run', 'test'}:
+    elif sub_command in {'run', 'test', 'shell'}:
         # We do not want informative version logs here unless DEBUG mode
         if logging.DEBUG < logging.getLogger().getEffectiveLevel() < logging.ERROR:
             logging.getLogger('versions').setLevel(logging.ERROR)
@@ -540,19 +650,24 @@ def main():
         if tool.input_tar and tool.input_filters:
             sys.exit("Cannot specify input filters with input tar file")
 
+        tool.create_image = args.create_image
+        tool.entrypoint = args.entrypoint if sub_command != "shell" else ""
         tool.network_mode = args.network
         tool.user = args.user
         tool.cap_add = args.cap_add
         tool.cap_drop = args.cap_drop
         tool.runtime = args.runtime
-        tool.is_tty = args.tty
-        tool.read_stdin = args.interactive
+        tool.is_tty = args.tty if sub_command != "shell" else True
+        tool.read_stdin = args.interactive if sub_command != "shell" else True
 
         all_args = args.tool[1:]
         if sub_command == 'test':
             check = ContainerCheck(tool)
             tool.logger.info("# {} {}".format(','.join(tool.get_tags()), format_time(tool.get_creation_time())))
             log = check.run(all_args)
+        elif sub_command == "shell":
+            tool.shell = args.shell
+            log = tool.run(all_args)
         else:
             log = tool.run(all_args)
 

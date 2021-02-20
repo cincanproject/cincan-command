@@ -15,6 +15,7 @@ class Configuration:
         self.show_updates = self.values.get("show_updates", True)
         self.default_stable_tag = self.values.get("stable_tag", "latest")
         self.default_dev_tag = self.values.get("dev_tag", "dev")
+        self.default_shells = self.values.get("shells", ["/bin/bash", "/bin/sh"])
 
     def is_command_log(self) -> bool:
         return self.values.get('command_log', False)
