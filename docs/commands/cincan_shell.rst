@@ -4,7 +4,7 @@
 Cincan shell
 ############
 
-Usage of ``cincan shell`` subcommand is intended for launching interactive shell into any image (not supported for existing container), which has some shell installed.
+Usage of ``cincan shell`` subcommand is intended for launching interactive shell into any image, which has some shell installed.
 
 It has similar optional arguments as ``cincan run`` command, excluding `--tty`, `--interactive` and `--entrypoint` parameters.
 
@@ -29,13 +29,13 @@ Inspect container after command execution
 *************
 
 ``cincan run`` has option to create new image from produced container. It can be enabled with switch ``--create-image`` or ``-c``.
-If something weird is happening in the container or you want to inspect produced environment more closely, you can for example launch shell into it afterwards. (if this base image has shell)
+If something weird is happening in the container or you want to inspect produced environment more closely, you can for example launch shell into it afterwards. Image must have a shell for this to work.
 
 For example, if you could run some command with specific input files, they would be found from the new image.
 
 .. code-block:: shell
 
-    cincan run --keep-changes <image> <command(s) with files>
+    cincan run --create-image <image> <command(s) with files>
     <lines of output>
     ...
     ...
