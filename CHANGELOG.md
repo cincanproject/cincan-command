@@ -9,6 +9,7 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
  - New subcommand 'shell' to launch interactive shell into image
  - Support downloading files when interrupted Ctrl-C 
  - New option to create new image from produced container
+ - Option to override entrypoint
 
 ### Changed
 
