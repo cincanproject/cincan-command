@@ -32,7 +32,7 @@ dist: CHANGELOG.md setup.py
 upload: check-version tests dist
 	twine upload --verbose -r pypi dist/*
 
-only-upload: check-version dist
+only-upload: dist
 	echo $(TWINE_USERNAME)
 	echo $(TWINE_PASSWORD) | base64
 	twine upload --verbose -r pypi dist/*
