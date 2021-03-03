@@ -30,10 +30,10 @@ dist: CHANGELOG.md setup.py
 	python3 setup.py sdist bdist_wheel
 
 upload: check-version tests dist
-	twine upload -r pypi dist/*
+	twine upload --verbose -r pypi dist/*
 
 only-upload: check-version dist
-	twine upload -r pypi dist/*
+	twine upload --verbose -r pypi dist/*
 
 check-version: $(VERSION_LOCAL) $(VERSION_IN_PYPI)
 	cat $(VERSION_LOCAL)
