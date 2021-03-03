@@ -2,7 +2,7 @@
 
 Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
-## [UNRELEASED]
+## [0.2.12]
 
 ### Added
 
