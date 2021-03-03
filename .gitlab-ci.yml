@@ -53,7 +53,7 @@ pages:
 release:
   stage: deploy
   before_script:
-    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make rustc
+    - apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3 python3-dev make rust cargo
     - pip3 install setuptools wheel twine
   script:
     - export TWINE_USER TWINE_PASS
