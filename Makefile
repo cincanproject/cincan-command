@@ -54,7 +54,7 @@ always-refresh:
 
 $(VERSION_IN_PYPI): always-refresh
 	mkdir -p $(dir $@)
-	curl -sL https://pypi.org/pypi/cincan-command/json | jq -r ".info.version" $@
+	curl -sL https://pypi.org/pypi/cincan-command/json | jq -r ".info.version" > $@
 	cat $@
 
 clean:
