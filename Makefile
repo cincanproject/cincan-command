@@ -18,8 +18,9 @@ VERSION_IN_PYPI = build/version-in-pip
 
 TESTENV_DIR = "_testenv"
 
-TWINE_USERNAME = ${TWINE_USER} 
+.EXPORT_ALL_VARIABLES:
 
+TWINE_USERNAME = ${TWINE_USER} 
 TWINE_PASSWORD = ${TWINE_PASS}
 
 build: check-version tests dist
