@@ -4,6 +4,8 @@ Changelog - based on [keepachangelog](https://keepachangelog.com) - format.
 
 ## [0.2.12]
 
+2021-03-03
+
 ### Added
 
  - New subcommand 'shell' to launch interactive shell into image
